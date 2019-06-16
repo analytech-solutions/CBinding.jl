@@ -288,7 +288,7 @@ module CBinding
 						if kind === :cunion
 							push!(bytes.args, align)
 						else
-							size = :(($(align)-1)-(($(deepcopy(bytes))+($(align)-1))%$(align)))
+							size = :(($(align)-1)-(($(length(bytes.args) > 1 ? deepcopy(bytes) : 0)+($(align)-1))%$(align)))
 							push!(fields, :(nothing => $(size)))
 							push!(bytes.args, size)
 						end
