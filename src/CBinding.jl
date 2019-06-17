@@ -197,11 +197,9 @@ module CBinding
 	const _structExprs = (Symbol("@cstruct"), :(CBinding.$(Symbol("@cstruct"))))
 	const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
 	
-	todo"merging deps might need to be special to prevent empty definitions from overriding actual definitions"
-	
 	# macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
-	_expand(x, deps::Vector{Pair{Symbol, Expr}}) = x
-	function _expand(e::Expr, deps::Vector{Pair{Symbol, Expr}})
+	_expand(x, deps::Vector{Pair{Symbol, Expr}}, escape::Bool = true) = escape ? esc(x) : x
+	function _expand(e::Expr, deps::Vector{Pair{Symbol, Expr}}, escape::Bool = true)
 		if Base.is_expr(e, :macrocall)
 			if length(e.args) > 1 && e.args[1] in (_alignExprs..., _structExprs..., _unionExprs...)
 				if e.args[1] in _alignExprs
@@ -212,16 +210,17 @@ module CBinding
 					return _caggregate(:cunion, filter(x -> !(x isa LineNumberNode), e.args[2:end])..., deps)
 				end
 			else
+				todo"determine if @__MODULE__ should be __module__ from the macro instead?"
 				return _expand(macroexpand(@__MODULE__, e, recursive = false), deps)
 			end
 		elseif Base.is_expr(e, :ref, 2)
 			return _carray(e, deps)
+		else
+			for i in eachindex(e.args)
+				e.args[i] = _expand(e.args[i], deps, escape)
+			end
+			return e
 		end
-		
-		for i in eachindex(e.args)
-			e.args[i] = _expand(e.args[i], deps)
-		end
-		return e
 	end
 	
 	
@@ -233,7 +232,7 @@ module CBinding
 		deps = isOuter ? Pair{Symbol, Expr}[] : deps
 		def = Expr(:align, _expand(expr, deps))
 		
-		return isOuter ? quote $(map(last, deps)...) ; $(esc(def)) end : def
+		return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
 	end
 	
 	
@@ -241,14 +240,16 @@ module CBinding
 	macro ctypedef(exprs...) return _ctypedef(exprs..., nothing) end
 	
 	function _ctypedef(name::Symbol, expr::Union{Symbol, Expr}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
+		escName = esc(name)
+		
 		isOuter = isnothing(deps)
 		deps = isOuter ? Pair{Symbol, Expr}[] : deps
 		expr = _expand(expr, deps)
 		push!(deps, name => quote
-			const $(esc(name)) = $(esc(expr))
+			const $(escName) = $(expr)
 		end)
 		
-		return isOuter ? quote $(map(last, deps)...) ; $(esc(name)) end : name
+		return isOuter ? quote $(map(last, deps)...) ; $(escName) end : escName
 	end
 	
 	
@@ -268,13 +269,14 @@ module CBinding
 	function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
 		isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 		
-		fullName = isnothing(name) ? gensym("anonymous") : name
+		name = isnothing(name) ? gensym("anonymous") : name
+		escName = esc(name)
 		
 		isOuter = isnothing(deps)
 		deps = isOuter ? Pair{Symbol, Expr}[] : deps
 		if isnothing(body)
-			push!(deps, fullName => quote
-				mutable struct $(esc(fullName)) <: $(kind === :cunion ? :(Cunion) : :(Cstruct))
+			push!(deps, name => quote
+				mutable struct $(escName) <: $(kind === :cunion ? :(Cunion) : :(Cstruct))
 					let constructor = false end
 				end
 			end)
@@ -282,9 +284,10 @@ module CBinding
 			bytes = kind === :cunion ? :(max()) : :(+())
 			fields = []
 			if !isnothing(body)
-				for arg in _expand(body, deps).args
+				for arg in body.args
+					arg = _expand(arg, deps)
 					if Base.is_expr(arg, :align, 1)
-						align = esc(arg.args[1])
+						align = arg.args[1]
 						if kind === :cunion
 							push!(bytes.args, align)
 						else
@@ -297,25 +300,29 @@ module CBinding
 							todo"handle bitfields"
 						end
 						Base.is_expr(arg, :(::)) && (length(arg.args) != 2 || arg.args[1] === :_) && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
+						
 						argName = Base.is_expr(arg, :(::), 1) || !Base.is_expr(arg, :(::)) ? :_ : arg.args[1]
-						argName isa Symbol || error("Expected a field name to be a Symbol")
-						push!(fields, :($(QuoteNode(argName)) => $(esc(Base.is_expr(arg, :(::)) ? arg.args[end] : arg))))
-						push!(bytes.args, :(sizeof($(esc(Base.is_expr(arg, :(::)) ? arg.args[end] : arg)))))
+						argName = Base.is_expr(argName, :escape, 1) ? argName.args[1] : argName
+						argName isa Symbol || error("Expected a @$(kind) to have a Symbol for a field name, but found `$(argName)`")
+						
+						argType = Base.is_expr(arg, :(::)) ? arg.args[end] : arg
+						push!(fields, :($(QuoteNode(argName)) => $(argType)))
+						push!(bytes.args, :(sizeof($(argType))))
 					end
 				end
 			end
 			
-			push!(deps, fullName => quote
-				mutable struct $(esc(fullName)) <: $(kind === :cunion ? :(Cunion) : :(Cstruct))
-					mem::NTuple{$(bytes), UInt8}
+			push!(deps, name => quote
+				mutable struct $(escName) <: $(kind === :cunion ? :(Cunion) : :(Cstruct))
+					mem::NTuple{$(length(bytes.args) > 1 ? bytes : 0), UInt8}
 					
-					$(esc(fullName))(::UndefInitializer) = new()
+					$(escName)(::UndefInitializer) = new()
 				end
-				CBinding._fields(::Type{$(esc(fullName))}) = ($(fields...),)
+				CBinding._fields(::Type{$(escName)}) = ($(fields...),)
 			end)
 		end
 		
-		return isOuter ? quote $(map(last, deps)...) ; $(esc(fullName)) end : fullName
+		return isOuter ? quote $(map(last, deps)...) ; $(escName) end : escName
 	end
 	
 	
@@ -328,9 +335,10 @@ module CBinding
 		isOuter = isnothing(deps)
 		deps = isOuter ? Pair{Symbol, Expr}[] : deps
 		expr.args[1] = _expand(expr.args[1], deps)
+		expr.args[2] = _expand(expr.args[2], deps)
 		def = :(Carray{$(expr.args[1]), $(expr.args[2]), sizeof(Carray{$(expr.args[1]), $(expr.args[2])})})
 		
-		return isOuter ? quote $(values(deps)...) ; $(esc(def)) end : def
+		return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
 	end
 	
 	
