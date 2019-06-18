@@ -120,9 +120,9 @@ using CBinding
 		
 		@cunion CunionUnion {
 			@cunion {
-				c::Cchar[4]
-				s::Cshort[2]
-				i::Cint
+				c::Cuchar[4]
+				s::Cushort[2]
+				i::Cuint
 			}
 		}
 		@test :c in propertynames(CunionUnion)
@@ -134,10 +134,19 @@ using CBinding
 		}
 		@test sizeof(PtrToUnionUnion) == sizeof(Ptr)
 		@test :p in propertynames(PtrToUnionUnion)
-	end
-	
-	
-	@testset "@cstruct + @cunion" begin
+		
+		cuu = CunionUnion()
+		@test cuu.i == 0
+		@test cuu.c[1] == 0
+		@test cuu.c[4] == 0
+		@test cuu.s[1] == 0
+		@test cuu.s[2] == 0
+		cuu.i = 0xff0000ff
+		@test cuu.i == 0xff0000ff
+		@test cuu.c[1] == 0xff
+		@test cuu.c[4] == 0xff
+		@test cuu.s[1] != 0
+		@test cuu.s[2] != 0
 	end
 	
 	
@@ -150,8 +159,51 @@ using CBinding
 		})[10]
 		@test sizeof(CstructArray) == sizeof(Cint)*10
 		
-		PtrArray = @carray Ptr{@cstruct Opaque}[3]
+		@cstruct CStruct {
+			i::Cint
+		}
+		CStructArray = @carray CStruct[2]
+		@test sizeof(CStructArray) == sizeof(Cint)*2
+		
+		@cstruct Opaque
+		PtrArray = @carray Ptr{Opaque}[3]
 		@test sizeof(PtrArray) == sizeof(Ptr)*3
+		
+		pa = PtrArray(undef)
+		@test sizeof(pa) == sizeof(Ptr)*3
+		@test length(pa) == 3
+		@test eltype(pa) === Ptr{Opaque}
+		@test pa[1] isa Ptr{Opaque}
+		
+		for i in eachindex(pa)
+			pa[i] = C_NULL
+			@test pa[i] == C_NULL
+			pa[i] = Ptr{Opaque}(1)
+			@test pa[i] != C_NULL
+		end
+		
+		pa = PtrArray()
+		for ptr in pa
+			@test ptr == C_NULL
+		end
+		
+		ca = CStructArray()
+		@test length(ca) == 2
+		@test eltype(ca) === CStruct
+		@test ca[2] isa Caccessor{CStruct}
+		
+		CarrayArray = @carray Cint[4][2]
+		@test sizeof(CarrayArray) == sizeof(Cint)*4*2
+		@test eltype(CarrayArray) === @carray Cint[4]
+		@test eltype(eltype(CarrayArray)) === Cint
+		
+		ca = CarrayArray()
+		@test length(ca) == 2
+		@test length(ca[1]) == 4
+		for i in eachindex(ca), j in eachindex(ca[i])
+			@test ca[i] isa Caccessor{@carray Cint[4]}
+			@test ca[i][j] == 0
+		end
 	end
 	
 	

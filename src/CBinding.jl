@@ -75,6 +75,8 @@ module CBinding
 	Base.getindex(ca::Carray{T, N}, ind) where {T, N} = unsafe_load(reinterpret(Ptr{T}, pointer_from_objref(ca)), ind)
 	Base.setindex!(ca::Carray{T, N}, val, ind) where {T, N} = unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(ca)), val, ind)
 	Base.getindex(ca::Carray{CA, N}, ind) where {CA<:Union{Caggregate, Carray}, N} = Caccessor{CA}(ca, (ind-1)*sizeof(CA))
+	Base.firstindex(ca::Carray{CA, N}) where {CA<:Union{Caggregate, Carray}, N} = 1
+	Base.lastindex(ca::Carray{CA, N}) where {CA<:Union{Caggregate, Carray}, N} = length(ca)
 	
 	Base.IndexStyle(::Type{Carray{T, N}}) where {T, N} = IndexLinear()
 	Base.size(ca::Carray{T, N}) where {T, N} = (N,)
@@ -84,6 +86,8 @@ module CBinding
 	Base.length(::Type{Carray{T, N}}) where {T, N} = N
 	Base.eltype(::Type{Carray{T, N}}) where {T, N} = T
 	
+	Base.keys(ca::Carray{T, N}) where {T, N} = firstindex(ca):lastindex(ca)
+	Base.values(ca::Carray{T, N}) where {T, N} = iterate(ca)
 	Base.iterate(ca::Carray{T, N}, state = 1) where {T, N} = state > N ? nothing : (ca[state], state+1)
 	
 	
@@ -109,7 +113,10 @@ module CBinding
 	Base.getindex(ca::Caccessor{CA}, ind) where {T, N, CA<:Carray{T, N}} = unsafe_load(reinterpret(Ptr{T}, pointer_from_objref(ca)), ind)
 	Base.setindex!(ca::Caccessor{CA}, val::T, ind) where {T, N, CA<:Carray{T, N}} = unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(ca)), val, ind)
 	Base.getindex(ca::Caccessor{CA}, ind) where {T<:Union{Caggregate, Carray}, N, CA<:Carray{T, N}} = Caccessor{T}(ca, (ind-1)*sizeof(T))
+	Base.firstindex(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = 1
+	Base.lastindex(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = length(ca)
 	
+	Base.IndexStyle(::Type{Caccessor{CA}}) where {T, N, CA<:Carray{T, N}} = IndexLinear()
 	Base.size(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = (N,)
 	Base.length(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = N
 	Base.eltype(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = T
@@ -117,6 +124,8 @@ module CBinding
 	Base.length(::Type{Caccessor{CA}}) where {T, N, CA<:Carray{T, N}} = N
 	Base.eltype(::Type{Caccessor{CA}}) where {T, N, CA<:Carray{T, N}} = T
 	
+	Base.keys(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = firstindex(ca):lastindex(ca)
+	Base.values(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = iterate(ca)
 	Base.iterate(ca::Caccessor{CA}, state = 1) where {T, N, CA<:Carray{T, N}} = state > N ? nothing : (ca[state], state+1)
 	
 	# functions for when accessor refers to an aggregate
@@ -265,6 +274,7 @@ module CBinding
 		return _caggregate(kind, nothing, body, deps)
 	end
 	
+	todo"handle empty aggregates properly, C reserves 1 byte for outer struct composed of empty structs"
 	todo"Cint (signed) bitfields use 1 bit for their sign?!"
 	function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
 		isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
