@@ -19,6 +19,7 @@ module CBinding
 	abstract type Caggregate end
 	abstract type Cstruct <: Caggregate end
 	abstract type Cunion <: Caggregate end
+
 	
 	function _fields end
 	
@@ -148,11 +149,19 @@ module CBinding
 				
 				if sym === :_ && typ <: Caggregate
 					_compute(typ)
-				elseif !isnothing(sym)
+				elseif isnothing(sym)
+					offset = off + typ
+				elseif typ isa Tuple
+					(t, o, b) = typ
+					if o == 0   # advance offset on first bitfield field, but use unadvanced offset for remaining bitfield fields
+						offset = off + sizeof(t)
+						result = (result..., (off, sym, typ))
+					else
+						result = (result..., (off-sizeof(t), sym, typ))
+					end
+				else
 					result = (result..., (off, sym, typ))
 					offset = off + sizeof(typ)
-				else
-					offset = off + typ
 				end
 			end
 		end
@@ -166,14 +175,23 @@ module CBinding
 		for i in 1:bits
 			mask = (mask << one(Cuint)) | one(Cuint)
 		end
-		return Cuint(mask)
+		return :(Cuint($(mask)))
 	end
 	
 	function Base.getproperty(ca::Union{CA, Caccessor{CA}}, sym::Symbol) where {CA<:Caggregate}
 		for (off, nam, typ) in _computefields(typeof(ca))
 			sym === nam || continue
 			
-			if typ <: Caggregate || typ <: Carray
+			if typ isa Tuple
+				(t, o, b) = typ
+				field = unsafe_load(reinterpret(Ptr{Cuint}, pointer_from_objref(ca)+off))
+				mask = _bitmask(Val(t <: Signed ? b-1 : b))
+				val = (field >> Cuint(o)) & mask
+				if t <: Signed && ((field >> Cuint(o+b-1)) & Cuint(1)) != 0  # 0 = pos, 1 = neg
+					val |= reinterpret(Cuint, Cint(-1)) & ~mask
+				end
+				return reinterpret(t, val)
+			elseif typ <: Caggregate || typ <: Carray
 				return Caccessor{typ}(ca, off)
 			else
 				return unsafe_load(reinterpret(Ptr{typ}, pointer_from_objref(ca)+off))
@@ -186,7 +204,16 @@ module CBinding
 		for (off, nam, typ) in _computefields(typeof(ca))
 			sym === nam || continue
 			
-			if typ <: Carray
+			if typ isa Tuple
+				(t, o, b) = typ
+				mask = _bitmask(Val(b)) << Cuint(o)
+				newval = (reinterpret(Cuint, convert(t, val)) << Cuint(o)) & mask
+				if t <: Signed
+					newval = (newval & ~(Cuint(1) << Cuint((o+b-1)))) | (Cuint(signbit(val)) << Cuint((o+b-1)))
+				end
+				field = unsafe_load(reinterpret(Ptr{Cuint}, pointer_from_objref(ca)+off)) & ~mask
+				unsafe_store!(reinterpret(Ptr{Cuint}, pointer_from_objref(ca)+off), newval | field)
+			elseif typ <: Carray
 				ca = Caccessor{typ}(ca, off)
 				length(val) == length(ca) || error("Length of value does not match the length of the array field it is being assigned to")
 				for (i, v) in enumerate(val)
@@ -224,6 +251,10 @@ module CBinding
 			end
 		elseif Base.is_expr(e, :ref, 2)
 			return _carray(e, deps)
+		elseif Base.is_expr(e, :call, 3) && e.args[1] == :(:) && Base.is_expr(e.args[2], :(::), 2) && e.args[3] isa Integer
+			# WARNING:  this is probably bad form and should be moved into _caggregate instead
+			# NOTE:  when using i::Cint:3 syntax for bitfield, the operators are grouped in the opposite order
+			return :($(_expand(e.args[2].args[1], deps))::($(_expand(e.args[2].args[2], deps)):$(e.args[3])))
 		else
 			for i in eachindex(e.args)
 				e.args[i] = _expand(e.args[i], deps, escape)
@@ -294,9 +325,11 @@ module CBinding
 			bytes = kind === :cunion ? :(max()) : :(+())
 			fields = []
 			if !isnothing(body)
+				offset = 0
 				for arg in body.args
 					arg = _expand(arg, deps)
 					if Base.is_expr(arg, :align, 1)
+						offset = 0  # reset the bitfield "flag" on align
 						align = arg.args[1]
 						if kind === :cunion
 							push!(bytes.args, align)
@@ -306,9 +339,6 @@ module CBinding
 							push!(bytes.args, size)
 						end
 					else
-						if Base.is_expr(arg, :(:), 2) && Base.is_expr(arg.args[1], :(::), 2)
-							todo"handle bitfields"
-						end
 						Base.is_expr(arg, :(::)) && (length(arg.args) != 2 || arg.args[1] === :_) && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
 						
 						argName = Base.is_expr(arg, :(::), 1) || !Base.is_expr(arg, :(::)) ? :_ : arg.args[1]
@@ -316,8 +346,21 @@ module CBinding
 						argName isa Symbol || error("Expected a @$(kind) to have a Symbol for a field name, but found `$(argName)`")
 						
 						argType = Base.is_expr(arg, :(::)) ? arg.args[end] : arg
-						push!(fields, :($(QuoteNode(argName)) => $(argType)))
-						push!(bytes.args, :(sizeof($(argType))))
+						if Base.is_expr(argType, :call, 3) && argType.args[1] == :(:) && argType.args[3] isa Integer
+							(argType, bits) = argType.args[2:end]
+							
+							todo"Handle non-32-bit bitfields"
+							push!(fields, :($(QuoteNode(argName)) => ($(argType), $(offset), $(bits))))
+							push!(bytes.args, :((sizeof($(argType)) === 4 || error("Expected @$($(kind)) to have only 32-bit bitfield types") ; $(offset == 0 ? :(sizeof($(argType))) : 0))))
+							
+							offset = kind === :cunion ? 0 : (offset+bits)
+							offset > 32 && error("Expected @$(kind) to have bitfields with no more than 32-bits")
+							offset = offset >= 32 ? 0 : offset
+						else
+							offset = 0  # reset the bitfield "flag" on non-bitfield
+							push!(fields, :($(QuoteNode(argName)) => $(argType)))
+							push!(bytes.args, :(sizeof($(argType))))
+						end
 					end
 				end
 			end
