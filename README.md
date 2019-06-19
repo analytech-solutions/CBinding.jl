@@ -152,8 +152,39 @@ julia> sizeof(MyAlignedCStruct)
 16
 ```
 
-## C Bit Fields (coming soon)
+## C Bit Fields
 
+Specifying C bit fields is another feature provided by CBinding.jl.
+Using a slightly abused syntax, bit fields can be defined with `fieldName::FieldType:FIELD_BITS` where `FIELD_BITS` is an Integer number of bits and `FieldType` is either `Cint` or `Cuint`.
+
+```jl
+julia> @cstruct BitfieldStruct {
+           i::Cint:2
+           j::Cuint:2
+       }
+BitfieldStruct
+
+julia> bf = BitfieldStruct()
+BitfieldStruct(i=0, j=0x00000000)
+
+julia> sizeof(bf)
+4
+
+julia> bf.i = -1 ; bf
+BitfieldStruct(i=-1, j=0x00000000)
+
+julia> bf.j = 1 ; bf
+BitfieldStruct(i=-1, j=0x00000001)
+
+julia> bf.j = 2 ; bf
+BitfieldStruct(i=-1, j=0x00000002)
+
+julia> bf.j = 3 ; bf
+BitfieldStruct(i=-1, j=0x00000003)
+
+julia> bf.j = 4 ; bf
+BitfieldStruct(i=-1, j=0x00000000)
+```
 
 ## C Libraries
 
