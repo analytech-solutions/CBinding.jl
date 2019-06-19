@@ -53,9 +53,9 @@ using CBinding
 		
 		@cstruct CunionStruct {
 			@cunion {
-				c::Cchar[4]
-				s::Cshort[2]
-				i::Cint
+				c::Cuchar[4]
+				s::Cushort[2]
+				i::Cuint
 			}
 		}
 		@test :c in propertynames(CunionStruct)
@@ -67,6 +67,101 @@ using CBinding
 		}
 		@test sizeof(PtrToStructStruct) == sizeof(Ptr)
 		@test :p in propertynames(PtrToStructStruct)
+		
+		cus = CunionStruct()
+		@test cus.i == 0
+		@test cus.c[1] == 0
+		@test cus.c[4] == 0
+		@test cus.s[1] == 0
+		@test cus.s[2] == 0
+		cus.i = 0xff0000ff
+		@test cus.i == 0xff0000ff
+		@test cus.c[1] == 0xff
+		@test cus.c[4] == 0xff
+		@test cus.s[1] != 0
+		@test cus.s[2] != 0
+		
+		
+		@cstruct Cint32Bitfield {
+			i::Cint:32
+		}
+		@test sizeof(Cint32Bitfield) == sizeof(Cint)
+		@test :i in propertynames(Cint32Bitfield)
+		
+		@cstruct Cuint32Bitfield {
+			u::Cuint:32
+		}
+		@test sizeof(Cuint32Bitfield) == sizeof(Cuint)
+		@test :u in propertynames(Cuint32Bitfield)
+		
+		@cstruct Cint2Bitfield {
+			i::Cint:2
+		}
+		@test sizeof(Cint2Bitfield) == sizeof(Cint)
+		@test :i in propertynames(Cint2Bitfield)
+		
+		@cstruct Cuint2Bitfield {
+			u::Cuint:2
+		}
+		@test sizeof(Cuint2Bitfield) == sizeof(Cuint)
+		@test :u in propertynames(Cuint2Bitfield)
+		
+		@cstruct Cuint32Cint32Bitfields {
+			u::Cuint:32
+			i::Cint:32
+		}
+		@test sizeof(Cuint32Cint32Bitfields) == sizeof(Cuint)+sizeof(Cint)
+		@test :u in propertynames(Cuint32Cint32Bitfields)
+		@test :i in propertynames(Cuint32Cint32Bitfields)
+		
+		@cstruct Cuint16Cint16Bitfields {
+			u::Cuint:16
+			i::Cint:16
+		}
+		@test sizeof(Cuint16Cint16Bitfields) == sizeof(Cuint)
+		@test :u in propertynames(Cuint16Cint16Bitfields)
+		@test :i in propertynames(Cuint16Cint16Bitfields)
+		
+		@cstruct Cint16Cint16Bitfields {
+			i1::Cint:16
+			i2::Cint:16
+		}
+		@test sizeof(Cuint16Cint16Bitfields) == sizeof(Cuint)
+		
+		@cstruct Cint16CalignCint16Bitfields {
+			i1::Cint:16
+			@calign sizeof(Cint)
+			i2::Cint:16
+		}
+		@test sizeof(Cint16CalignCint16Bitfields) == sizeof(Cint)*2
+		
+		@cstruct Cint16CintBitfields {
+			u::Cuint:16
+			i::Cint
+		}
+		@test sizeof(Cint16CintBitfields) == sizeof(Cint)*2
+		@test :u in propertynames(Cint16CintBitfields)
+		@test :i in propertynames(Cint16CintBitfields)
+		
+		bf = Cuint16Cint16Bitfields()
+		@test bf.u == 0
+		@test bf.i == 0
+		bf.i = Cint(-1)
+		@test bf.u == 0
+		@test bf.i == -1
+		bf.u = Cuint(0x0001)
+		@test bf.u == 0x0001
+		@test bf.i == -1
+		
+		bf = Cint16CalignCint16Bitfields()
+		@test bf.i1 == 0
+		@test bf.i2 == 0
+		bf.i1 = -1
+		@test bf.i1 == -1
+		@test bf.i2 == 0
+		bf.i2 = -1
+		@test bf.i1 == -1
+		@test bf.i2 == -1
 	end
 	
 	
@@ -147,6 +242,86 @@ using CBinding
 		@test cuu.c[4] == 0xff
 		@test cuu.s[1] != 0
 		@test cuu.s[2] != 0
+		
+		
+		@cunion Cint32BitfieldUnion {
+			i::Cint:32
+		}
+		@test sizeof(Cint32BitfieldUnion) == sizeof(Cint)
+		@test :i in propertynames(Cint32BitfieldUnion)
+		
+		@cunion Cuint32BitfieldUnion {
+			u::Cuint:32
+		}
+		@test sizeof(Cuint32BitfieldUnion) == sizeof(Cuint)
+		@test :u in propertynames(Cuint32BitfieldUnion)
+		
+		@cunion Cint2BitfieldUnion {
+			i::Cint:2
+		}
+		@test sizeof(Cint2BitfieldUnion) == sizeof(Cint)
+		@test :i in propertynames(Cint2BitfieldUnion)
+		
+		@cunion Cuint2BitfieldUnion {
+			u::Cuint:2
+		}
+		@test sizeof(Cuint2BitfieldUnion) == sizeof(Cuint)
+		@test :u in propertynames(Cuint2BitfieldUnion)
+		
+		@cunion Cuint32Cint32BitfieldsUnion {
+			u::Cuint:32
+			i::Cint:32
+		}
+		@test sizeof(Cuint32Cint32BitfieldsUnion) == sizeof(Cuint)
+		@test :u in propertynames(Cuint32Cint32BitfieldsUnion)
+		@test :i in propertynames(Cuint32Cint32BitfieldsUnion)
+		
+		@cunion Cuint16Cint16BitfieldsUnion {
+			u::Cuint:16
+			i::Cint:16
+		}
+		@test sizeof(Cuint16Cint16BitfieldsUnion) == sizeof(Cuint)
+		@test :u in propertynames(Cuint16Cint16BitfieldsUnion)
+		@test :i in propertynames(Cuint16Cint16BitfieldsUnion)
+		
+		@cunion Cint16Cint16BitfieldsUnion {
+			i1::Cint:16
+			i2::Cint:16
+		}
+		@test sizeof(Cuint16Cint16BitfieldsUnion) == sizeof(Cuint)
+		
+		@cunion Cint16CalignCint16BitfieldsUnion {
+			i1::Cint:16
+			@calign sizeof(Cint)
+			i2::Cint:16
+		}
+		@test sizeof(Cint16CalignCint16BitfieldsUnion) == sizeof(Cint)
+		
+		@cunion Cint16CintBitfieldsUnion {
+			bf::Cint:16
+			i::Cint
+		}
+		@test sizeof(Cint16CintBitfieldsUnion) == sizeof(Cint)
+		
+		bfUnion = Cuint16Cint16BitfieldsUnion()
+		@test bfUnion.u == 0
+		@test bfUnion.i == 0
+		bfUnion.i = Cint(-1)
+		@test bfUnion.u == 0xffff
+		@test bfUnion.i == -1
+		bfUnion.u = Cuint(0x0001)
+		@test bfUnion.u == 0x0001
+		@test bfUnion.i == 1
+		
+		bfUnion = Cint16CalignCint16BitfieldsUnion()
+		@test bfUnion.i1 == 0
+		@test bfUnion.i2 == 0
+		bfUnion.i1 = -1
+		@test bfUnion.i1 == -1
+		@test bfUnion.i2 == -1
+		bfUnion.i2 = 0
+		@test bfUnion.i1 == 0
+		@test bfUnion.i2 == 0
 	end
 	
 	
