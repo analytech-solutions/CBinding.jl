@@ -170,20 +170,23 @@ BitfieldStruct(i=0, j=0x00000000)
 julia> sizeof(bf)
 4
 
-julia> bf.i = -1 ; bf
-BitfieldStruct(i=-1, j=0x00000000)
+julia> for i in 1:5
+           bf.i = i ; @show bf
+       end
+bf = BitfieldStruct(i=1, j=0x00000000)
+bf = BitfieldStruct(i=-2, j=0x00000000)
+bf = BitfieldStruct(i=-1, j=0x00000000)
+bf = BitfieldStruct(i=0, j=0x00000000)
+bf = BitfieldStruct(i=1, j=0x00000000)
 
-julia> bf.j = 1 ; bf
-BitfieldStruct(i=-1, j=0x00000001)
-
-julia> bf.j = 2 ; bf
-BitfieldStruct(i=-1, j=0x00000002)
-
-julia> bf.j = 3 ; bf
-BitfieldStruct(i=-1, j=0x00000003)
-
-julia> bf.j = 4 ; bf
-BitfieldStruct(i=-1, j=0x00000000)
+julia> for i in 1:5
+           bf.j = i ; @show bf
+       end
+bf = BitfieldStruct(i=1, j=0x00000001)
+bf = BitfieldStruct(i=1, j=0x00000002)
+bf = BitfieldStruct(i=1, j=0x00000003)
+bf = BitfieldStruct(i=1, j=0x00000000)
+bf = BitfieldStruct(i=1, j=0x00000001)
 ```
 
 ## C Libraries
