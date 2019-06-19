@@ -162,6 +162,9 @@ using CBinding
 		bf.i2 = -1
 		@test bf.i1 == -1
 		@test bf.i2 == -1
+		bf.i2 = 32768
+		@test bf.i1 == -1
+		@test bf.i2 < 0
 	end
 	
 	
@@ -322,6 +325,9 @@ using CBinding
 		bfUnion.i2 = 0
 		@test bfUnion.i1 == 0
 		@test bfUnion.i2 == 0
+		bfUnion.i2 = 32768
+		@test bfUnion.i1 < 0
+		@test bfUnion.i2 < 0
 	end
 	
 	

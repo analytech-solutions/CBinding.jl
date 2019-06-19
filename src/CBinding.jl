@@ -208,9 +208,6 @@ module CBinding
 				(t, o, b) = typ
 				mask = _bitmask(Val(b)) << Cuint(o)
 				newval = (reinterpret(Cuint, convert(t, val)) << Cuint(o)) & mask
-				if t <: Signed
-					newval = (newval & ~(Cuint(1) << Cuint((o+b-1)))) | (Cuint(signbit(val)) << Cuint((o+b-1)))
-				end
 				field = unsafe_load(reinterpret(Ptr{Cuint}, pointer_from_objref(ca)+off)) & ~mask
 				unsafe_store!(reinterpret(Ptr{Cuint}, pointer_from_objref(ca)+off), newval | field)
 			elseif typ <: Carray
