@@ -21,24 +21,24 @@ Aggregate fields can be nested and anonymous aggregate fields can be used as wel
 ```jl
 julia> using CBinding
 
-julia> @cstruct MyFirstCStruct {
-           i::Cint
-       }
+julia> @cstruct MyFirstCStruct {    # struct MyFirstCStruct {
+           i::Cint                  #     int i;
+       }                            # } __attribute__((packed));
 MyFirstCStruct
 
-julia> @ctypedef MySecondType @cstruct MySecondCStruct {
-           i::Cint
-           j::Cint
-           @cunion {
-               w::Cuchar[sizeof(Cint)÷sizeof(Cuchar)]
-               x::Cint
-               y::(@cstruct {
-                   c::Cuchar
-               })[4]
-               z::MyFirstCStruct[1]
-           }
-           m::MyFirstCStruct
-       }
+julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MySecondCStruct {
+           i::Cint                                          #     int i;
+           j::Cint                                          #     int j;
+           @cunion {                                        #     union {
+               w::Cuchar[sizeof(Cint)÷sizeof(Cuchar)]       #         unsigned char w[sizeof(int)/sizeof(unsigned char)];
+               x::Cint                                      #         int x;
+               y::(@cstruct {                               #         struct {
+                   c::Cuchar                                #             unsigned char c;
+               })[4]                                        #         } y[4];
+               z::MyFirstCStruct[1]                         #         struct MyFirstCStruct z[1];
+           }                                                #     };
+           m::MyFirstCStruct                                #     struct MyFirstCStruct m;
+       }                                                    # } __attribute__((packed)) MySecondType;
 MySecondCStruct
 ```
 
@@ -54,10 +54,10 @@ Using the "default" constructor, or the `zero` function, will result in a zero-i
 The "undef" constructor is also defined and does nothing to initialize the memory region of the allocated object, so it is optimal to use in situations where an object will be fully initialized with particular values.
 
 ```jl
-julia> garbage = MySecondCStruct(undef)
+julia> garbage = MySecondCStruct(undef)    # struct MySecondCStruct garbage;
 MySecondCStruct(i=-340722048, j=32586, w=UInt8[0x00, 0x00, 0x00, 0x00], x=0, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0x00), (c=0x00)], z=MyFirstCStruct[(i=0)], m=MyFirstCStruct(i=0))
 
-julia> zeroed = MySecondCStruct()
+julia> zeroed = MySecondCStruct()    # struct MySecondCStruct zeroed; memset(&zeroed, 0, sizeof(zeroed));
 MySecondCStruct(i=0, j=0, w=UInt8[0x00, 0x00, 0x00, 0x00], x=0, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0x00), (c=0x00)], z=MyFirstCStruct[(i=0)], m=MyFirstCStruct(i=0))
 ```
 
@@ -118,33 +118,33 @@ By default, the fields in aggregates are packed, similar to using a `__attribute
 CBinding.jl features the `@calign` macro to describe these alignment requirements when defining aggregate types as well as padding the aggregate type itself to meet alignment requirements of its usage in arrays.
 
 ```jl
-julia> @cstruct MyUnalignedCStruct {
-           c::Cchar
-           i::Cint
-           @cunion {
-               f::Cfloat
-               d::Cdouble
-           }
-       }
+julia> @cstruct MyUnalignedCStruct {    # struct MyUnalignedCStruct {
+           c::Cchar                     #     char c;
+           i::Cint                      #     int i;
+           @cunion {                    #     union {
+               f::Cfloat                #         float f;
+               d::Cdouble               #         double d;
+           }                            #     };
+       }                                # } __attribute__((packed));
 MyUnalignedCStruct
 
 julia> sizeof(MyUnalignedCStruct)
 13
 
-julia> @cstruct MyAlignedCStruct {
-           @calign 1   # ensure alignment for next field at 1 byte
-           c::Cchar
-           @calign sizeof(Cint)   # ensure alignment for next field at 4 bytes
-           i::Cint
-           @calign sizeof(Cdouble)   # ensure alignment of largest nested field
-           @cunion {
-               @calign sizeof(Cfloat)
+julia> @cstruct MyAlignedCStruct {                                   # struct MyAlignedCStruct {
+           @calign 1   # align next field at 1 byte                  #     char c;
+           c::Cchar                                                  #     int i;
+           @calign sizeof(Cint)   # align next field at 4 bytes      #     union {
+           i::Cint                                                   #         float f;
+           @calign sizeof(Cdouble)   # align largest nested field    #         double d;
+           @cunion {                                                 #     };
+               @calign sizeof(Cfloat)                                # };
                f::Cfloat
                @calign sizeof(Cdouble)
                d::Cdouble
                @calign sizeof(Cdouble)
            }
-           @calign sizeof(Cdouble)   # ensure alignment of sequentially allocated structs by aligning to the largest field alignment encountered in the struct
+           @calign sizeof(Cdouble)   # align sequential structs with largest alignment encountered
        }
 MyAlignedCStruct
 
@@ -158,10 +158,10 @@ Specifying C bit fields is another feature provided by CBinding.jl.
 Using a slightly abused syntax, bit fields can be defined with `fieldName::FieldType:FIELD_BITS` where `FIELD_BITS` is an Integer number of bits and `FieldType` is either `Cint` or `Cuint`.
 
 ```jl
-julia> @cstruct BitfieldStruct {
-           i::Cint:2
-           j::Cuint:2
-       }
+julia> @cstruct BitfieldStruct {    # struct BitfieldStruct {
+           i::Cint:2                #     int i:2;
+           j::Cuint:2               #     unsigned int j:2;
+       }                            # };
 BitfieldStruct
 
 julia> bf = BitfieldStruct()
@@ -196,15 +196,24 @@ Once the library object is available, it can be used for obtaining global variab
 This approach allows for multiple libraries to be loaded without causing symbol conflicts.
 
 ```jl
-julia> lib = Clibrary()  # dlopens the Julia process
+julia> lib = Clibrary()  # dlopens the Julia process    # void *lib = dlopen(NULL, RTLD_LAZY|RTLD_DEEPBIND|RTLD_LOCAL); 
 Clibrary(Ptr{Nothing} @0x000061eefd6a1000)
 
-julia> lib2 = Clibrary("/path/to/library.so")  # dlopens the library
+julia> lib2 = Clibrary("/path/to/library.so")  # dlopens the library    # void *lib2 = dlopen("/path/to/library.so", RTLD_LAZY|RTLD_DEEPBIND|RTLD_LOCAL);
 Clibrary(Ptr{Nothing} @0x00006c1ce98c5000)
 ```
 
-## C Global Variables (coming soon)
+## C Global Variables
 
+Two simple wrapper types, `Cglobal` and `Cglobalconst`, are provided to obtain global variables from a library.
+
+```jl
+julia> val = Cglobalconst{Ptr{Cvoid}}(lib, :jl_nothing)    # const void **val = dlsym(lib, "jl_nothing");
+Cglobalconst{Ptr{Nothing}}(Ptr{Ptr{Nothing}} @0x00007fc384893bb8)
+
+julia> val[]   # dereference val
+Ptr{Nothing} @0x00007fc3735ce008
+```
 
 ## C Functions
 
@@ -214,7 +223,7 @@ The parametric types to `Cfunction` are used to specify the return type and the 
 The additional type-safety will help you avoid many mishaps when calling C functions.
 
 ```jl
-julia> func = Cfunction{Clong, Tuple{Ptr{Clong}}}(lib, :time)
+julia> func = Cfunction{Clong, Tuple{Ptr{Clong}}}(lib, :time)    # long (*func)(long *) = dlsym(lib, "time");
 Ptr{Cfunction{Int64,Tuple{Ptr{Int64}}}} @0x0000652bdc514ea0
 
 julia> @cstruct tm {
@@ -230,7 +239,7 @@ julia> @cstruct tm {
        }
 tm
 
-julia> localtime = Cfunction{Ptr{tm}, Tuple{Ptr{Clong}}}(lib, :localtime)
+julia> localtime = Cfunction{Ptr{tm}, Tuple{Ptr{Clong}}}(lib, :localtime)    # struct tm *(*localtime)(long *) = dlsym(lib, "localtime");
 Ptr{Cfunction{Ptr{tm},Tuple{Ptr{Int64}}}} @0x0000652bdb253fd0
 ```
 
@@ -247,20 +256,20 @@ Base.RefValue{Int64}(0)
 julia> func(t)
 1560708359
 
-julia> t[]
+julia> t[]   # dereference t
 1560708359
 
 julia> p = localtime(t)
 Ptr{tm} @0x00007f4afa08b300
 
-julia> unsafe_load(p)
+julia> unsafe_load(p)   # dereference p
 tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
 ```
 
 Even interfacing the low-level C functions of Julia is simple!
 
 ```jl
-julia> jl_gc_total_bytes = Cfunction{Clong, Tuple{}}(lib, :jl_gc_total_bytes)
+julia> jl_gc_total_bytes = Cfunction{Clong, Tuple{}}(lib, :jl_gc_total_bytes)    # long (*jl_gc_total_bytes)() = dlsym(lib, "jl_gc_total_bytes");
 Ptr{Cfunction{Int64,Tuple{}}} @0x00006f3e0c024bc0
 
 julia> jl_gc_total_bytes()
@@ -274,7 +283,7 @@ The variadic function calling capability provided with CBinding.jl is not limite
 This enables Julia the ability to perform real-world variadic function usage as demonstrated with an example of binding to `printf` and then calling it below.
 
 ```jl
-julia> func = Cfunction{Cvoid, Tuple{Cstring, Vararg}}(lib, :printf)
+julia> func = Cfunction{Cvoid, Tuple{Cstring, Vararg}}(lib, :printf)    # void (*func)(char *, ...) = dlsym(lib, "printf");
 Ptr{Cfunction{Nothing,Tuple{Cstring,Vararg{Any,N} where N}}} @0x000061eefc388930
 
 julia> func("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
