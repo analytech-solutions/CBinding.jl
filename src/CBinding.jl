@@ -439,39 +439,34 @@ module CBinding
 	end
 	
 	
-	mutable struct Variadicable{T}
-		mem::Cint
-	end
-	variadicable(::Type{T}) where {T} = sizeof(T) < sizeof(Variadicable{T}) ? Variadicable{T} : T
-	function Base.cconvert(::Type{Variadicable{T}}, x) where {T}
-		sizeof(T) < sizeof(Variadicable{T}) || error("Unable to cconvert to a Variadicable{$(T)}")
-		
-		result = Variadicable{T}(0)
-		unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(result)), Base.cconvert(T, x))
-		return result
-	end
+	# it seems that variadic arguments are aligned at 32-bits on at least 1 platform
+	# (would be nice to use alignment code from below, but this is simple enough)
+	primitive type CAligned{T} 32 end
+	cconvert_vararg(::Type{T}) where {T} = sizeof(T) < sizeof(CAligned{T}) ? CAligned{T} : T
+	Base.cconvert(::Type{CAligned{T}}, x) where {T} = Core.Intrinsics.zext_int(CAligned{T}, Base.cconvert(T, x))
 	
 	
 	# these define a type to add to the type tuple when ccalling variadic functions
-	cconvertible(::Type{T}) where {T} = error("Sorry, `$(T)` is not yet C-callable, define `CBinding.cconvertible(::Type{$(T)}) = CConvertibleType` if needed")
-	cconvertible(::Type{T}) where {T<:AbstractString} = Cstring
-	cconvertible(::Type{T}) where {T<:AbstractChar} = Cchar
-	cconvertible(::Type{T}) where {T<:Union{Cchar, Cshort, Cint, Clong, Clonglong, Cuchar, Cushort, Cuint, Culong, Culonglong}} = T
-	cconvertible(::Type{T}) where {T<:Union{Cfloat, Cdouble}} = T
-	todo"add Ptr, Ref, Array cconvertible functions"
+	cconvert_default(::Type{T}) where {T} = error("Sorry, `$(T)` is not yet variadic C-callable, define `CBinding.cconvert_default(::Type{$(T)}) = CConvertType` if needed")
+	cconvert_default(::Type{T}) where {T<:AbstractString} = Cstring
+	cconvert_default(::Type{T}) where {T<:AbstractChar} = Cchar
+	cconvert_default(::Type{T}) where {T<:Union{Cchar, Cshort, Cint, Clong, Clonglong, Cuchar, Cushort, Cuint, Culong, Culonglong}} = T
+	cconvert_default(::Type{T}) where {T<:Union{Cfloat, Cdouble}} = T
+	todo"add Ptr, Ref, Array cconvert_default functions"
 	
 	
 	(f::Ptr{Cfunction{RetT, ArgsT}})(args...) where {RetT, ArgsT<:Tuple} = invoke(f, args...)
 	@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...) where {RetT, ArgsT<:Tuple}
+		error = nothing
 		_tuplize(::Type{Tuple{}}) = ()
+		_tuplize(::Type{Tuple{}}, argT, argsT...) = (error = :(throw(MethodError(f, args))) ; ())
 		_tuplize(::Type{Tuple{Vararg}}) = ()
-		_tuplize(::Type{Tuple{Vararg}}, argT, argsT...) = (variadicable(cconvertible(argT)), _tuplize(Tuple{Vararg}, argsT...)...,)
-		_tuplize(::Type{T}) where {T<:Tuple} = error("Not enough arguments used in call to Cfunction{$(RetT), $(ArgsT)} `$(f)($(argsT...))`")
+		_tuplize(::Type{Tuple{Vararg}}, argT, argsT...) = (cconvert_vararg(cconvert_default(argT)), _tuplize(Tuple{Vararg}, argsT...)...,)
+		_tuplize(::Type{T}) where {T<:Tuple} = (error = :(throw(MethodError(f, args))) ; ())
 		_tuplize(::Type{T}, argT, argsT...) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T), argsT...)...,)
 		
-	todo"fix variadic functions to align arguments"
 		types = _tuplize(ArgsT, args...)
-		return quote
+		return !isnothing(error) ? error : quote
 			$(Expr(:meta, :inline))
 			ccall(reinterpret(Ptr{Cvoid}, f), RetT, ($(types...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
 		end
