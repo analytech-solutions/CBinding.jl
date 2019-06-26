@@ -479,8 +479,8 @@ module CBinding
 	
 	alignof(::Type{ALIGN_PACKED}, ::Type{<:Any}) = 1
 	
-	alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = alignof(ALIGN_PACKED, eltype(_CA))
-	alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_CA, alignment = true)
+	alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = 1
+	alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = 1
 	
 	alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = alignof(ALIGN_NATIVE, eltype(_CA))
 	alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_CA, alignment = true)
@@ -504,7 +504,7 @@ module CBinding
 	
 	function checked_alignof(x, y)
 		a = alignof(x, y)
-		a == nextpow(2, a) || error("Alignment must be a power of 2")
+		a == 0 || a == nextpow(2, a) || error("Alignment must be a power of 2")
 		return a
 	end
 	
