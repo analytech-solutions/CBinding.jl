@@ -395,7 +395,7 @@ module CBinding
 	struct Clibrary
 		handle::Ptr{Cvoid}
 		
-		Clibrary(libName::Union{AbstractString, Nothing} = nothing) = new(Libdl.dlopen(libName === nothing ? _NullCString() : libName, Libdl.RTLD_LOCAL))
+		Clibrary(libName::Union{AbstractString, Nothing} = nothing) = new(Libdl.dlopen(libName === nothing ? _NullCString() : libName, Libdl.RTLD_LAZY | Libdl.RTLD_DEEPBIND | Libdl.RTLD_LOCAL))
 	end
 	
 	# NOTE:  risky hack to trick Julia dlopen into ccalling the C dlopen with NULL (meaning to dlopen current process rather than a library)
@@ -408,11 +408,25 @@ module CBinding
 		handle::Ptr{T}
 		
 		Cglobalconst{T}(lib::Clibrary, sym::Symbol) where {T} = new{T}(reinterpret(Ptr{T}, Libdl.dlsym(lib.handle, sym)))
+		function Cglobalconst{T}(libs::Vector{Clibrary}, sym::Symbol) where {T}
+			for lib in libs
+				handle = Libdl.dlsym(lib.handle, sym, throw_error = false)
+				handle === nothing || return new{T}(reinterpret(Ptr{T}, handle))
+			end
+			return new{T}(reinterpret(Ptr{T}, Libdl.dlsym(last(libs).handle, sym)))
+		end
 	end
 	struct Cglobal{T}
 		handle::Ptr{T}
 		
 		Cglobal{T}(lib::Clibrary, sym::Symbol) where {T} = new{T}(reinterpret(Ptr{T}, Libdl.dlsym(lib.handle, sym)))
+		function Cglobal{T}(libs::Vector{Clibrary}, sym::Symbol) where {T}
+			for lib in libs
+				handle = Libdl.dlsym(lib.handle, sym, throw_error = false)
+				handle === nothing || return new{T}(reinterpret(Ptr{T}, handle))
+			end
+			return new{T}(reinterpret(Ptr{T}, Libdl.dlsym(last(libs).handle, sym)))
+		end
 	end
 	Base.getindex(g::Union{Cglobalconst{T}, Cglobal{T}}) where {T} = unsafe_load(g.handle)
 	Base.setindex!(g::Cglobal{T}, val::T) where {T} = unsafe_store!(g.handle, val)
@@ -427,6 +441,13 @@ module CBinding
 	
 	Cfunction{RetT, ArgsT}(ptr::Ptr{Cvoid}) where {RetT, ArgsT<:Tuple} = reinterpret(Ptr{Cfunction{RetT, ArgsT}}, ptr)
 	Cfunction{RetT, ArgsT}(lib::Clibrary, sym::Symbol) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT}(Libdl.dlsym(lib.handle, sym))
+	function Cfunction{RetT, ArgsT}(libs::Vector{Clibrary}, sym::Symbol) where {RetT, ArgsT<:Tuple}
+		for lib in libs
+			handle = Libdl.dlsym(lib.handle, sym, throw_error = false)
+			handle === nothing || return Cfunction{RetT, ArgsT}(handle)
+		end
+		return Cfunction{RetT, ArgsT}(Libdl.dlsym(last(libs).handle, sym))
+	end
 	
 	# NOTE:  this returns a tuple (since the user must retain a reference to func for the function pointer to remain usable)
 	Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunction{RetT, ArgsT}(Base.unsafe_convert(Ptr{Cvoid}, func)), func)
