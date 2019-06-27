@@ -141,7 +141,7 @@ julia> sizeof(MyAlignedCStruct)
 16
 
 julia> @cstruct MyStrictlyAlignedCStruct {                           # struct MyStrictlyAlignedCStruct {
-           @calign 4   # align next field at 1 byte                  #     alignas(4) char c;
+           @calign 1   # align next field at 1 byte                  #     alignas(1) char c;
            c::Cchar                                                  #     alignas(int) int i;
            @calign sizeof(Cint)   # align next field at 4 bytes      #     alignas(double) union {
            i::Cint                                                   #         alignas(float) float f;
