@@ -464,24 +464,31 @@ module CBinding
 	end
 	
 	
-	# it seems that variadic arguments are aligned at 32-bits on at least 1 platform
-	# (would be nice to use alignment code from below, but this is simple enough)
-	primitive type CAligned{T} 32 end
-	cconvert_vararg(::Type{T}) where {T} = sizeof(T) < sizeof(CAligned{T}) ? CAligned{T} : T
-	Base.cconvert(::Type{CAligned{T}}, x) where {T} = Core.Intrinsics.zext_int(CAligned{T}, Base.cconvert(T, x))
+	# judging by an implementation of variadic printf: https://github.com/mpaland/printf
+	# it appears that integers are padded to be 32-bit and floats are converted to doubles when used as varargs
+	cconvert_vararg(::Type{T}) where {T} = T
+	cconvert_vararg(::Type{T}) where {T<:Signed} = sizeof(T) < sizeof(Cint) ? Cint : T
+	cconvert_vararg(::Type{T}) where {T<:Unsigned} = sizeof(T) < sizeof(Cuint) ? Cuint : T
+	cconvert_vararg(::Type{T}) where {T<:AbstractChar} = sizeof(T) < sizeof(Cint) ? Cint : T
+	cconvert_vararg(::Type{T}) where {T<:AbstractFloat} = sizeof(T) < sizeof(Cdouble) ? Cdouble : T
 	
 	
 	# these define a type to add to the type tuple when ccalling variadic functions
-	cconvert_default(::Type{T}) where {T} = error("Sorry, `$(T)` is not yet variadic C-callable, define `CBinding.cconvert_default(::Type{$(T)}) = CConvertType` if needed")
+	cconvert_default(::Type{T}) where {T} = error("Sorry, `$(T)` is not yet usable for variadic functions, provide `CBinding.cconvert_default(::Type{$(T)}) = CConvertType` to define how to pass it to a variadic function call")
 	cconvert_default(::Type{T}) where {T<:AbstractString} = Cstring
-	cconvert_default(::Type{T}) where {T<:AbstractChar} = Cchar
-	cconvert_default(::Type{T}) where {T<:Union{Cchar, Cshort, Cint, Clong, Clonglong, Cuchar, Cushort, Cuint, Culong, Culonglong}} = T
-	cconvert_default(::Type{T}) where {T<:Union{Cfloat, Cdouble}} = T
-	todo"add Ptr, Ref, Array cconvert_default functions"
+	cconvert_default(::Type{T}) where {T<:Union{AbstractChar, Integer, AbstractFloat, Ref}} = T   # this covers Ptr too, Ptr <: Ref
+	cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 	
 	
-	(f::Ptr{Cfunction{RetT, ArgsT}})(args...) where {RetT, ArgsT<:Tuple} = invoke(f, args...)
-	@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...) where {RetT, ArgsT<:Tuple}
+	# calling conventions
+	const STDCALL  = Val{:stdcall}
+	const CDECL    = Val{:cdecl}
+	const FASTCALL = Val{:fastcall}
+	const THISCALL = Val{:thiscall}
+	
+	todo"determine implications of using any calling convention other than STDCALL given how varargs are constructed"
+	(f::Ptr{Cfunction{RetT, ArgsT}})(args...; kwargs...) where {RetT, ArgsT<:Tuple} = invoke(f, args...; kwargs...)
+	@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...; convention::Type{Convention} = STDCALL) where {RetT, ArgsT<:Tuple, Convention<:Union{STDCALL, CDECL, FASTCALL, THISCALL}}
 		error = nothing
 		_tuplize(::Type{Tuple{}}) = ()
 		_tuplize(::Type{Tuple{}}, argT, argsT...) = (error = :(throw(MethodError(f, args))) ; ())
@@ -490,10 +497,13 @@ module CBinding
 		_tuplize(::Type{T}) where {T<:Tuple} = (error = :(throw(MethodError(f, args))) ; ())
 		_tuplize(::Type{T}, argT, argsT...) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T), argsT...)...,)
 		
+		_convention(::Type{Val{S}}) where {S} = S
+		
 		types = _tuplize(ArgsT, args...)
 		return !isnothing(error) ? error : quote
 			$(Expr(:meta, :inline))
-			ccall(reinterpret(Ptr{Cvoid}, f), RetT, ($(types...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
+			#@info $(QuoteNode(:(ccall(reinterpret(Ptr{Cvoid}, f), $(_convention(Convention)), RetT, ($(types...),), $(map(i -> :(args[$(i)]), eachindex(args))...),))))
+			ccall(reinterpret(Ptr{Cvoid}, f), $(_convention(Convention)), RetT, ($(types...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
 		end
 	end
 	
@@ -578,6 +588,7 @@ module CBinding
 		if alignment
 			return align
 		end
+		
 		if total
 			size += padding(strategy, size, align*8)
 			size += -size & (8-1)  # ensure size is divisible by 8
