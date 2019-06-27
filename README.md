@@ -5,8 +5,7 @@ CBinding.jl has the goal of making it easier to correctly connect Julia to your 
 
 # Usage
 
-This package can be used to develop interfaces with C API's, but is best used by the [complementary automatic binding generation package](https://github.com/analytech-solutions/CBindingGen.jl).
-CBinding.jl provides some missing functionality and more precise specification capabilities than the builtin Julia facilities for interfacing C provide.
+CBinding.jl provides some missing functionality and more precise specification capabilities than those provided by the builtin Julia facilities for interfacing C.
 
 ## C Aggregate and Array Types
 
@@ -23,8 +22,7 @@ julia> using CBinding
 
 julia> @cstruct MyFirstCStruct {    # struct MyFirstCStruct {
            i::Cint                  #     int i;
-       }                            # } __attribute__((packed));
-MyFirstCStruct
+       } __packed__                 # } __attribute__((packed));
 
 julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MySecondCStruct {
            i::Cint                                          #     int i;
@@ -38,8 +36,7 @@ julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MyS
                z::MyFirstCStruct[1]                         #         struct MyFirstCStruct z[1];
            }                                                #     };
            m::MyFirstCStruct                                #     struct MyFirstCStruct m;
-       }                                                    # } __attribute__((packed)) MySecondType;
-MySecondCStruct
+       }                                                    # } MySecondType;
 ```
 
 As you can see, type definition syntax closely mimics that of C, which you should find helpful when transcribing more complicated types or API's with numerous types.
@@ -114,8 +111,8 @@ MyFirstCStruct(i=0)
 
 ## C Field Alignment
 
-By default, the fields in aggregates are packed, similar to using a `__attribute__((packed))` attribute in C, but usually C aggregate types have alignment requirements for their fields.
-CBinding.jl features the `@calign` macro to describe these alignment requirements when defining aggregate types as well as padding the aggregate type itself to meet alignment requirements of its usage in arrays.
+By default, the fields in aggregates use native alignment to match the default alignment in C, but it is possible to denote packed aggregates using `__packed__`, similar to using a `__attribute__((__packed__))` attribute in C.
+CBinding.jl also features the `@calign` macro to describe additional alignment requirements when defining aggregate types.
 
 ```jl
 julia> @cstruct MyUnalignedCStruct {    # struct MyUnalignedCStruct {
@@ -125,30 +122,40 @@ julia> @cstruct MyUnalignedCStruct {    # struct MyUnalignedCStruct {
                f::Cfloat                #         float f;
                d::Cdouble               #         double d;
            }                            #     };
-       }                                # } __attribute__((packed));
+       } __packed__                     # } __attribute__((packed));
 MyUnalignedCStruct
 
 julia> sizeof(MyUnalignedCStruct)
 13
 
-julia> @cstruct MyAlignedCStruct {                                   # struct MyAlignedCStruct {
-           @calign 1   # align next field at 1 byte                  #     char c;
-           c::Cchar                                                  #     int i;
-           @calign sizeof(Cint)   # align next field at 4 bytes      #     union {
-           i::Cint                                                   #         float f;
-           @calign sizeof(Cdouble)   # align largest nested field    #         double d;
+julia> @cstruct MyAlignedCStruct {    # struct MyAlignedCStruct {
+           c::Cchar                   #     char c;
+           i::Cint                    #     int i;
+           @cunion {                  #     union {
+               f::Cfloat              #         float f;
+               d::Cdouble             #         double d;
+           }                          #     };
+       }                              # };
+
+julia> sizeof(MyAlignedCStruct)
+16
+
+julia> @cstruct MyStrictlyAlignedCStruct {                           # struct MyStrictlyAlignedCStruct {
+           @calign 4   # align next field at 1 byte                  #     alignas(4) char c;
+           c::Cchar                                                  #     alignas(int) int i;
+           @calign sizeof(Cint)   # align next field at 4 bytes      #     alignas(double) union {
+           i::Cint                                                   #         alignas(float) float f;
+           @calign sizeof(Cdouble)   # align largest nested field    #         alignas(double) double d;
            @cunion {                                                 #     };
                @calign sizeof(Cfloat)                                # };
                f::Cfloat
                @calign sizeof(Cdouble)
                d::Cdouble
-               @calign sizeof(Cdouble)
            }
-           @calign sizeof(Cdouble)   # align sequential structs with largest alignment encountered
        }
-MyAlignedCStruct
+MyStrictlyAlignedCStruct
 
-julia> sizeof(MyAlignedCStruct)
+julia> sizeof(MyStrictlyAlignedCStruct)
 16
 ```
 
@@ -276,7 +283,7 @@ julia> jl_gc_total_bytes()
 160117962
 ```
 
-## C Variadic Functions
+## C Variadic Functions (still a work-in-progress)
 
 Binding with a variadic function can be done using a `Vararg` argument type (which must be the last argument).
 The variadic function calling capability provided with CBinding.jl is not limited in the ways that native Julia ccall usage is.
