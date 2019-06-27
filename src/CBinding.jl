@@ -20,8 +20,9 @@ module CBinding
 	abstract type Cstruct <: Caggregate end
 	abstract type Cunion <: Caggregate end
 	
-	_strategy(::Caggregate) = error("Attempted to get alignment strategy for an aggregate without one")
-	_fields(::Caggregate) = error("Attempted to get fields of an aggregate without any")
+	
+	_strategy(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get alignment strategy for an aggregate without one")
+	_fields(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get fields of an aggregate without any")
 	
 	
 	function (::Type{CA})(; kwargs...) where (CA<:Caggregate)
@@ -138,7 +139,8 @@ module CBinding
 	propertytypes(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertytypes(CA; kwargs...)
 	propertytypes(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> typ isa Tuple ? first(typ) : typ, _computelayout(CA))
 	
-	_fields(ca::CA) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _fields(_CA)
+	_strategy(::Type{<:Caccessor{CA}}) where {CA<:Caggregate} = _strategy(CA)
+	_fields(::Type{<:Caccessor{CA}}) where {CA<:Caggregate} = _fields(CA)
 	
 	@generated function _bitmask(::Type{ityp}, ::Val{bits}) where {ityp, bits}
 		mask = zero(ityp)
@@ -518,7 +520,7 @@ module CBinding
 	end
 	
 	_computelayout(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_strategy(CA), CA, _fields(CA); kwargs...)
-	function _computelayout(strategy::DataType, ::Type{CA}, fields::Tuple; total::Bool = false, alignment::Bool = false) where {CA<:Caggregate}
+	function _computelayout(strategy::DataType, ::Type{CA}, fields::Tuple; total::Bool = false, alignment::Bool = false) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}}
 		op = CA <: Cstruct ? (+) : (max)
 		
 		align = 1  # in bytes

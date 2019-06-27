@@ -105,7 +105,6 @@ end
 include("layout-tests.jl")
 
 @testset "CBinding" begin
-	
 	@testset "Layout algorithm" begin
 		rng = MersenneTwister(0)
 		for aggregate in ("@cstruct", "@cunion")
