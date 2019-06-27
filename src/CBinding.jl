@@ -414,10 +414,12 @@ module CBinding
 		
 		Cglobal{T}(lib::Clibrary, sym::Symbol) where {T} = new{T}(reinterpret(Ptr{T}, Libdl.dlsym(lib.handle, sym)))
 	end
-	Base.getindex(g::Union{Cglobalconst{T}, Cglobal{T}}) where {T} = unsafe_load(g._t)
-	Base.setindex!(g::Cglobal{T}, val::T) where {T} = unsafe_store!(g._t, val)
+	Base.getindex(g::Union{Cglobalconst{T}, Cglobal{T}}) where {T} = unsafe_load(g.handle)
+	Base.setindex!(g::Cglobal{T}, val::T) where {T} = unsafe_store!(g.handle, val)
 	
 	
+	
+	todo"add ability to show a Cfunction's signature, so perhaps storing arg names is needed"
 	
 	struct Cfunction{RetT, ArgsT<:Tuple}
 		let constructor = false end
