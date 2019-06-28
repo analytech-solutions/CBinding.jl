@@ -465,8 +465,16 @@ module CBinding
 	end
 	
 	
-	# judging by an implementation of variadic printf: https://github.com/mpaland/printf
-	# it appears that integers are padded to be 32-bit and floats are converted to doubles when used as varargs
+	# calling conventions
+	const STDCALL  = Val{:stdcall}
+	const CDECL    = Val{:cdecl}
+	const FASTCALL = Val{:fastcall}
+	const THISCALL = Val{:thiscall}
+	
+	
+	# https://www.gnu.org/software/libc/manual/html_node/How-Variadic.html
+	# it appears that chars and ints are promoted to 32-bit ints and floats are promoted to doubles when used as varargs
+	todo"cconvert_vararg is likely also be dependent on calling convention"
 	cconvert_vararg(::Type{T}) where {T} = T
 	cconvert_vararg(::Type{T}) where {T<:Signed} = sizeof(T) < sizeof(Cint) ? Cint : T
 	cconvert_vararg(::Type{T}) where {T<:Unsigned} = sizeof(T) < sizeof(Cuint) ? Cuint : T
@@ -481,19 +489,14 @@ module CBinding
 	cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 	
 	
-	# calling conventions
-	const STDCALL  = Val{:stdcall}
-	const CDECL    = Val{:cdecl}
-	const FASTCALL = Val{:fastcall}
-	const THISCALL = Val{:thiscall}
-	
-	todo"determine implications of using any calling convention other than STDCALL given how varargs are constructed"
+	todo"default for convention might be system dependent, e.g. windows would be stdcall"
+	todo"some compilers use different calling convention for variadic functions"
 	(f::Ptr{Cfunction{RetT, ArgsT}})(args...; kwargs...) where {RetT, ArgsT<:Tuple} = invoke(f, args...; kwargs...)
-	@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...; convention::Type{Convention} = STDCALL) where {RetT, ArgsT<:Tuple, Convention<:Union{STDCALL, CDECL, FASTCALL, THISCALL}}
+	@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...; convention::Type{Convention} = CDECL) where {RetT, ArgsT<:Tuple, Convention<:Union{STDCALL, CDECL, FASTCALL, THISCALL}}
 		error = nothing
 		_tuplize(::Type{Tuple{}}) = ()
 		_tuplize(::Type{Tuple{}}, argT, argsT...) = (error = :(throw(MethodError(f, args))) ; ())
-		_tuplize(::Type{Tuple{Vararg}}) = ()
+		_tuplize(::Type{Tuple{Vararg}}) = (:(Ptr{Cvoid}...),)  # HACK: extra `Ptr{Cvoid}...` is being added to trigger vararg ccall behavior rather than regular behavior (if there is a difference in the backend)
 		_tuplize(::Type{Tuple{Vararg}}, argT, argsT...) = (cconvert_vararg(cconvert_default(argT)), _tuplize(Tuple{Vararg}, argsT...)...,)
 		_tuplize(::Type{T}) where {T<:Tuple} = (error = :(throw(MethodError(f, args))) ; ())
 		_tuplize(::Type{T}, argT, argsT...) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T), argsT...)...,)
@@ -503,7 +506,6 @@ module CBinding
 		types = _tuplize(ArgsT, args...)
 		return !isnothing(error) ? error : quote
 			$(Expr(:meta, :inline))
-			#@info $(QuoteNode(:(ccall(reinterpret(Ptr{Cvoid}, f), $(_convention(Convention)), RetT, ($(types...),), $(map(i -> :(args[$(i)]), eachindex(args))...),))))
 			ccall(reinterpret(Ptr{Cvoid}, f), $(_convention(Convention)), RetT, ($(types...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
 		end
 	end
