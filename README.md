@@ -273,7 +273,7 @@ julia> unsafe_load(p)   # dereference p
 tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
 ```
 
-Even interfacing the low-level C functions of Julia is simple!
+Even interfacing the C functions of the Julia API is simple!
 
 ```jl
 julia> jl_gc_total_bytes = Cfunction{Clong, Tuple{}}(lib, :jl_gc_total_bytes)    # long (*jl_gc_total_bytes)() = dlsym(lib, "jl_gc_total_bytes");
@@ -283,14 +283,31 @@ julia> jl_gc_total_bytes()
 160117962
 ```
 
-## C Variadic Functions (still a work-in-progress)
+It is also possible to create type-safe function pointers to Julia functions for use in C code.
+A closure is automatically created for the wrapped function and returned along with the C function pointer, so a reference to the closure (`Base.CFunction`) must be kept to keep the function pointer valid.
+One important thing to note is that the Julia function used is not (yet) guarded, so the argument and return types of the Julia function must match that of the Cfunction signature.
+
+```jl
+julia> (Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do x::Cint, y::Cint
+           return Cint(x + y)
+       end
+(Ptr{Cfunction{Int32,Tuple{Int32,Int32}}} @0x00007fc34e4dfa40, Base.CFunction(Ptr{Nothing} @0x00007fc34e4dfa40, getfield(Main, Symbol("##5#6"))(), Ptr{Nothing} @0x0000000000000000, Ptr{Nothing} @0x0000000000000000))
+
+julia> Cadd(2, 3)  # ccall the C function pointer, arguments are Base.cconvert-ed automatically
+5
+
+julia> add.f(Cint(2), Cint(3))  # directly call the Julia function
+5
+```
+
+## C Variadic Functions
 
 Binding with a variadic function can be done using a `Vararg` argument type (which must be the last argument).
 The variadic function calling capability provided with CBinding.jl is not limited in the ways that native Julia ccall usage is.
 This enables Julia the ability to perform real-world variadic function usage as demonstrated with an example of binding to `printf` and then calling it below.
 
 ```jl
-julia> func = Cfunction{Cvoid, Tuple{Cstring, Vararg}}(lib, :printf)    # void (*func)(char *, ...) = dlsym(lib, "printf");
+julia> func = Cfunction{Cint, Tuple{Cstring, Vararg}}(lib, :printf)    # int (*func)(char *, ...) = dlsym(lib, "printf");
 Ptr{Cfunction{Nothing,Tuple{Cstring,Vararg{Any,N} where N}}} @0x000061eefc388930
 
 julia> func("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
