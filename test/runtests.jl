@@ -598,11 +598,18 @@ include("layout-tests.jl")
 		@test f3(str, "%s %ld\n", "testing printf", 1234) == 20
 		@test unsafe_string(pointer(str)) == "testing printf 1234\n"
 		@test f3(str, "%s i%c %ld great test of CBinding.jl v%3.1lf%c\n", "This", 's', 1, 0.1, '!') == length("This is 1 great test of CBinding.jl v0.1!\n")
-		@test_broken unsafe_string(pointer(str)) == "This is 1 great test of CBinding.jl v0.1!\n"
+		@test unsafe_string(pointer(str)) == "This is 1 great test of CBinding.jl v0.1!\n"
 		@test_throws MethodError f3(1234)
 		@test_throws MethodError f3(1234, "still wrong")
 		
-		# TODO:  add tests for julia->c->julia function calling
+		
+		(Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do val1, val2
+			return val1+val2
+		end
+		@test typeof(Cadd) === Ptr{Cfunction{Cint, Tuple{Cint, Cint}}}
+		@test typeof(add.f) <: Function
+		@test typeof(Cadd(Cint(10), Cint(3))) === typeof(add.f(Cint(10), Cint(3)))
+		@test Cadd(Cint(10), Cint(3)) == add.f(Cint(10), Cint(3))
 	end
 end
 
