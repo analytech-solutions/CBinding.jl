@@ -119,7 +119,7 @@ julia> @cstruct MyUnalignedCStruct {    # struct MyUnalignedCStruct {
            c::Cchar                     #     char c;
            i::Cint                      #     int i;
            @cunion {                    #     union {
-               f::Cfloat                #         float f;
+               f::Cfloat                 #         float f;
                d::Cdouble               #         double d;
            }                            #     };
        } __packed__                     # } __attribute__((packed));
@@ -132,7 +132,7 @@ julia> @cstruct MyAlignedCStruct {    # struct MyAlignedCStruct {
            c::Cchar                   #     char c;
            i::Cint                    #     int i;
            @cunion {                  #     union {
-               f::Cfloat              #         float f;
+               f::Cfloat               #         float f;
                d::Cdouble             #         double d;
            }                          #     };
        }                              # };
@@ -140,13 +140,13 @@ julia> @cstruct MyAlignedCStruct {    # struct MyAlignedCStruct {
 julia> sizeof(MyAlignedCStruct)
 16
 
-julia> @cstruct MyStrictlyAlignedCStruct {                           # struct MyStrictlyAlignedCStruct {
+julia> @cstruct MyStrictlyAlignedCStruct {                          # struct MyStrictlyAlignedCStruct {
            @calign 1   # align next field at 1 byte                  #     alignas(1) char c;
-           c::Cchar                                                  #     alignas(int) int i;
+           c::Cchar                                                 #     alignas(int) int i;
            @calign sizeof(Cint)   # align next field at 4 bytes      #     alignas(double) union {
-           i::Cint                                                   #         alignas(float) float f;
+           i::Cint                                                  #         alignas(float) float f;
            @calign sizeof(Cdouble)   # align largest nested field    #         alignas(double) double d;
-           @cunion {                                                 #     };
+           @cunion {                                                #     };
                @calign sizeof(Cfloat)                                # };
                f::Cfloat
                @calign sizeof(Cdouble)
@@ -166,9 +166,9 @@ Using a slightly abused syntax, bit fields can be defined with `fieldName::Field
 
 ```jl
 julia> @cstruct BitfieldStruct {    # struct BitfieldStruct {
-           i::Cint:2                #     int i:2;
-           j::Cuint:2               #     unsigned int j:2;
-       }                            # };
+           i::Cint:2               #     int i:2;
+           j::Cuint:2              #     unsigned int j:2;
+       }                           # };
 BitfieldStruct
 
 julia> bf = BitfieldStruct()
@@ -293,10 +293,10 @@ julia> (Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do x::Cint, y::Cint
        end
 (Ptr{Cfunction{Int32,Tuple{Int32,Int32}}} @0x00007fc34e4dfa40, Base.CFunction(Ptr{Nothing} @0x00007fc34e4dfa40, getfield(Main, Symbol("##5#6"))(), Ptr{Nothing} @0x0000000000000000, Ptr{Nothing} @0x0000000000000000))
 
-julia> Cadd(2, 3)  # ccall the C function pointer, arguments are Base.cconvert-ed automatically
+julia> Cadd(2, 3)   # ccall the C function pointer, arguments are Base.cconvert-ed automatically
 5
 
-julia> add.f(Cint(2), Cint(3))  # directly call the Julia function
+julia> add.f(Cint(2), Cint(3))   # directly call the Julia function
 5
 ```
 
