@@ -474,30 +474,30 @@ module CBinding
 	
 	# https://www.gnu.org/software/libc/manual/html_node/How-Variadic.html
 	# it appears that chars and ints are promoted to 32-bit ints and floats are promoted to doubles when used as varargs
-	todo"cconvert_vararg is likely also be dependent on calling convention"
-	cconvert_vararg(::Type{T}) where {T} = T
-	cconvert_vararg(::Type{T}) where {T<:Signed} = sizeof(T) < sizeof(Cint) ? Cint : T
-	cconvert_vararg(::Type{T}) where {T<:Unsigned} = sizeof(T) < sizeof(Cuint) ? Cuint : T
-	cconvert_vararg(::Type{T}) where {T<:AbstractChar} = sizeof(T) < sizeof(Cint) ? Cint : T
-	cconvert_vararg(::Type{T}) where {T<:AbstractFloat} = sizeof(T) < sizeof(Cdouble) ? Cdouble : T
+	cconvert_vararg(::Type{CDECL}, ::Type{T}) where {T} = T
+	cconvert_vararg(::Type{CDECL}, ::Type{T}) where {T<:Signed} = sizeof(T) < sizeof(Cint) ? Cint : T
+	cconvert_vararg(::Type{CDECL}, ::Type{T}) where {T<:Unsigned} = sizeof(T) < sizeof(Cuint) ? Cuint : T
+	cconvert_vararg(::Type{CDECL}, ::Type{T}) where {T<:Cchar} = sizeof(T) < sizeof(Cint) ? Cint : T
+	cconvert_vararg(::Type{CDECL}, ::Type{T}) where {T<:AbstractFloat} = sizeof(T) < sizeof(Cdouble) ? Cdouble : T
 	
 	
 	# these define a type to add to the type tuple when ccalling variadic functions
 	cconvert_default(::Type{T}) where {T} = error("Sorry, `$(T)` is not yet usable for variadic functions, provide `CBinding.cconvert_default(::Type{$(T)}) = CConvertType` to define how to pass it to a variadic function call")
 	cconvert_default(::Type{T}) where {T<:AbstractString} = Cstring
-	cconvert_default(::Type{T}) where {T<:Union{AbstractChar, Integer, AbstractFloat, Ref}} = T   # this covers Ptr too, Ptr <: Ref
+	cconvert_default(::Type{T}) where {T<:Char} = Cchar
+	cconvert_default(::Type{T}) where {T<:Union{Integer, AbstractFloat, Ref}} = T   # this covers Ptr too, Ptr <: Ref
 	cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 	
 	
 	todo"default for convention might be system dependent, e.g. windows would be stdcall"
 	todo"some compilers use different calling convention for variadic functions"
 	(f::Ptr{Cfunction{RetT, ArgsT}})(args...; kwargs...) where {RetT, ArgsT<:Tuple} = invoke(f, args...; kwargs...)
-	@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...; convention::Type{Convention} = CDECL) where {RetT, ArgsT<:Tuple, Convention<:Union{STDCALL, CDECL, FASTCALL, THISCALL}}
+	@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...; convention::Type{Convention} = CDECL) where {RetT, ArgsT<:Tuple, Convention<:Val}
 		error = nothing
 		_tuplize(::Type{Tuple{}}) = ()
 		_tuplize(::Type{Tuple{}}, argT, argsT...) = (error = :(throw(MethodError(f, args))) ; ())
 		_tuplize(::Type{Tuple{Vararg}}) = (:(Ptr{Cvoid}...),)  # HACK: extra `Ptr{Cvoid}...` is being added to trigger vararg ccall behavior rather than regular behavior (if there is a difference in the backend)
-		_tuplize(::Type{Tuple{Vararg}}, argT, argsT...) = (cconvert_vararg(cconvert_default(argT)), _tuplize(Tuple{Vararg}, argsT...)...,)
+		_tuplize(::Type{Tuple{Vararg}}, argT, argsT...) = (cconvert_vararg(Convention, cconvert_default(argT)), _tuplize(Tuple{Vararg}, argsT...)...,)
 		_tuplize(::Type{T}) where {T<:Tuple} = (error = :(throw(MethodError(f, args))) ; ())
 		_tuplize(::Type{T}, argT, argsT...) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T), argsT...)...,)
 		
