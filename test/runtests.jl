@@ -602,7 +602,6 @@ include("layout-tests.jl")
 		@test_throws MethodError f3(1234)
 		@test_throws MethodError f3(1234, "still wrong")
 		
-		
 		(Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do val1, val2
 			return val1+val2
 		end
@@ -610,6 +609,39 @@ include("layout-tests.jl")
 		@test typeof(add.f) <: Function
 		@test typeof(Cadd(Cint(10), Cint(3))) === typeof(add.f(Cint(10), Cint(3)))
 		@test Cadd(Cint(10), Cint(3)) == add.f(Cint(10), Cint(3))
+		
+		@cstruct time_t {
+			val::Clong
+		}
+		@cstruct tm {
+			sec::Cint
+			min::Cint
+			hour::Cint
+			mday::Cint
+			mon::Cint
+			year::Cint
+			wday::Cint
+			yday::Cint
+			isdst::Cint
+		}
+		time = Cfunction{time_t, Tuple{Ptr{time_t}}}(lib, :time)
+		localtime = Cfunction{Ptr{tm}, Tuple{Ptr{time_t}}}(lib, :localtime)
+		
+		t = Ref(time_t())
+		@test t[].val == 0
+		time(t)
+		@test t[].val != 0
+		
+		p = localtime(t)
+		@test p isa Ptr
+		@test p != C_NULL
+		
+		x = unsafe_load(p)
+		@test 2000 < 1900+x.year < 2100  # if this package is still around in 2100...
+		
+		mktime = Cfunction{time_t, Tuple{Ptr{tm}}}(lib, :mktime)
+		u = mktime(p)
+		@test u.val == t[].val
 	end
 end
 
