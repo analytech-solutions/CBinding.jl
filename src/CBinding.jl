@@ -306,6 +306,7 @@ module CBinding
 		return _caggregate(kind, name, body, nothing, deps)
 	end
 	
+	todo"need to handle unknown-length aggregates with last field like `char c[]`"
 	function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
 		isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 		isnothing(body) && !isnothing(strategy) && error("Expected @$(kind) to have a body if alignment strategy is to be specified")
