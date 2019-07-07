@@ -317,6 +317,8 @@ function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Exp
 				if Base.is_expr(arg, :align, 1)
 					align = arg.args[1]
 					push!(fields, :(nothing => $(align)))
+				elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous#")
+					# this is just a type definition, not a field
 				else
 					Base.is_expr(arg, :(::)) && (length(arg.args) != 2 || arg.args[1] === :_) && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
 					
