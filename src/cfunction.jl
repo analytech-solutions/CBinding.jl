@@ -53,10 +53,9 @@ cconvert_default(::Type{T}) where {T<:Union{Integer, AbstractFloat, Ref}} = T   
 cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 
 
-todo"default for convention might be system dependent, e.g. windows would be stdcall"
 todo"some compilers use different calling convention for variadic functions"
 (f::Ptr{Cfunction{RetT, ArgsT}})(args...; kwargs...) where {RetT, ArgsT<:Tuple} = invoke(f, args...; kwargs...)
-@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...; convention::Type{Convention} = CDECL) where {RetT, ArgsT<:Tuple, Convention<:Val}
+@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT}}, args...; convention::Type{Convention} = @static Sys.iswindows() ? STDCALL : CDECL) where {RetT, ArgsT<:Tuple, Convention<:Val}
 	error = nothing
 	_tuplize(::Type{Tuple{}}) = ()
 	_tuplize(::Type{Tuple{}}, argT, argsT...) = (error = :(throw(MethodError(f, args))) ; ())
