@@ -223,10 +223,6 @@ function _expand(e::Expr, deps::Vector{Pair{Symbol, Expr}}, escape::Bool = true)
 		end
 	elseif Base.is_expr(e, :ref, 2)
 		return _carray(e, deps)
-	elseif Base.is_expr(e, :call, 3) && e.args[1] == :(:) && Base.is_expr(e.args[2], :(::), 2) && e.args[3] isa Integer
-		# WARNING:  this is probably bad form and should be moved into _caggregate instead
-		# NOTE:  when using i::Cint:3 syntax for bitfield, the operators are grouped in the opposite order
-		return :($(_expand(e.args[2].args[1], deps))::($(_expand(e.args[2].args[2], deps)):$(e.args[3])))
 	else
 		for i in eachindex(e.args)
 			e.args[i] = _expand(e.args[i], deps, escape)
@@ -317,16 +313,54 @@ function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Exp
 				else
 					Base.is_expr(arg, :(::)) && (length(arg.args) != 2 || arg.args[1] === :_) && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
 					
-					argName = Base.is_expr(arg, :(::), 1) || !Base.is_expr(arg, :(::)) ? :_ : arg.args[1]
-					argName = Base.is_expr(argName, :escape, 1) ? argName.args[1] : argName
-					argName isa Symbol || error("Expected a @$(kind) to have a Symbol for a field name, but found `$(argName)`")
-					
 					argType = Base.is_expr(arg, :(::)) ? arg.args[end] : arg
-					if Base.is_expr(argType, :call, 3) && argType.args[1] == :(:) && argType.args[3] isa Integer
-						(argType, bits) = argType.args[2:end]
-						push!(fields, :($(QuoteNode(argName)) => ($(argType), $(bits))))
-					else
-						push!(fields, :($(QuoteNode(argName)) => $(argType)))
+					args = Base.is_expr(arg, :(::), 1) || !Base.is_expr(arg, :(::)) ? :_ : arg.args[1]
+					args = Base.is_expr(args, :tuple) ? args.args : (args,)
+					for arg in args
+						if arg isa Symbol
+							push!(fields, :($(QuoteNode(arg)) => $(argType)))
+						elseif Base.is_expr(arg, :escape, 1) && arg.args[1] isa Symbol
+							push!(fields, :($(QuoteNode(arg.args[1])) => $(argType)))
+						elseif Base.is_expr(arg, :call, 3) && arg.args[1] === :(:) && arg.args[3] isa Integer
+							push!(fields, :($(QuoteNode(arg.args[2])) => ($(argType), $(arg.args[3]))))
+						elseif Base.is_expr(arg, :call, 3) && Base.is_expr(arg.args[1], :escape, 1) && arg.args[1].args[1] === :(:) && Base.is_expr(arg.args[3], :escape, 1) && arg.args[3].args[1] isa Integer
+							push!(fields, :($(QuoteNode(arg.args[2].args[1])) => ($(argType), $(arg.args[3].args[1]))))
+						else
+							function _parseAugmentedField(a)
+								a = deepcopy(a)
+								if Base.is_expr(a, :(::), 2)
+									(aname, atype) = _parseAugmentedField(a.args[2])
+									isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
+									return (a.args[1], atype)
+								elseif Base.is_expr(a, :curly) && length(a.args) >= 3 && a.args[1] in (:Carray, :(CBinding.Carray))
+									(aname, atype) = _parseAugmentedField(a.args[2])
+									isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
+									a.args[2] = atype
+									if length(a.args) == 4 && Base.is_expr(a.args[4], :call, 2) && a.args[4].args[1] === :sizeof
+										(aname, atype) = _parseAugmentedField(a.args[4].args[2])
+										isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
+										a.args[4].args[2] = atype
+									end
+									return (nothing, a)
+								elseif Base.is_expr(a, :curly) && length(a.args) >= 1 && a.args[1] in (:Ptr, esc(:Ptr))
+									if length(a.args) == 1
+										push!(a.args, argType)
+									else
+										(aname, atype) = _parseAugmentedField(a.args[end])
+										isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
+										a.args[end] = atype
+									end
+									return (nothing, a)
+								elseif Base.is_expr(a, :braces, 0)
+									return (nothing, argType)
+								else
+									error("Expected @$(kind) to have a `fieldName`, `fieldName::Ptr{}`, or `fieldName::{}[N]` field name expression or some combination of them, but found `$(a)` within `$(arg)`")
+								end
+							end
+							
+							(aname, atype) = _parseAugmentedField(arg)
+							push!(fields, :($(QuoteNode(aname)) => $(atype)))
+						end
 					end
 				end
 			end
