@@ -16,6 +16,10 @@ module CBinding
 	end
 	
 	
+	abstract type Caggregate end
+	abstract type Cstruct <: Caggregate end
+	abstract type Cunion <: Caggregate end
+	
 	include("caggregate.jl")
 	include("clibrary.jl")
 	include("cglobal.jl")
