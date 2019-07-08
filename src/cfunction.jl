@@ -6,13 +6,6 @@ end
 
 Cfunction{RetT, ArgsT}(ptr::Ptr{Cvoid}) where {RetT, ArgsT<:Tuple} = reinterpret(Ptr{Cfunction{RetT, ArgsT}}, ptr)
 Cfunction{RetT, ArgsT}(lib::Clibrary, sym::Symbol) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT}(Libdl.dlsym(lib.handle, sym))
-function Cfunction{RetT, ArgsT}(libs::Vector{Clibrary}, sym::Symbol) where {RetT, ArgsT<:Tuple}
-	for lib in libs
-		handle = Libdl.dlsym(lib.handle, sym, throw_error = false)
-		handle === nothing || return Cfunction{RetT, ArgsT}(handle)
-	end
-	return Cfunction{RetT, ArgsT}(Libdl.dlsym(last(libs).handle, sym))
-end
 
 # NOTE:  this returns a tuple (since the user must retain a reference to func for the function pointer to remain usable)
 Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunction{RetT, ArgsT}(Base.unsafe_convert(Ptr{Cvoid}, func)), func)
@@ -27,6 +20,17 @@ Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunc
 		return Cfunction{RetT, ArgsT}(@cfunction($(Expr(:$, :func)), RetT, ($(types...),)))
 	end
 end
+
+function bind(f::Ref{Ptr{Cfunction{RetT, ArgsT}}}, sym, libs::Clibrary...) where {RetT, ArgsT<:Tuple}
+		for (ind, lib) in enumerate(libs)
+			handle = Libdl.dlsym(lib.handle, sym, throw_error = ind == length(libs))
+			if !isnothing(handle)
+				f[] = reinterpret(Ptr{Cfunction{RetT, ArgsT}}, handle)
+				break
+			end
+		end
+end
+
 
 
 # calling conventions
