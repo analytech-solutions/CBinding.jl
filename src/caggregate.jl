@@ -154,7 +154,7 @@ function Base.getproperty(ca::Union{CA, Caccessor{CA}}, sym::Symbol) where {CA<:
 		
 		if typ isa Tuple
 			(t, b) = typ
-			ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : UInt64
+			ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
 			o = ityp(off & (8-1))
 			field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + off÷8), ityp, Val(o), Val(b))
 			mask = _bitmask(ityp, Val(b))
@@ -178,7 +178,7 @@ function Base.setproperty!(ca::Union{CA, Caccessor{CA}}, sym::Symbol, val) where
 		
 		if typ isa Tuple
 			(t, b) = typ
-			ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : UInt64
+			ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
 			o = ityp(off & (8-1))
 			field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + off÷8), ityp, Val(o), Val(b))
 			mask = _bitmask(ityp, Val(b)) << o
@@ -439,6 +439,7 @@ alignof(::Type{ALIGN_NATIVE}, ::Type{Float32}) = _f32a
 alignof(::Type{ALIGN_NATIVE}, ::Type{Float64}) = _f64a
 alignof(::Type{ALIGN_NATIVE}, ::Type{<:Ptr})   = alignof(ALIGN_NATIVE, sizeof(Ptr{Cvoid}) == sizeof(UInt32) ? UInt32 : UInt64)
 alignof(::Type{ALIGN_NATIVE}, ::Type{S}) where {S<:Signed} = alignof(ALIGN_NATIVE, unsigned(S))
+alignof(::Type{ALIGN_NATIVE}, ::Type{Clongdouble}) = 2*alignof(ALIGN_NATIVE, Cdouble)
 
 function checked_alignof(x, y)
 	a = alignof(x, y)

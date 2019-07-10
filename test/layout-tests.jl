@@ -48,6 +48,21 @@ const LAYOUT_TESTS = [
 }""",
 
 """@cstruct T {
+	x::Cchar
+	f::Cfloat
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	d::Cdouble
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	ld::Clongdouble
+}""",
+
+"""@cstruct T {
 	c::Cchar:3
 }""",
 
@@ -90,6 +105,21 @@ const LAYOUT_TESTS = [
 """@cstruct T {
 	x::Cchar:3
 	l::Clonglong
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	f::Cfloat
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	d::Cdouble
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	ld::Clongdouble
 }""",
 
 """@cstruct T {

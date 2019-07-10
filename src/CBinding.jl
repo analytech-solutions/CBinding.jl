@@ -9,11 +9,7 @@ module CBinding
 	
 	
 	# provide a temporary placeholder for 128-bit floating point primitive
-	mutable struct Clongdouble <: AbstractFloat
-		mem::NTuple{2*sizeof(Cdouble), UInt8}
-		
-		Clongdouble() = new()
-	end
+	primitive type Clongdouble <: AbstractFloat sizeof(Cdouble)*2*8 end
 	
 	
 	abstract type Caggregate end

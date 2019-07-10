@@ -4,9 +4,12 @@ using CBinding
 
 
 function checkJL(expr, val)
+	def = expr
+	def = replace(def, r"(\n\s+)([^:\n]+)(::)([^:\n]+)(:)(\d+)" => s"\1(\2\5\6)\3\4")
+	
 	X = @eval module $(gensym())
 		using CBinding
-		@ctypedef X $(Meta.parse(expr))
+		@ctypedef X $(Meta.parse(def))
 	end
 	
 	x = Base.invokelatest(X.X)
@@ -31,24 +34,23 @@ function checkC(expr, val)
 	if !isfile(expectedFile) || get(ENV, "GENERATE_EXPECTED", nothing) == "1"
 		props = []
 		for line in split(expr, '\n')
-			m = match(r"^\s*([^:]+)::(?:Cchar|Cshort|Cint|Clonglong|Clong|Cuchar|Cushort|Cuint|Culonglong|Culong|Cfloat|Cdouble)", line)
-			isnothing(m) || push!(props, m.captures[end])
+			m = match(r"^\s*([^:]+)::(Cchar|Cshort|Cint|Clonglong|Cuchar|Cushort|Cuint|Culonglong|Culong|Cfloat|Cdouble|Clongdouble|Clong)", line)
+			isnothing(m) || push!(props, m.captures[end-1] => m.captures[end])
 		end
 		m = match(r"^\s*@c(struct|union)\s+(\S+)", expr)
 		(kind, name) = m.captures[end-1:end]
 		
 		def = expr
 		def = replace(def, "\n" => ";\n")
-		def = replace(def, r"\{;" => "{")
-		def = replace(def, r"__packed__" => "__attribute__((__packed__))")
+		def = replace(def, "{;" => "{")
+		def = replace(def, "__packed__" => "__attribute__((__packed__))")
 		def = replace(def, r"@c(struct|union)" => s"\1")
 		def = replace(def, r"@calign\s+([^;]+);\n" => s"alignas(\1)")
-		def = replace(def, r"(\w+)::(Cchar|Cshort|Cint|Clonglong|Clong|Cuchar|Cushort|Cuint|Culonglong|Culong|Cfloat|Cdouble)" => s"\2 \1")
+		def = replace(def, r"(\w+)::(Cchar|Cshort|Cint|Clonglong|Cuchar|Cushort|Cuint|Culonglong|Culong|Cfloat|Cdouble|Clongdouble|Clong)" => s"\2 \1")
 		def = replace(def, "Cchar" => "signed char")
 		def = replace(def, "Cshort" => "signed short")
 		def = replace(def, "Cint" => "signed int")
 		def = replace(def, "Clonglong" => "signed long long")
-		def = replace(def, "Clong" => "signed long")
 		def = replace(def, "Cuchar" => "unsigned char")
 		def = replace(def, "Cushort" => "unsigned short")
 		def = replace(def, "Cuint" => "unsigned int")
@@ -56,6 +58,8 @@ function checkC(expr, val)
 		def = replace(def, "Culong" => "unsigned long")
 		def = replace(def, "Cfloat" => "float")
 		def = replace(def, "Cdouble" => "double")
+		def = replace(def, "Clongdouble" => "long double")
+		def = replace(def, "Clong" => "signed long")
 		
 		use = []
 		push!(use, """
@@ -65,10 +69,22 @@ function checkC(expr, val)
 			printf("\\n");
 			"""
 		)
-		for prop in props
+		for (prop, typ) in props
+			setprop = "x.$(prop)"
+			if typ == "Cfloat"
+				setprop = "*((unsigned int *)&($(setprop))) = $(repr(Core.Intrinsics.trunc_int(UInt64, val)));"
+			elseif typ == "Cdouble"
+				setprop = "*((unsigned long long *)&($(setprop))) = $(repr(Core.Intrinsics.trunc_int(UInt64, val)));"
+			elseif typ == "Clongdouble"
+				setprop = """
+					*(((unsigned long long *)&($(setprop)))+0) = $(repr(Core.Intrinsics.trunc_int(UInt64, val)));
+					*(((unsigned long long *)&($(setprop)))+1) = $(repr(Core.Intrinsics.trunc_int(UInt64, val>>64)));"""
+			else
+				setprop = "$(setprop) = $(repr(Core.Intrinsics.trunc_int(UInt64, val)));"
+			end
 			push!(use, """
 				$(kind) $(name) x; memset(&x, 0, sizeof(x));
-				x.$(prop) = $(repr(val));
+				$(setprop)
 				printf("%s: ", $(repr(prop)));
 				for (int i = 0;i < sizeof(x);i++) printf("%02x", (unsigned int)(*(((unsigned char*)&x)+i)));
 				printf("\\n");
@@ -105,21 +121,17 @@ end
 include("layout-tests.jl")
 
 @testset "CBinding" begin
-	@testset "Layout algorithm" begin
+	@testset "Layout algorithms" begin
 		rng = MersenneTwister(0)
-		for aggregate in ("@cstruct", "@cunion")
-			@testset "$(aggregate)" begin
+		for _test in LAYOUT_TESTS
+			for aggregate in ("@cstruct", "@cunion")
 				for strategy in ("__packed__", "__native__")
-					@testset "$(strategy)" begin
-						for val in (:random, :ones)
-							val = val === :ones ? 0xffffffffffffffff : rand(rng, UInt64)
-							for test in LAYOUT_TESTS
-								test = replace(test, r"^\s*@cstruct" => aggregate)
-								test = replace(test, r"}\s*$" => "} $(strategy)\n")
-								@debug test
-								@test checkC(test, val) == checkJL(test, val)
-							end
-						end
+					for val in (:random, :ones)
+						val = val === :ones ? Core.Intrinsics.sext_int(UInt128, 0xff) : rand(rng, UInt128)
+						test = replace(_test, r"^\s*@cstruct" => aggregate)
+						test = replace(test, r"}\s*$" => "} $(strategy)\n")
+						@debug test
+						@test checkC(test, val) == checkJL(test, val)
 					end
 				end
 			end
@@ -212,60 +224,60 @@ include("layout-tests.jl")
 		
 		
 		@cstruct Cint32Bitfield {
-			i::Cint:32
+			(i:32)::Cint
 		} __packed__
 		@test sizeof(Cint32Bitfield) == sizeof(Cint)
 		@test :i in propertynames(Cint32Bitfield)
 		
 		@cstruct Cuint32Bitfield {
-			u::Cuint:32
+			(u:32)::Cuint
 		} __packed__
 		@test sizeof(Cuint32Bitfield) == sizeof(Cuint)
 		@test :u in propertynames(Cuint32Bitfield)
 		
 		@cstruct Cint2Bitfield {
-			i::Cint:2
+			(i:2)::Cint
 		} __packed__
 		@test sizeof(Cint2Bitfield) == sizeof(Cchar)
 		@test :i in propertynames(Cint2Bitfield)
 		
 		@cstruct Cuint2Bitfield {
-			u::Cuint:2
+			(u:2)::Cuint
 		} __packed__
 		@test sizeof(Cuint2Bitfield) == sizeof(Cchar)
 		@test :u in propertynames(Cuint2Bitfield)
 		
 		@cstruct Cuint32Cint32Bitfields {
-			u::Cuint:32
-			i::Cint:32
+			(u:32)::Cuint
+			(i:32)::Cint
 		} __packed__
 		@test sizeof(Cuint32Cint32Bitfields) == sizeof(Cuint)+sizeof(Cint)
 		@test :u in propertynames(Cuint32Cint32Bitfields)
 		@test :i in propertynames(Cuint32Cint32Bitfields)
 		
 		@cstruct Cuint16Cint16Bitfields {
-			u::Cuint:16
-			i::Cint:16
+			(u:16)::Cuint
+			(i:16)::Cint
 		} __packed__
 		@test sizeof(Cuint16Cint16Bitfields) == sizeof(Cuint)
 		@test :u in propertynames(Cuint16Cint16Bitfields)
 		@test :i in propertynames(Cuint16Cint16Bitfields)
 		
 		@cstruct Cint16Cint16Bitfields {
-			i1::Cint:16
-			i2::Cint:16
+			(i1:16)::Cint
+			(i2:16)::Cint
 		} __packed__
 		@test sizeof(Cuint16Cint16Bitfields) == sizeof(Cuint)
 		
 		@cstruct Cint16CalignCint16Bitfields {
-			i1::Cint:16
+			(i1:16)::Cint
 			@calign sizeof(Cint)
-			i2::Cint:16
+			(i2:16)::Cint
 		} __packed__
 		@test sizeof(Cint16CalignCint16Bitfields) == sizeof(Cint)*2
 		
 		@cstruct Cint16CintBitfields {
-			u::Cuint:16
+			(u:16)::Cuint
 			i::Cint
 		} __packed__
 		@test sizeof(Cint16CintBitfields) == 2+sizeof(Cint)
@@ -382,60 +394,60 @@ include("layout-tests.jl")
 		
 		
 		@cunion Cint32BitfieldUnion {
-			i::Cint:32
+			(i:32)::Cint
 		} __packed__
 		@test sizeof(Cint32BitfieldUnion) == sizeof(Cint)
 		@test :i in propertynames(Cint32BitfieldUnion)
 		
 		@cunion Cuint32BitfieldUnion {
-			u::Cuint:32
+			(u:32)::Cuint
 		} __packed__
 		@test sizeof(Cuint32BitfieldUnion) == sizeof(Cuint)
 		@test :u in propertynames(Cuint32BitfieldUnion)
 		
 		@cunion Cint2BitfieldUnion {
-			i::Cint:2
+			(i:2)::Cint
 		} __packed__
 		@test sizeof(Cint2BitfieldUnion) == 1
 		@test :i in propertynames(Cint2BitfieldUnion)
 		
 		@cunion Cuint2BitfieldUnion {
-			u::Cuint:2
+			(u:2)::Cuint
 		} __packed__
 		@test sizeof(Cuint2BitfieldUnion) == 1
 		@test :u in propertynames(Cuint2BitfieldUnion)
 		
 		@cunion Cuint32Cint32BitfieldsUnion {
-			u::Cuint:32
-			i::Cint:32
+			(u:32)::Cuint
+			(i:32)::Cint
 		} __packed__
 		@test sizeof(Cuint32Cint32BitfieldsUnion) == sizeof(Cuint)
 		@test :u in propertynames(Cuint32Cint32BitfieldsUnion)
 		@test :i in propertynames(Cuint32Cint32BitfieldsUnion)
 		
 		@cunion Cuint16Cint16BitfieldsUnion {
-			u::Cuint:16
-			i::Cint:16
+			(u:16)::Cuint
+			(i:16)::Cint
 		} __packed__
 		@test sizeof(Cuint16Cint16BitfieldsUnion) == 2
 		@test :u in propertynames(Cuint16Cint16BitfieldsUnion)
 		@test :i in propertynames(Cuint16Cint16BitfieldsUnion)
 		
 		@cunion Cint16Cint16BitfieldsUnion {
-			i1::Cint:16
-			i2::Cint:16
+			(i1:16)::Cint
+			(i2:16)::Cint
 		} __packed__
 		@test sizeof(Cuint16Cint16BitfieldsUnion) == 2
 		
 		@cunion Cint16CalignCint16BitfieldsUnion {
-			i1::Cint:16
+			(i1:16)::Cint
 			@calign sizeof(Cint)
-			i2::Cint:16
+			(i2:16)::Cint
 		} __packed__
 		@test sizeof(Cint16CalignCint16BitfieldsUnion) == sizeof(Cint)
 		
 		@cunion Cint16CintBitfieldsUnion {
-			bf::Cint:16
+			(bf:16)::Cint
 			i::Cint
 		} __packed__
 		@test sizeof(Cint16CintBitfieldsUnion) == sizeof(Cint)
@@ -505,7 +517,7 @@ include("layout-tests.jl")
 		ca = CStructArray()
 		@test length(ca) == 2
 		@test eltype(ca) === CStruct
-		@test ca[2] isa Caccessor{CStruct}
+		@test ca[2] isa CBinding.Caccessor{CStruct}
 		
 		CarrayArray = @carray Cint[4][2]
 		@test sizeof(CarrayArray) == sizeof(Cint)*4*2
@@ -516,7 +528,7 @@ include("layout-tests.jl")
 		@test length(ca) == 2
 		@test length(ca[1]) == 4
 		for i in eachindex(ca), j in eachindex(ca[i])
-			@test ca[i] isa Caccessor{@carray Cint[4]}
+			@test ca[i] isa CBinding.Caccessor{@carray Cint[4]}
 			@test ca[i][j] == 0
 		end
 	end
