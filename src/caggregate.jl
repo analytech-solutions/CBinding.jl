@@ -342,7 +342,7 @@ function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Exp
 										a.args[4].args[2] = atype
 									end
 									return (nothing, a)
-								elseif Base.is_expr(a, :curly) && length(a.args) >= 1 && a.args[1] in (:Ptr, esc(:Ptr))
+								elseif Base.is_expr(a, :curly) && length(a.args) >= 1 && a.args[1] in (:Ptr, esc(:Ptr), :(Base.Ptr), Expr(:., esc(:Base), esc(QuoteNode(:Ptr))))
 									if length(a.args) == 1
 										push!(a.args, argType)
 									else
@@ -368,7 +368,7 @@ function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Exp
 		
 		_stripPtrTypes(x) = x
 		function _stripPtrTypes(e::Expr)
-			if Base.is_expr(e, :curly, 2) && e.args[1] in (:Ptr, esc(:Ptr))
+			if Base.is_expr(e, :curly, 2) && e.args[1] in (:Ptr, esc(:Ptr), :(Base.Ptr), Expr(:., esc(:Base), esc(QuoteNode(:Ptr))))
 				e.args[2] = :Cvoid
 				return e
 			end
