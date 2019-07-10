@@ -206,26 +206,25 @@ const _structExprs = (Symbol("@cstruct"), :(CBinding.$(Symbol("@cstruct"))))
 const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
 
 # macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
-_expand(x, deps::Vector{Pair{Symbol, Expr}}, escape::Bool = true) = escape ? esc(x) : x
-function _expand(e::Expr, deps::Vector{Pair{Symbol, Expr}}, escape::Bool = true)
+_expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = escape ? esc(x) : x
+function _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, e::Expr, escape::Bool = true)
 	if Base.is_expr(e, :macrocall)
 		if length(e.args) > 1 && e.args[1] in (_alignExprs..., _structExprs..., _unionExprs...)
 			if e.args[1] in _alignExprs
-				return _calign(filter(x -> !(x isa LineNumberNode), e.args[2:end])..., deps)
+				return _calign(mod, deps, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
 			elseif e.args[1] in _structExprs
-				return _caggregate(:cstruct, filter(x -> !(x isa LineNumberNode), e.args[2:end])..., deps)
+				return _caggregate(mod, deps, :cstruct, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
 			elseif e.args[1] in _unionExprs
-				return _caggregate(:cunion, filter(x -> !(x isa LineNumberNode), e.args[2:end])..., deps)
+				return _caggregate(mod, deps, :cunion, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
 			end
 		else
-			todo"determine if @__MODULE__ should be __module__ from the macro instead?"
-			return _expand(macroexpand(@__MODULE__, e, recursive = false), deps)
+			return _expand(mod, deps, macroexpand(mod, e, recursive = false))
 		end
 	elseif Base.is_expr(e, :ref, 2)
-		return _carray(e, deps)
+		return _carray(mod, deps, e)
 	else
 		for i in eachindex(e.args)
-			e.args[i] = _expand(e.args[i], deps, escape)
+			e.args[i] = _expand(mod, deps, e.args[i], escape)
 		end
 		return e
 	end
@@ -233,26 +232,26 @@ end
 
 
 
-macro calign(exprs...) return _calign(exprs..., nothing) end
+macro calign(exprs...) return _calign(__module__, nothing, exprs...) end
 
-function _calign(expr::Union{Integer, Expr}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
+function _calign(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Union{Integer, Expr})
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	def = Expr(:align, _expand(expr, deps))
+	def = Expr(:align, _expand(mod, deps, expr))
 	
 	return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
 end
 
 
 
-macro ctypedef(exprs...) return _ctypedef(exprs..., nothing) end
+macro ctypedef(exprs...) return _ctypedef(__module__, nothing, exprs...) end
 
-function _ctypedef(name::Symbol, expr::Union{Symbol, Expr}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
+function _ctypedef(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Symbol, expr::Union{Symbol, Expr})
 	escName = esc(name)
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	expr = _expand(expr, deps)
+	expr = _expand(mod, deps, expr)
 	push!(deps, name => quote
 		const $(escName) = $(expr)
 	end)
@@ -262,27 +261,27 @@ end
 
 
 
-macro cstruct(exprs...) return _caggregate(:cstruct, exprs..., nothing) end
-macro cunion(exprs...) return _caggregate(:cunion, exprs..., nothing) end
+macro cstruct(exprs...) return _caggregate(__module__, nothing, :cstruct, exprs...) end
+macro cunion(exprs...) return _caggregate(__module__, nothing, :cunion, exprs...) end
 
-function _caggregate(kind::Symbol, name::Symbol, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
-	return _caggregate(kind, name, nothing, nothing, deps)
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Symbol)
+	return _caggregate(mod, deps, kind, name, nothing, nothing)
 end
 
-function _caggregate(kind::Symbol, body::Expr, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
-	return _caggregate(kind, nothing, body, nothing, deps)
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, body::Expr)
+	return _caggregate(mod, deps, kind, nothing, body, nothing)
 end
 
-function _caggregate(kind::Symbol, body::Expr, strategy::Symbol, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
-	return _caggregate(kind, nothing, body, strategy, deps)
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, body::Expr, strategy::Symbol)
+	return _caggregate(mod, deps, kind, nothing, body, strategy)
 end
 
-function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
-	return _caggregate(kind, name, body, nothing, deps)
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing})
+	return _caggregate(mod, deps, kind, name, body, nothing)
 end
 
 todo"need to handle unknown-length aggregates with last field like `char c[]`"
-function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing}, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
 	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 	isnothing(body) && !isnothing(strategy) && error("Expected @$(kind) to have a body if alignment strategy is to be specified")
 	isnothing(strategy) || (startswith(String(strategy), "__") && endswith(String(strategy), "__") && length(String(strategy)) > 4) || error("Expected @$(kind) to have packing specified as `__STRATEGY__`, such as `__packed__` or `__native__`")
@@ -304,7 +303,7 @@ function _caggregate(kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Exp
 		fields = []
 		if !isnothing(body)
 			for arg in body.args
-				arg = _expand(arg, deps)
+				arg = _expand(mod, deps, arg)
 				if Base.is_expr(arg, :align, 1)
 					align = arg.args[1]
 					push!(fields, :(nothing => $(align)))
@@ -392,15 +391,15 @@ end
 
 
 
-macro carray(exprs...) _carray(exprs..., nothing) end
+macro carray(exprs...) _carray(__module__, nothing, exprs...) end
 
-function _carray(expr::Expr, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing})
+function _carray(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Expr)
 	Base.is_expr(expr, :ref, 2) || error("Expected C array definition to be of the form `ElementType[N]`")
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	expr.args[1] = _expand(expr.args[1], deps)
-	expr.args[2] = _expand(expr.args[2], deps)
+	expr.args[1] = _expand(mod, deps, expr.args[1])
+	expr.args[2] = _expand(mod, deps, expr.args[2])
 	def = :(Carray{$(expr.args[1]), $(expr.args[2]), sizeof(Carray{$(expr.args[1]), $(expr.args[2])})})
 	
 	return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
