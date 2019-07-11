@@ -202,6 +202,8 @@ end
 
 
 const _alignExprs = (Symbol("@calign"), :(CBinding.$(Symbol("@calign"))))
+const _enumExprs = (Symbol("@cenum"), :(CBinding.$(Symbol("@cenum"))))
+const _arrayExprs = (Symbol("@carray"), :(CBinding.$(Symbol("@carray"))))
 const _structExprs = (Symbol("@cstruct"), :(CBinding.$(Symbol("@cstruct"))))
 const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
 
@@ -209,9 +211,13 @@ const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
 _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = escape ? esc(x) : x
 function _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, e::Expr, escape::Bool = true)
 	if Base.is_expr(e, :macrocall)
-		if length(e.args) > 1 && e.args[1] in (_alignExprs..., _structExprs..., _unionExprs...)
+		if length(e.args) > 1 && e.args[1] in (_alignExprs..., _enumExprs..., _arrayExprs..., _structExprs..., _unionExprs...)
 			if e.args[1] in _alignExprs
 				return _calign(mod, deps, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
+			elseif e.args[1] in _enumExprs
+				return _cenum(mod, deps, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
+			elseif e.args[1] in _arrayExprs
+				return _carray(mod, deps, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
 			elseif e.args[1] in _structExprs
 				return _caggregate(mod, deps, :cstruct, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
 			elseif e.args[1] in _unionExprs
