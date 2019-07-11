@@ -93,7 +93,7 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 			end
 		end
 		
-		values = map(x -> :($(QuoteNode(Base.is_expr(x, :escape, 1) ? x.args[1] : x)) => $(x)), values)
+		values = map(x -> :($(QuoteNode(Base.is_expr(x, :escape, 1) && x.args[1] isa Symbol ? x.args[1] : x)) => $(x)), values)
 		push!(deps, name => quote
 			$(fields...)
 			primitive type $(escName) <: Cenum{_computeEnumType(($(values...),))} sizeof(_computeEnumType(($(values...),)))*8 end

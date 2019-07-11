@@ -335,8 +335,8 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 							if Base.is_expr(a, :(::), 2)
 								(aname, atype) = _parseAugmentedField(a.args[2])
 								isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
-								return (a.args[1], atype)
-							elseif Base.is_expr(a, :curly) && length(a.args) >= 3 && a.args[1] in (:Carray, :(CBinding.Carray))
+								return (Base.is_expr(a.args[1], :escape, 1) && a.args[1].args[1] isa Symbol ? a.args[1].args[1] : a.args[1], atype)
+							elseif Base.is_expr(a, :curly) && length(a.args) >= 3 && a.args[1] in (:Carray, esc(:Carray), :(CBinding.Carray), Expr(:., esc(:CBinding), esc(QuoteNode(:Carray))))
 								(aname, atype) = _parseAugmentedField(a.args[2])
 								isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
 								a.args[2] = atype
