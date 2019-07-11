@@ -381,7 +381,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 		
 		push!(deps, name => quote
 			mutable struct $(escName) <: $(super)
-				mem::NTuple{_computelayout($(strategy), $(super), ($(map(_stripPtrTypes, fields)...),), total = true)÷8, UInt8}
+				mem::NTuple{_computelayout($(strategy), $(super), ($(map(_stripPtrTypes, deepcopy(fields))...),), total = true)÷8, UInt8}
 				
 				$(escName)(::UndefInitializer) = new()
 			end
