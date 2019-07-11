@@ -636,4 +636,108 @@ const LAYOUT_TESTS = [
 		c::Cchar
 	} __packed__
 }""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1,
+		VAL2,
+		VAL3,
+	}
+}""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1,
+		VAL2 = VAL1,
+		VAL3 = 1 << 10,
+	}
+}""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 1,
+	}
+}""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 0xffffffff,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1,
+		VAL2,
+		VAL3,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1,
+		VAL2 = VAL1,
+		VAL3 = 1 << 10,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 1,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 0xffffffff,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1,
+		VAL2,
+		VAL3,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1,
+		VAL2 = VAL1,
+		VAL3 = 1 << 10,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 1,
+	}
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 0xffffffff,
+	}
+}""",
 ]

@@ -34,15 +34,17 @@ function checkC(expr, val)
 	if !isfile(expectedFile) || get(ENV, "GENERATE_EXPECTED", nothing) == "1"
 		props = []
 		for line in split(expr, '\n')
-			m = match(r"^\s*([^:]+)::(Cchar|Cshort|Cint|Clonglong|Cuchar|Cushort|Cuint|Culonglong|Culong|Cfloat|Cdouble|Clongdouble|Clong)", line)
+			m = match(r"^\s*([^:]+)::(Cchar|Cshort|Cint|Clonglong|Cuchar|Cushort|Cuint|Culonglong|Culong|Cfloat|Cdouble|Clongdouble|Clong|@cenum)", line)
 			isnothing(m) || push!(props, m.captures[end-1] => m.captures[end])
 		end
 		m = match(r"^\s*@c(struct|union)\s+(\S+)", expr)
 		(kind, name) = m.captures[end-1:end]
 		
 		def = expr
+		def = replace(def, r"(\n\s+)([^:\n]+)(::@cenum)([^}]+)(})" => s"\1enum\4\5 \2")
 		def = replace(def, "\n" => ";\n")
 		def = replace(def, "{;" => "{")
+		def = replace(def, ",;" => ",")
 		def = replace(def, "__packed__" => "__attribute__((__packed__))")
 		def = replace(def, r"@c(struct|union)" => s"\1")
 		def = replace(def, r"@calign\s+([^;]+);\n" => s"alignas(\1)")
