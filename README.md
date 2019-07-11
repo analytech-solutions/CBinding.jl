@@ -6,6 +6,9 @@ CBinding.jl has the goal of making it easier to correctly connect Julia to your 
 # Usage
 
 CBinding.jl provides some missing functionality and more precise specification capabilities than those provided by the builtin Julia facilities for interfacing C.
+All of the functionality and correctness of the CBinding.jl package has been compared to the behavior of GCC on x86_64 Linux distribution.
+Since many aspects of C are platform or compiler defined, the behavior of API's built for other platforms or compilers may not be matched by this package.
+Any help to test and develop against other setups is very much welcome!
 
 ## C Aggregate and Array Types
 
@@ -30,9 +33,9 @@ julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MyS
            @cunion {                                        #     union {
                w::Cuchar[sizeof(Cint)÷sizeof(Cuchar)]       #         unsigned char w[sizeof(int)/sizeof(unsigned char)];
                x::Cint                                      #         int x;
-               y::(@cstruct {                               #         struct {
+               (y::{}[4])::@cstruct {                       #         struct {
                    c::Cuchar                                #             unsigned char c;
-               })[4]                                        #         } y[4];
+               }                                            #         } y[4];
                z::MyFirstCStruct[1]                         #         struct MyFirstCStruct z[1];
            }                                                #     };
            m::MyFirstCStruct                                #     struct MyFirstCStruct m;
@@ -44,7 +47,7 @@ There are a few syntax differences to note though:
 
 - a `@ctypedef` is specified with the type name before the definition rather than after (as is done in C)  
 - likewise, an aggregate field is specified in the Julia `fieldName::FieldType` syntax rather than the C style of `FieldType fieldName`
-- in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these all must be specified individually as `a::SomeType ; b::Ptr{SomeType} ; c::SomeType[4]`
+- in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{}, c::{}[4])::SomeType`) with the empty curly braces `{}` meaning "plug in type here"
 
 There are a couple of ways to construct an aggregate type provided by the package.
 Using the "default" constructor, or the `zero` function, will result in a zero-initialized object.
@@ -159,15 +162,59 @@ julia> sizeof(MyStrictlyAlignedCStruct)
 16
 ```
 
+## C Enumerations
+
+We also provide an implementation of C-style enumeration with a syntax very similar to that of C.
+Enumerations may be defined by using the `@cenum` macro in typedef or aggregate type macros and may be specified as either anonymous or named types.
+The values of an enumeration must evaluate 
+
+```jl
+julia> @cenum MyNamedEnum {
+           VALUE_1,
+           VALUE_2,
+           VALUE_3,
+       }
+MyNamedEnum
+
+julia> e = MyNamedEnum(VALUE_3)
+MyNamedEnum(<VALUE_3>(0x00000002))
+
+julia> e = MyNamedEnum(VALUE_1)
+MyNamedEnum(<VALUE_1>(0x00000000))
+
+julia> e = MyNamedEnum(100)^C
+
+julia> e | VALUE_3
+2
+
+julia> @cstruct EnumStruct {
+           e::@cenum {
+               X = 1<<0,
+               Y = 1<<1,
+               Z = 1<<2,
+           }
+       }
+EnumStruct
+
+julia> e = EnumStruct()
+EnumStruct(e=<anonymous-enum>(0x00000000))
+
+julia> e.e = X|Y|Z
+7
+
+julia> e
+EnumStruct(e=<anonymous-enum>(0x00000007))
+```
+
 ## C Bit Fields
 
 Specifying C bit fields is another feature provided by CBinding.jl.
-Using a slightly abused syntax, bit fields can be defined with `fieldName::FieldType:FIELD_BITS` where `FIELD_BITS` is an Integer number of bits and `FieldType` is either `Cint` or `Cuint`.
+Bit fields can be defined with `(fieldName:FIELD_BITS)::FieldType` where `FIELD_BITS` is an Integer number of bits and `FieldType` is either `Cint` or `Cuint`.
 
 ```jl
 julia> @cstruct BitfieldStruct {    # struct BitfieldStruct {
-           i::Cint:2                #     int i:2;
-           j::Cuint:2               #     unsigned int j:2;
+           (i:2)::Cint              #     int i:2;
+           (j:2)::Cuint             #     unsigned int j:2;
        }                            # };
 BitfieldStruct
 
