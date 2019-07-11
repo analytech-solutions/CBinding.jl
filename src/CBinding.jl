@@ -5,6 +5,7 @@ module CBinding
 	
 	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction
 	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum
+	export propertytypes
 	
 	
 	# provide a temporary placeholder for 128-bit floating point primitive
