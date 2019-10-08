@@ -308,6 +308,31 @@ include("layout-tests.jl")
 		bf.i2 = 32768
 		@test bf.i1 == -1
 		@test bf.i2 < 0
+		
+		# https://github.com/analytech-solutions/CBinding.jl/issues/6
+		@cstruct AnonymousAggregateField {
+			u::@cunion {
+				x::Cint
+				y::Cchar
+			}
+		}
+		aaf = AnonymousAggregateField(u = (x = -1,))
+		@test aaf.u.x == -1
+		aaf.u = (x = 0,)
+		@test aaf.u.x == 0
+		
+		@cstruct NestedAnonymousAggregateField {
+			u::@cunion {
+				x::@cunion {
+					z::Cint
+				}
+				y::Cchar
+			}
+		}
+		aaf = NestedAnonymousAggregateField(u = (x = (z = -1,),))
+		@test aaf.u.x.z == -1
+		aaf.u = (x = (z = 0,),)
+		@test aaf.u.x.z == 0
 	end
 	
 	

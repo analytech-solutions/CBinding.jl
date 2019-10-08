@@ -4,7 +4,7 @@ _strategy(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get alignment
 _fields(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get fields of an aggregate without any")
 
 
-function (::Type{CA})(; kwargs...) where (CA<:Caggregate)
+function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
 	result = CA(undef)
 	if isempty(kwargs)
 		setfield!(result, :mem, map(zero, getfield(result, :mem)))
@@ -15,6 +15,7 @@ function (::Type{CA})(; kwargs...) where (CA<:Caggregate)
 	return result
 end
 
+Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(; nt...)
 
 isanonymous(ca::Caggregate) = isanonymous(typeof(ca))
 isanonymous(::Type{CA}) where {CA<:Caggregate} = match(r"^##anonymous#\d+$", string(CA.name.name)) !== nothing
@@ -43,7 +44,7 @@ mutable struct Carray{T, N, S} <: AbstractArray{T, 1}
 end
 Carray{T, N}(u::UndefInitializer) where {T, N} = Carray{T, N, sizeof(Carray{T, N})}(u)
 
-function (::Type{CA})() where (CA<:Carray)
+function (::Type{CA})() where {CA<:Carray}
 	result = CA(undef)
 	setfield!(result, :mem, map(zero, getfield(result, :mem)))
 	return result
