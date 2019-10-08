@@ -122,6 +122,9 @@ propertytypes(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Cacc
 _strategy(::Type{<:Caccessor{CA}}) where {CA<:Caggregate} = _strategy(CA)
 _fields(::Type{<:Caccessor{CA}}) where {CA<:Caggregate} = _fields(CA)
 
+aggregatetype(::Type{CA}) where {CA<:Caggregate} = CA
+aggregatetype(::Type{Caccessor{CA}}) where {CA<:Caggregate} = CA
+
 @generated function _bitmask(::Type{ityp}, ::Val{bits}) where {ityp, bits}
 	mask = zero(ityp)
 	for i in 1:bits
@@ -463,13 +466,13 @@ end
 
 _computelayout(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_strategy(CA), CA, _fields(CA); kwargs...)
 function _computelayout(strategy::DataType, ::Type{CA}, fields::Tuple; total::Bool = false, alignment::Bool = false) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}}
-	op = _CA <: Cstruct ? (+) : (max)
+	op = aggregatetype(CA) <: Cstruct ? (+) : (max)
 	
 	align = 1  # in bytes
 	size = 0  # in bits
 	result = ()  # ((symbol, (type, bits), offset), ...)
 	for (sym, typ) in fields
-		start = _CA <: Cstruct ? size : 0
+		start = aggregatetype(CA) <: Cstruct ? size : 0
 		if sym === :_ && typ <: Caggregate
 			offset = op(start, padding(strategy, start, typ))
 			result = (result..., map(((s, t, o),) -> (s, t, offset+o), _computelayout(typ))...)
