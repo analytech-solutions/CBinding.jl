@@ -278,7 +278,7 @@ The additional type-safety will help you avoid many mishaps when calling C funct
 
 ```jl
 julia> func = Cfunction{Clong, Tuple{Ptr{Clong}}}(lib, :time)    # long (*func)(long *) = dlsym(lib, "time");
-Ptr{Cfunction{Int64,Tuple{Ptr{Int64}}}} @0x0000652bdc514ea0
+Ptr{Cfunction{Int64,Tuple{Ptr{Int64}},Cconvention{:cdecl}}} @0x0000652bdc514ea0
 
 julia> @cstruct tm {
            sec::Cint
@@ -294,7 +294,7 @@ julia> @cstruct tm {
 tm
 
 julia> localtime = Cfunction{Ptr{tm}, Tuple{Ptr{Clong}}}(lib, :localtime)    # struct tm *(*localtime)(long *) = dlsym(lib, "localtime");
-Ptr{Cfunction{Ptr{tm},Tuple{Ptr{Int64}}}} @0x0000652bdb253fd0
+Ptr{Cfunction{Ptr{tm},Tuple{Ptr{Int64}},Cconvention{:cdecl}}} @0x0000652bdb253fd0
 ```
 
 CBinding.jl also makes a function pointer (`Ptr{<:Cfunction}`) callable.
@@ -324,7 +324,7 @@ Even interfacing the C functions of the Julia API is simple!
 
 ```jl
 julia> jl_gc_total_bytes = Cfunction{Clong, Tuple{}}(lib, :jl_gc_total_bytes)    # long (*jl_gc_total_bytes)() = dlsym(lib, "jl_gc_total_bytes");
-Ptr{Cfunction{Int64,Tuple{}}} @0x00006f3e0c024bc0
+Ptr{Cfunction{Int64,Tuple{},Cconvention{:cdecl}}} @0x00006f3e0c024bc0
 
 julia> jl_gc_total_bytes()
 160117962
@@ -338,7 +338,7 @@ One important thing to note is that the Julia function used is not (yet) guarded
 julia> (Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do x::Cint, y::Cint
            return Cint(x + y)
        end
-(Ptr{Cfunction{Int32,Tuple{Int32,Int32}}} @0x00007fc34e4dfa40, Base.CFunction(Ptr{Nothing} @0x00007fc34e4dfa40, getfield(Main, Symbol("##5#6"))(), Ptr{Nothing} @0x0000000000000000, Ptr{Nothing} @0x0000000000000000))
+(Ptr{Cfunction{Int32,Tuple{Int32,Int32},Cconvention{:cdecl}}} @0x00007fc34e4dfa40, Base.CFunction(Ptr{Nothing} @0x00007fc34e4dfa40, getfield(Main, Symbol("##5#6"))(), Ptr{Nothing} @0x0000000000000000, Ptr{Nothing} @0x0000000000000000))
 
 julia> Cadd(2, 3)  # ccall the C function pointer, arguments are Base.cconvert-ed automatically
 5
@@ -355,7 +355,7 @@ This enables Julia the ability to perform real-world variadic function usage as 
 
 ```jl
 julia> func = Cfunction{Cint, Tuple{Cstring, Vararg}}(lib, :printf)    # int (*func)(char *, ...) = dlsym(lib, "printf");
-Ptr{Cfunction{Nothing,Tuple{Cstring,Vararg{Any,N} where N}}} @0x000061eefc388930
+Ptr{Cfunction{Nothing,Tuple{Cstring,Vararg{Any,N} where N},Cconvention{:cdecl}}} @0x000061eefc388930
 
 julia> func("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
 this is 1 great demo of CBinding.jl v0.1!
