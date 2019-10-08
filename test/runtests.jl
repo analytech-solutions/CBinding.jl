@@ -333,6 +333,18 @@ include("layout-tests.jl")
 		@test aaf.u.x.z == -1
 		aaf.u = (x = (z = 0,),)
 		@test aaf.u.x.z == 0
+		
+		# https://github.com/analytech-solutions/CBinding.jl/issues/8
+		@cstruct BrokenLayout {
+			x::@cstruct {
+				y::Cint
+				z::Cint
+			}
+		}
+		bl = BrokenLayout()
+		@test bl.x.y == 0 && bl.x.z == 0
+		bl.x.z = 123
+		@test bl.x.y == 0 && bl.x.z == 123
 	end
 	
 	
