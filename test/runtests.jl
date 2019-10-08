@@ -601,7 +601,7 @@ include("layout-tests.jl")
 	end
 	
 	
-	@testset "Cfunction" begin
+	@testset "Cglobal" begin
 		lib = Clibrary()
 		
 		val = Cglobalconst{Ptr{Cvoid}}(lib, :jl_nothing)
@@ -614,7 +614,8 @@ include("layout-tests.jl")
 		lib = Clibrary()
 		
 		f1 = Cfunction{Clong, Tuple{Ptr{Clong}}}(lib, :time)
-		@test typeof(f1) === Ptr{Cfunction{Clong, Tuple{Ptr{Clong}}}}
+		@test eltype(f1) <: Cfunction_sig{Clong, Tuple{Ptr{Clong}}}
+		@test eltype(f1) === Cfunction{Clong, Tuple{Ptr{Clong}}, CBinding.default_convention(Tuple{Ptr{Clong}})}
 		@test typeof(f1(C_NULL)) === Clong
 		@test f1(C_NULL) isa Clong
 		@test_throws MethodError f1(0)
@@ -625,13 +626,15 @@ include("layout-tests.jl")
 		@test before < after
 		
 		f2 = Cfunction{Clong, Tuple{}}(lib, :jl_gc_total_bytes)
-		@test typeof(f2) === Ptr{Cfunction{Clong, Tuple{}}}
+		@test eltype(f2) <: Cfunction_sig{Clong, Tuple{}}
+		@test eltype(f2) === Cfunction{Clong, Tuple{}, CBinding.default_convention(Tuple{})}
 		@test typeof(f2()) === Clong
 		@test f2() isa Clong
 		@test_throws MethodError f2("no arguments, please!")
 		
 		f3 = Cfunction{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}}(lib, :sprintf)
-		@test typeof(f3) === Ptr{Cfunction{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}}}
+		@test eltype(f3) <: Cfunction_sig{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}}
+		@test eltype(f3) === Cfunction{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}, CBinding.default_convention(Tuple{Ptr{Cchar}, Cstring, Vararg})}
 		str = zeros(Cchar, 100)
 		@test typeof(f3(str, "")) === Cint
 		@test f3(str, "%s %ld\n", "testing printf", 1234) == 20
@@ -644,7 +647,8 @@ include("layout-tests.jl")
 		(Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do val1, val2
 			return val1+val2
 		end
-		@test typeof(Cadd) === Ptr{Cfunction{Cint, Tuple{Cint, Cint}}}
+		@test eltype(Cadd) <: Cfunction_sig{Cint, Tuple{Cint, Cint}}
+		@test eltype(Cadd) === Cfunction{Cint, Tuple{Cint, Cint}, CBinding.default_convention(Tuple{Cint, Cint})}
 		@test typeof(add.f) <: Function
 		@test typeof(Cadd(Cint(10), Cint(3))) === typeof(add.f(Cint(10), Cint(3)))
 		@test Cadd(Cint(10), Cint(3)) == add.f(Cint(10), Cint(3))
