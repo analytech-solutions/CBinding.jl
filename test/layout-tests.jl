@@ -189,7 +189,7 @@ const LAYOUT_TESTS = [
 
 """@cstruct T {
 	x::Cchar:3
-	l::Clong:61
+	l::Clong:29
 }""",
 
 """@cstruct T {
