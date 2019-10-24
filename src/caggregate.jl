@@ -210,6 +210,7 @@ const _enumExprs = (Symbol("@cenum"), :(CBinding.$(Symbol("@cenum"))))
 const _arrayExprs = (Symbol("@carray"), :(CBinding.$(Symbol("@carray"))))
 const _structExprs = (Symbol("@cstruct"), :(CBinding.$(Symbol("@cstruct"))))
 const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
+const _externExprs = (Symbol("@cextern"), :(CBinding.$(Symbol("@cextern"))))
 
 # macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
 _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = escape ? esc(x) : x

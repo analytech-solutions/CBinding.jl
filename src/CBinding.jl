@@ -5,7 +5,7 @@ module CBinding
 	
 	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention
 	export STDCALL, CDECL, FASTCALL, THISCALL
-	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum
+	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings
 	export propertytypes
 	
 	
