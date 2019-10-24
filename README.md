@@ -6,7 +6,7 @@ CBinding.jl has the goal of making it easier to correctly connect Julia to your 
 # Usage
 
 CBinding.jl provides some missing functionality and more precise specification capabilities than those provided by the builtin Julia facilities for interfacing C.
-All of the functionality and correctness of the CBinding.jl package has been compared to the behavior of GCC on x86_64 Linux distribution.
+All of the functionality and correctness of the CBinding.jl package has been compared to the behavior of GCC on x86_64 and AArch64 Linux distributions.
 Since many aspects of C are platform or compiler defined, the behavior of API's built for other platforms or compilers may not be matched by this package.
 Any help to test and develop against other setups is very much welcome!
 
@@ -114,7 +114,7 @@ MyFirstCStruct(i=0)
 
 ## C Field Alignment
 
-By default, the fields in aggregates use native alignment to match the default alignment in C, but it is possible to denote packed aggregates using `__packed__`, similar to using a `__attribute__((__packed__))` attribute in C.
+By default, the fields in aggregates use native alignment to match the default alignment in C, but it is possible to denote packed aggregates using `__packed__`, similar to using a `__attribute__((packed))` attribute in C.
 CBinding.jl also features the `@calign` macro to describe additional alignment requirements when defining aggregate types.
 
 ```jl
@@ -166,7 +166,8 @@ julia> sizeof(MyStrictlyAlignedCStruct)
 
 We also provide an implementation of C-style enumeration with a syntax very similar to that of C.
 Enumerations may be defined by using the `@cenum` macro in typedef or aggregate type macros and may be specified as either anonymous or named types.
-The values of an enumeration must evaluate 
+The values of an enumeration must evaluate to integers, and can reference values defined earlier.
+Usage of enumerations and values is generally promoted to integer arithmetic.
 
 ```jl
 julia> @cenum MyNamedEnum {
@@ -181,8 +182,6 @@ MyNamedEnum(<VALUE_3>(0x00000002))
 
 julia> e = MyNamedEnum(VALUE_1)
 MyNamedEnum(<VALUE_1>(0x00000000))
-
-julia> e = MyNamedEnum(100)^C
 
 julia> e | VALUE_3
 2
