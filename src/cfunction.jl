@@ -23,6 +23,8 @@ struct Cfunction{RetT, ArgsT<:Tuple, ConvT<:Cconvention}
 	let constructor = false end
 end
 
+Base.Ptr{FuncT}(args...) where {FuncT<:Cfunction} = FuncT(args...)
+
 Cfunction{RetT, ArgsT, ConvT}(ptr::Ptr{Cvoid}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = reinterpret(Ptr{Cfunction{RetT, ArgsT, ConvT}}, ptr)
 Cfunction{RetT, ArgsT}(ptr::Ptr{Cvoid}) where {RetT, ArgsT<:Tuple} = reinterpret(Ptr{Cfunction{RetT, ArgsT}}, ptr)
 
