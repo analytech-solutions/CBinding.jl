@@ -19,18 +19,21 @@ todo"identify what is Julia's calling convention"
 default_convention(::Type{ArgsT}) where {ArgsT<:Tuple} = ifelse(Sys.iswindows(), STDCALL, CDECL)
 
 
-abstract type Cfunction_sig{RetT, ArgsT<:Tuple} end
-struct Cfunction{RetT, ArgsT<:Tuple, ConvT<:Cconvention} <: Cfunction_sig{RetT, ArgsT}
+struct Cfunction{RetT, ArgsT<:Tuple, ConvT<:Cconvention}
 	let constructor = false end
 end
 
 Cfunction{RetT, ArgsT, ConvT}(ptr::Ptr{Cvoid}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = reinterpret(Ptr{Cfunction{RetT, ArgsT, ConvT}}, ptr)
-Cfunction{RetT, ArgsT, ConvT}(lib::Clibrary, sym::Symbol) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = Cfunction{RetT, ArgsT, ConvT}(Libdl.dlsym(lib.handle, sym))
-Cfunction{RetT, ArgsT}(ptr::Ptr{Cvoid}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = Cfunction{RetT, ArgsT, default_convention(ArgsT)}(ptr)
-Cfunction{RetT, ArgsT}(lib::Clibrary, sym::Symbol) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = Cfunction{RetT, ArgsT, default_convention(ArgsT)}(lib, sym)
+Cfunction{RetT, ArgsT}(ptr::Ptr{Cvoid}) where {RetT, ArgsT<:Tuple} = reinterpret(Ptr{Cfunction{RetT, ArgsT}}, ptr)
+
+Cfunction{RetT, ArgsT, ConvT}(lib::Clibrary, sym::Symbol) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = Cfunction{RetT, ArgsT, ConvT}(sym, lib)
+Cfunction{RetT, ArgsT}(lib::Clibrary, sym::Symbol) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT}(sym, lib)
+
+Cfunction{RetT, ArgsT, ConvT}(sym::Symbol, lib::Clibrary, libs::Clibrary...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = Cfunction{RetT, ArgsT, ConvT}(_dlsym(sym, lib, libs...))
+Cfunction{RetT, ArgsT}(sym::Symbol, lib::Clibrary, libs::Clibrary...) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT}(_dlsym(sym, lib, libs...))
 
 # NOTE:  this returns a tuple (since the user must retain a reference to func for the function pointer to remain usable)
-Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunction{RetT, ArgsT}(Base.unsafe_convert(Ptr{Cvoid}, func)), func)
+Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunction{RetT, ArgsT, default_convention(ArgsT)}(Base.unsafe_convert(Ptr{Cvoid}, func)), func)
 
 @generated function Cfunction{RetT, ArgsT}(func::Function) where {RetT, ArgsT<:Tuple}
 	_tuplize(::Type{Tuple{}}) where {T<:Tuple} = ()
@@ -43,19 +46,7 @@ Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunc
 	end
 end
 
-function bind(f::Ref{Ptr{Cfunction{RetT, ArgsT, ConvT}}}, sym, libs::Clibrary...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
-	for (ind, lib) in enumerate(libs)
-		handle = Libdl.dlsym(lib.handle, sym, throw_error = ind == length(libs))
-		if !isnothing(handle)
-			f[] = reinterpret(Ptr{Cfunction{RetT, ArgsT, ConvT}}, handle)
-			break
-		end
-	end
-end
-
 convention(::Type{Cfunction{RetT, ArgsT, ConvT}}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = convention(ConvT)
-convention(::Ptr{<:Cfunction_sig}) = convention(eltype(FuncT))
-
 
 
 # https://www.gnu.org/software/libc/manual/html_node/How-Variadic.html
@@ -75,8 +66,8 @@ cconvert_default(::Type{T}) where {T<:Union{Integer, AbstractFloat, Ref}} = T   
 cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 
 
-(f::Ptr{Cfunction_sig{RetT, ArgsT}})(args...) where {RetT, ArgsT<:Tuple} = invoke(Cfunction{RetT, ArgsT}(reinterpret(Ptr{Cvoid}, ptr)), args...)
-(f::Ptr{<:Cfunction})(args...) = invoke(f, args...)
+(f::Ptr{Cfunction{RetT, ArgsT}})(args...) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT, default_convention(ArgsT)}(reinterpret(Ptr{Cvoid}, f))(args...)
+(f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = invoke(f, args...)
 @generated function invoke(f::Ptr{Cfunction{RetT, ArgsT, ConvT}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
 	error = nothing
 	_tuplize(::Type{Tuple{}}) = ()

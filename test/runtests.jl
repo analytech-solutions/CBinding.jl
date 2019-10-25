@@ -601,12 +601,12 @@ include("layout-tests.jl")
 	@testset "Clibrary" begin
 		lib1 = Clibrary()
 		lib2 = Clibrary()
-		@test lib1.handle != Ptr{Cvoid}(0)
+		@test lib1.handle != C_NULL
 		@test lib1 == lib2
 		
 		lib3 = Clibrary(Base.libm_name)
 		lib4 = Clibrary(Base.libm_name)
-		@test lib3.handle != Ptr{Cvoid}(0)
+		@test lib3.handle != C_NULL
 		@test lib3 == lib4
 		
 		@test lib1 != lib3
@@ -616,8 +616,8 @@ include("layout-tests.jl")
 	@testset "Cglobal" begin
 		lib = Clibrary()
 		
-		val = Cglobalconst{Ptr{Cvoid}}(lib, :jl_nothing)
-		@test val.handle != Ptr{Cvoid}(0)
+		val = Cglobal{Ptr{Cvoid}}(lib, :jl_nothing)
+		@test val.handle != C_NULL
 		@test val[] == unsafe_load(cglobal(:jl_nothing, Ptr{Cvoid}))
 	end
 	
@@ -627,8 +627,7 @@ include("layout-tests.jl")
 		
 		if !Sys.iswindows()
 			f1 = Cfunction{Clong, Tuple{Ptr{Clong}}}(lib, :time)
-			@test eltype(f1) <: Cfunction_sig{Clong, Tuple{Ptr{Clong}}}
-			@test eltype(f1) === Cfunction{Clong, Tuple{Ptr{Clong}}, CBinding.default_convention(Tuple{Ptr{Clong}})}
+			@test eltype(f1) <: Cfunction{Clong, Tuple{Ptr{Clong}}}
 			@test typeof(f1(C_NULL)) === Clong
 			@test f1(C_NULL) isa Clong
 			@test_throws MethodError f1(0)
@@ -640,16 +639,14 @@ include("layout-tests.jl")
 		end
 		
 		f2 = Cfunction{Clong, Tuple{}}(lib, :jl_gc_total_bytes)
-		@test eltype(f2) <: Cfunction_sig{Clong, Tuple{}}
-		@test eltype(f2) === Cfunction{Clong, Tuple{}, CBinding.default_convention(Tuple{})}
+		@test eltype(f2) <: Cfunction{Clong, Tuple{}}
 		@test typeof(f2()) === Clong
 		@test f2() isa Clong
 		@test_throws MethodError f2("no arguments, please!")
 		
 		if !Sys.iswindows()
 			f3 = Cfunction{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}}(lib, :sprintf)
-			@test eltype(f3) <: Cfunction_sig{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}}
-			@test eltype(f3) === Cfunction{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}, CBinding.default_convention(Tuple{Ptr{Cchar}, Cstring, Vararg})}
+			@test eltype(f3) <: Cfunction{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}}
 			str = zeros(Cchar, 100)
 			@test typeof(f3(str, "")) === Cint
 			@test f3(str, "%s %ld\n", "testing printf", 1234) == 20
@@ -663,7 +660,7 @@ include("layout-tests.jl")
 		(Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do val1, val2
 			return val1+val2
 		end
-		@test eltype(Cadd) <: Cfunction_sig{Cint, Tuple{Cint, Cint}}
+		@test eltype(Cadd) <: Cfunction{Cint, Tuple{Cint, Cint}}
 		@test eltype(Cadd) === Cfunction{Cint, Tuple{Cint, Cint}, CBinding.default_convention(Tuple{Cint, Cint})}
 		@test typeof(add.f) <: Function
 		@test typeof(Cadd(Cint(10), Cint(3))) === typeof(add.f(Cint(10), Cint(3)))
@@ -703,6 +700,93 @@ include("layout-tests.jl")
 			u = mktime(p)
 			@test u.val == t[].val
 		end
+	end
+	
+	
+	@testset "@cextern + @cbindings" begin
+		lib = Clibrary()
+		
+		@eval function jl_gc_total_bytes end
+		@test length(methods(jl_gc_total_bytes)) == 0
+		@cextern jl_gc_total_bytes()::Int64 lib
+		@test length(methods(jl_gc_total_bytes)) == 1
+		
+		@cextern jl_main_module::Ptr{@cstruct jl_module_t} lib
+		@cextern jl_core_module::Ptr{@cstruct jl_module_t} lib
+		@test jl_main_module[] != C_NULL
+		@test jl_core_module[] != C_NULL
+		@test jl_main_module[] != jl_core_module[]
+		
+		@cbindings Clibrary() begin
+			@ctypedef jl_value_t @cstruct _jl_value_t
+			
+			@cextern jl_gc_enable(on::Cint)::Cint
+			@cextern jl_gc_is_enabled()::Cint
+			
+			@cextern jl_gc_alloc_0w()::Ptr{jl_value_t}
+			@cextern jl_gc_alloc_1w()::Ptr{jl_value_t}
+			@cextern jl_gc_alloc_2w()::Ptr{jl_value_t}
+			@cextern jl_gc_alloc_3w()::Ptr{jl_value_t}
+			@cextern jl_gc_allocobj(sz::Csize_t)::Ptr{jl_value_t}
+			
+			@cextern jl_base_module::Ptr{@cstruct jl_module_t}
+			
+			@cextern jl_options::@cstruct {
+				quiet::Int8
+				banner::Int8
+				julia_bindir::Cstring
+				julia_bin::Cstring
+				cmds::Ptr{Cstring}
+				image_file::Cstring
+				cpu_target::Cstring
+				nprocs::Int32
+				machine_file::Cstring
+				project::Cstring
+				isinteractive::Int8
+				color::Int8
+				historyfile::Int8
+				startupfile::Int8
+				compile_enabled::Int8
+				code_coverage::Int8
+				malloc_log::Int8
+				opt_level::Int8
+				debug_level::Int8
+				check_bounds::Int8
+				depwarn::Int8
+				warn_overwrite::Int8
+				can_inline::Int8
+				polly::Int8
+				trace_compile::Cstring
+				fast_math::Int8
+				worker::Int8
+				cookie::Cstring
+				handle_signals::Int8
+				use_sysimage_native_code::Int8
+				use_compiled_modules::Int8
+				bindto::Cstring
+				outputbc::Cstring
+				outputunoptbc::Cstring
+				outputjitbc::Cstring
+				outputo::Cstring
+				outputji::Cstring
+				output_code_coverage::Cstring
+				incremental::Int8
+				image_file_specified::Int8
+			}
+		end
+		@test length(methods(jl_gc_enable)) == 1
+		@test length(methods(jl_gc_is_enabled)) == 1
+		@test length(methods(jl_gc_alloc_0w)) == 1
+		@test length(methods(jl_gc_alloc_1w)) == 1
+		@test length(methods(jl_gc_alloc_2w)) == 1
+		@test length(methods(jl_gc_alloc_3w)) == 1
+		@test length(methods(jl_gc_allocobj)) == 1
+		@test jl_base_module[] != C_NULL
+		
+		opts = Base.JLOptions()
+		@test unsafe_string(opts.julia_bin) == unsafe_string(jl_options[].julia_bin)
+		@test opts.opt_level == jl_options[].opt_level
+		@test opts.debug_level == jl_options[].debug_level
 	end
 end
 

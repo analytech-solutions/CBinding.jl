@@ -116,6 +116,9 @@ Base.setindex!(ca::Caccessor{CA}, val::CA) where {CA<:Caggregate} = unsafe_store
 Base.propertynames(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertynames(CA; kwargs...)
 Base.propertynames(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> sym, _computelayout(CA))
 
+Base.fieldnames(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = fieldnames(CA; kwargs...)
+Base.fieldnames(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertynames(CA; kwargs...)
+
 propertytypes(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertytypes(CA; kwargs...)
 propertytypes(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> typ isa Tuple ? first(typ) : typ, _computelayout(CA))
 
@@ -210,6 +213,7 @@ const _enumExprs = (Symbol("@cenum"), :(CBinding.$(Symbol("@cenum"))))
 const _arrayExprs = (Symbol("@carray"), :(CBinding.$(Symbol("@carray"))))
 const _structExprs = (Symbol("@cstruct"), :(CBinding.$(Symbol("@cstruct"))))
 const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
+const _externExprs = (Symbol("@cextern"), :(CBinding.$(Symbol("@cextern"))))
 
 # macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
 _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = escape ? esc(x) : x
@@ -445,6 +449,7 @@ alignof(::Type{ALIGN_NATIVE}, ::Type{UInt64})  = _i64a
 alignof(::Type{ALIGN_NATIVE}, ::Type{Float32}) = _f32a
 alignof(::Type{ALIGN_NATIVE}, ::Type{Float64}) = _f64a
 alignof(::Type{ALIGN_NATIVE}, ::Type{<:Ptr})   = alignof(ALIGN_NATIVE, sizeof(Ptr{Cvoid}) == sizeof(UInt32) ? UInt32 : UInt64)
+alignof(::Type{ALIGN_NATIVE}, ::Type{Cstring}) = alignof(ALIGN_NATIVE, Ptr)
 alignof(::Type{ALIGN_NATIVE}, ::Type{S}) where {S<:Signed} = alignof(ALIGN_NATIVE, unsigned(S))
 alignof(::Type{ALIGN_NATIVE}, ::Type{UInt128}) = 2*alignof(ALIGN_NATIVE, UInt64)
 alignof(::Type{ALIGN_NATIVE}, ::Type{Clongdouble}) = 2*alignof(ALIGN_NATIVE, Cdouble)

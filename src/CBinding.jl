@@ -3,9 +3,9 @@ module CBinding
 	using Todo: @todo_str
 	
 	
-	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction_sig, Cfunction, Cconvention
+	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention
 	export STDCALL, CDECL, FASTCALL, THISCALL
-	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum
+	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings
 	export propertytypes
 	
 	
@@ -20,9 +20,10 @@ module CBinding
 	abstract type Cenum{T<:Integer} <: Integer end
 	
 	
+	include("clibrary.jl")
+	include("cbinding.jl")
 	include("caggregate.jl")
 	include("cenum.jl")
-	include("clibrary.jl")
 	include("cglobal.jl")
 	include("cfunction.jl")
 end
