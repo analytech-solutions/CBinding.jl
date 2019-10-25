@@ -33,7 +33,7 @@ Cfunction{RetT, ArgsT, ConvT}(sym::Symbol, lib::Clibrary, libs::Clibrary...) whe
 Cfunction{RetT, ArgsT}(sym::Symbol, lib::Clibrary, libs::Clibrary...) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT}(_dlsym(sym, lib, libs...))
 
 # NOTE:  this returns a tuple (since the user must retain a reference to func for the function pointer to remain usable)
-Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunction{RetT, ArgsT, default_convention()}(Base.unsafe_convert(Ptr{Cvoid}, func)), func)
+Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunction{RetT, ArgsT, default_convention(ArgsT)}(Base.unsafe_convert(Ptr{Cvoid}, func)), func)
 
 @generated function Cfunction{RetT, ArgsT}(func::Function) where {RetT, ArgsT<:Tuple}
 	_tuplize(::Type{Tuple{}}) where {T<:Tuple} = ()

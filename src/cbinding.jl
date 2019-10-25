@@ -33,9 +33,11 @@ function _cbindings(mod::Module, exprs...)
 	end
 	
 	return quote
-		$(libs...)
-		@eval $(block)
-		nothing
+		let
+			$(libs...)
+			@eval $(block)
+			nothing
+		end
 	end
 end
 
