@@ -406,7 +406,6 @@ this is 1 great demo of CBinding.jl v0.1!
 
 ## Binding Julia with a C library
 
-We have introduced the `@cextern` macro earlier, so we will primarily focus on the usage of `@cbindings` here.
 When creating modules for binding Julia with a C library the use of the `__init__()` function is necessary.
 Performing the bindings in the global scope causes pointer addresses to be baked in due to the precompilation capabilities of Julia.
 That usually causes Julia to crash because at run-time the baked-in function pointer is invalid when it is actually being used.
