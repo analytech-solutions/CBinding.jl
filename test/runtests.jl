@@ -726,8 +726,10 @@ include("layout-tests.jl")
 			@cextern jl_gc_alloc_0w()::Ptr{jl_value_t}
 			@cextern jl_gc_alloc_1w()::Ptr{jl_value_t}
 			@cextern jl_gc_alloc_2w()::Ptr{jl_value_t}
-			@cextern jl_gc_alloc_3w()::Ptr{jl_value_t}
-			@cextern jl_gc_allocobj(sz::Csize_t)::Ptr{jl_value_t}
+			false || @cextern jl_gc_alloc_3w()::Ptr{jl_value_t}
+			if true
+				@cextern jl_gc_allocobj(sz::Csize_t)::Ptr{jl_value_t}
+			end
 			
 			@cextern jl_base_module::Ptr{@cstruct jl_module_t}
 			

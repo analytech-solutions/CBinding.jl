@@ -25,12 +25,17 @@ function _cbindings(mod::Module, exprs...)
 		end
 	end
 	
-	block = Base.is_expr(exprs[end], :block) ? exprs[end] : Expr(:block, exprs[end])
-	for expr in block.args
-		if Base.is_expr(expr, :macrocall) && length(expr.args) >= 1 && expr.args[1] in _externExprs
-			append!(expr.args, syms)
+	function addlibs(e)
+		if Base.is_expr(e, :macrocall) && length(e.args) >= 1 && e.args[1] in _externExprs
+			append!(e.args, syms)
+		elseif e isa Expr
+			for expr in e.args
+				addlibs(expr)
+			end
 		end
 	end
+	block = Base.is_expr(exprs[end], :block) ? exprs[end] : Expr(:block, exprs[end])
+	addlibs(block)
 	
 	return quote
 		let
