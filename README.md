@@ -170,11 +170,11 @@ The values of an enumeration must evaluate to integers, and can reference values
 Usage of enumerations and values is generally promoted to integer arithmetic.
 
 ```jl
-julia> @cenum MyNamedEnum {
-           VALUE_1,
-           VALUE_2,
-           VALUE_3,
-       }
+julia> @cenum MyNamedEnum {    # enum MyNamedEnum {
+           VALUE_1,            #     VALUE_1,
+           VALUE_2,            #     VALUE_2,
+           VALUE_3,            #     VALUE_3
+       }                       # };
 MyNamedEnum
 
 julia> e = MyNamedEnum(VALUE_3)
@@ -186,13 +186,13 @@ MyNamedEnum(<VALUE_1>(0x00000000))
 julia> e | VALUE_3
 2
 
-julia> @cstruct EnumStruct {
-           e::@cenum {
-               X = 1<<0,
-               Y = 1<<1,
-               Z = 1<<2,
-           }
-       }
+julia> @cstruct EnumStruct {    # struct EnumStruct {
+           e::@cenum {          #     enum {
+               X = 1<<0,        #         X = 1<<0,
+               Y = 1<<1,        #         Y = 1<<1,
+               Z = 1<<2,        #         Z = 1<<2
+           }                    #     } e;
+       }                        # };
 EnumStruct
 
 julia> e = EnumStruct()
@@ -358,7 +358,7 @@ tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
 Even interfacing the C functions of the Julia API is simple!
 
 ```jl
-julia> jl_gc_total_bytes()::Clong    lib    # long (*jl_gc_total_bytes)() = dlsym(lib, "jl_gc_total_bytes");
+julia> @cextern jl_gc_total_bytes()::Clong    lib    # long (*jl_gc_total_bytes)() = dlsym(lib, "jl_gc_total_bytes");
 jl_gc_total_bytes (generic function with 1 method)
 
 julia> jl_gc_total_bytes()
@@ -390,7 +390,7 @@ This enables Julia the ability to perform real-world variadic function usage as 
 
 ```jl
 julia> func = Cfunction{Cint, Tuple{Cstring, Vararg}}(lib, :printf)    # int (*func)(char *, ...) = dlsym(lib, "printf");
-Ptr{Cfunction{Nothing,Tuple{Cstring,Vararg{Any,N} where N},Cconvention{:cdecl}}} @0x000061eefc388930
+Ptr{Cfunction{Int32,Tuple{Cstring,Vararg{Any,N} where N},ConvT} where ConvT<:Cconvention} @0x000061eefc388930
 
 julia> func("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
 this is 1 great demo of CBinding.jl v0.1!
@@ -448,4 +448,7 @@ end
 The last argument to the macro should be a begin-end block of `@cextern`, `@ctypedef`, `@cstruct`, etc. expressions.
 Arbitrary code can be placed in the code block, but beware, it will be evaluated at module scope.
 All expressions before the begin-end block will be used as `Clibrary` arguments for loading the bindings from.
+
+Occasionally a C library will contain a type, variable, or function with a name that is a reserved word in Julia, like `global` or `end`.
+They are not yet supported by CBinding.jl (#18), but future package development will address this feature.
 

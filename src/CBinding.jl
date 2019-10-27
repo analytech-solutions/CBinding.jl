@@ -21,7 +21,7 @@ module CBinding
 	
 	
 	include("clibrary.jl")
-	include("cbinding.jl")
+	include("cbindings.jl")
 	include("caggregate.jl")
 	include("cenum.jl")
 	include("cglobal.jl")

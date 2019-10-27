@@ -269,7 +269,7 @@ include("layout-tests.jl")
 			(i1:16)::Cint
 			(i2:16)::Cint
 		} __packed__
-		@test sizeof(Cuint16Cint16Bitfields) == sizeof(Cuint)
+		@test sizeof(Cint16Cint16Bitfields) == sizeof(Cuint)
 		
 		@cstruct Cint16CalignCint16Bitfields {
 			(i1:16)::Cint
@@ -476,7 +476,7 @@ include("layout-tests.jl")
 			(i1:16)::Cint
 			(i2:16)::Cint
 		} __packed__
-		@test sizeof(Cuint16Cint16BitfieldsUnion) == 2
+		@test sizeof(Cint16Cint16BitfieldsUnion) == 2
 		
 		@cunion Cint16CalignCint16BitfieldsUnion {
 			(i1:16)::Cint
