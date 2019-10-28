@@ -425,11 +425,11 @@ const ALIGN_PACKED = Val{:packed}
 
 alignof(::Type{ALIGN_PACKED}, ::Type{<:Any}) = 1
 
-alignof(::Type{ALIGN_PACKED}, ::Type{CE}) where {_CE<:Cenum, CE<:Union{_CE, Caccessor{_CE}}} = 1
+alignof(::Type{ALIGN_PACKED}, ::Type{CE}) where {CE<:Cenum} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = 1
 
-alignof(::Type{ALIGN_NATIVE}, ::Type{CE}) where {_CE<:Cenum, CE<:Union{_CE, Caccessor{_CE}}} = alignof(ALIGN_NATIVE, eltype(_CE))
+alignof(::Type{ALIGN_NATIVE}, ::Type{CE}) where {CE<:Cenum} = alignof(ALIGN_NATIVE, eltype(CE))
 alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = alignof(ALIGN_NATIVE, eltype(_CA))
 alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_CA, alignment = true)
 
