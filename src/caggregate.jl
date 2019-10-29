@@ -2,6 +2,7 @@
 
 const _ANONYMOUS_FIELD = Symbol("")
 
+
 _strategy(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get alignment strategy for an aggregate without one")
 _typespec(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get type specification for an aggregate without one")
 
@@ -55,79 +56,71 @@ end
 Base.zero(::Type{CA}) where {CA<:Union{Caggregate, Carray}} = CA()
 Base.sizeof(::Type{CA}) where {T, N, CA<:Carray{T, N}} = sizeof(T)*N
 
-Base.getindex(ca::Carray{T, N}, ind) where {T, N} = unsafe_load(reinterpret(Ptr{T}, pointer_from_objref(ca)), ind)
-Base.setindex!(ca::Carray{T, N}, val, ind) where {T, N} = unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(ca)), val, ind)
-Base.getindex(ca::Carray{CA, N}, ind) where {CA<:Union{Caggregate, Carray}, N} = Caccessor{CA}(ca, (ind-1)*sizeof(CA))
-Base.firstindex(ca::Carray{CA, N}) where {CA<:Union{Caggregate, Carray}, N} = 1
-Base.lastindex(ca::Carray{CA, N}) where {CA<:Union{Caggregate, Carray}, N} = length(ca)
-
-Base.IndexStyle(::Type{Carray{T, N}}) where {T, N} = IndexLinear()
-Base.size(ca::Carray{T, N}) where {T, N} = (N,)
-Base.length(ca::Carray{T, N}) where {T, N} = N
-Base.eltype(ca::Carray{T, N}) where {T, N} = T
-Base.size(::Type{Carray{T, N}}) where {T, N} = (N,)
-Base.length(::Type{Carray{T, N}}) where {T, N} = N
-Base.eltype(::Type{Carray{T, N}}) where {T, N} = T
-
-Base.keys(ca::Carray{T, N}) where {T, N} = firstindex(ca):lastindex(ca)
-Base.values(ca::Carray{T, N}) where {T, N} = iterate(ca)
-Base.iterate(ca::Carray{T, N}, state = 1) where {T, N} = state > N ? nothing : (ca[state], state+1)
 
 
-
-# Caccessor provides a deferred access mechanism to handle nested aggregate fields (in aggregates or arrays) to support correct/efficient behavior of:
+# the following provides a deferred access mechanism to handle nested aggregate fields (in aggregates or arrays) to support correct/efficient behavior of:
 #   a.b[3].c.d = x
 #   y = a.b[3].c.d
-struct Caccessor{CA<:Union{Caggregate, Carray}}
-	base::Union{Caggregate, Carray}
-	offset::Int
+const Cdeferrable = Union{Caggregate, Carray}
+struct Caccessor{FieldType<:Cdeferrable, BaseType<:Cdeferrable, Offset<:Val}
+	base::BaseType
+	
+	Caccessor{FieldType}(b::BaseType, ::Val{Offset}) where {FieldType<:Cdeferrable, BaseType<:Cdeferrable, Offset} = new{FieldType, BaseType, Val{Offset}}(b)
 end
+const Caggregates = Union{CA, Caccessor{CA}} where {CA<:Caggregate}
+const Carrays = Union{CA, Caccessor{CA}} where {CA<:Carray}
 
-Base.show(io::IO, ca::Caccessor{CA}) where {CA<:Union{Caggregate, Carray}} = show(io, convert(CA, ca))
+_fieldoffset(cx::Union{Cdeferrable, Caccessor}) = _fieldoffset(typeof(cx))
+_fieldoffset(::Type{CD}) where {CD<:Cdeferrable} = 0
+_fieldoffset(::Type{Caccessor{FieldType, BaseType, Val{Offset}}}) where {FieldType, BaseType, Offset} = Offset
 
-Caccessor{CA}(ca::Caccessor{<:Union{Caggregate, Carray}}, offset::Int) where {CA<:Union{Caggregate, Carray}} = Caccessor{CA}(getfield(ca, :base), getfield(ca, :offset) + offset)
+_fieldtype(cx::Union{Cdeferrable, Caccessor}) = _fieldtype(typeof(cx))
+_fieldtype(::Type{CD}) where {CD<:Cdeferrable} = CD
+_fieldtype(::Type{Caccessor{FieldType, BaseType, Val{Offset}}}) where {FieldType, BaseType, Offset} = FieldType
 
-Base.convert(::Type{CA}, ca::Caccessor{CA}) where {CA<:Union{Caggregate, Carray}} = ca[]
-Base.pointer_from_objref(ca::Caccessor) = pointer_from_objref(getfield(ca, :base))+getfield(ca, :offset)
+_base(cx::Cdeferrable) = cx
+_base(ca::Caccessor) = getfield(ca, :base)
 
-# functions for when accessor refers to an array
-Base.getindex(ca::Caccessor{CA}) where {T, N, S, CA<:Carray{T, N, S}} = unsafe_load(reinterpret(Ptr{CA}, pointer_from_objref(ca)))
-Base.setindex!(ca::Caccessor{CA}, val::CA) where {T, N, S, CA<:Carray{T, N, S}} = unsafe_store!(reinterpret(Ptr{CA}, pointer_from_objref(ca)), val)
-Base.getindex(ca::Caccessor{CA}, ind) where {T, N, CA<:Carray{T, N}} = unsafe_load(reinterpret(Ptr{T}, pointer_from_objref(ca)), ind)
-Base.setindex!(ca::Caccessor{CA}, val::T, ind) where {T, N, CA<:Carray{T, N}} = unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(ca)), val, ind)
-Base.getindex(ca::Caccessor{CA}, ind) where {T<:Union{Caggregate, Carray}, N, CA<:Carray{T, N}} = Caccessor{T}(ca, (ind-1)*sizeof(T))
-Base.firstindex(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = 1
-Base.lastindex(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = length(ca)
+Base.convert(::Type{CD}, ca::Caccessor{CD}) where {CD<:Cdeferrable} = ca[]
+Base.show(io::IO, ca::Caccessor{CD}) where {CD<:Cdeferrable} = show(io, ca[])
 
-Base.IndexStyle(::Type{Caccessor{CA}}) where {T, N, CA<:Carray{T, N}} = IndexLinear()
-Base.size(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = (N,)
-Base.length(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = N
-Base.eltype(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = T
-Base.size(::Type{Caccessor{CA}}) where {T, N, CA<:Carray{T, N}} = (N,)
-Base.length(::Type{Caccessor{CA}}) where {T, N, CA<:Carray{T, N}} = N
-Base.eltype(::Type{Caccessor{CA}}) where {T, N, CA<:Carray{T, N}} = T
+Base.pointer_from_objref(ca::Caccessor) = reinterpret(Ptr{_fieldtype(ca)}, pointer_from_objref(_base(ca))+_fieldoffset(ca))
 
-Base.keys(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = firstindex(ca):lastindex(ca)
-Base.values(ca::Caccessor{CA}) where {T, N, CA<:Carray{T, N}} = iterate(ca)
-Base.iterate(ca::Caccessor{CA}, state = 1) where {T, N, CA<:Carray{T, N}} = state > N ? nothing : (ca[state], state+1)
+Base.getindex(ca::Caccessor{CA}) where {CA<:Cdeferrable} = unsafe_load(pointer_from_objref(ca))
+Base.setindex!(ca::Caccessor{CA}, val::CA) where {CA<:Cdeferrable} = unsafe_store!(pointer_from_objref(ca), val)
 
-# functions for when accessor refers to an aggregate
-Base.getindex(ca::Caccessor{CA}) where {CA<:Caggregate} = unsafe_load(reinterpret(Ptr{CA}, pointer_from_objref(ca)))
-Base.setindex!(ca::Caccessor{CA}, val::CA) where {CA<:Caggregate} = unsafe_store!(reinterpret(Ptr{CA}, pointer_from_objref(ca)), val)
+# Caggregate interface
+Base.propertynames(ca::CA; kwargs...) where {CA<:Caggregates} = propertynames(typeof(ca); kwargs...)
+Base.propertynames(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, typ, off),) -> sym, _computefields(_fieldtype(CA)))
 
+Base.fieldnames(ca::CA; kwargs...) where {CA<:Caggregates} = fieldnames(typeof(ca); kwargs...)
+Base.fieldnames(::Type{CA}; kwargs...) where {CA<:Caggregates} = propertynames(_fieldtype(CA); kwargs...)
 
+propertytypes(ca::CA; kwargs...) where {CA<:Caggregates} = propertytypes(typeof(ca); kwargs...)
+propertytypes(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, typ, off),) -> typ isa Tuple ? first(typ) : typ, _computefields(_fieldtype(CA)))
 
-Base.propertynames(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertynames(CA; kwargs...)
-Base.propertynames(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> sym, _computefields(CA))
+Base.getproperty(ca::CA, sym::Symbol) where {CA<:Caggregates} = _getproperty(_base(ca), Val{_fieldoffset(ca)}, _strategy(_fieldtype(ca)), Val{_fieldtype(ca) <: Cunion}, _typespec(_fieldtype(ca)), Val{sym})
+Base.setproperty!(ca::CA, sym::Symbol, val) where {CA<:Caggregates} = _setproperty!(_base(ca), Val{_fieldoffset(ca)}, _strategy(_fieldtype(ca)), Val{_fieldtype(ca) <: Cunion}, _typespec(_fieldtype(ca)), Val{sym}, val)
 
-Base.fieldnames(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = fieldnames(CA; kwargs...)
-Base.fieldnames(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertynames(CA; kwargs...)
+# AbstractArray interface
+Base.getindex(ca::CA, ind) where {T<:Cdeferrable, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = Caccessor{T}(ca, Val(_fieldoffset(ca) + (ind-1)*sizeof(T)))
+Base.getindex(ca::CA, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_load(reinterpret(Ptr{T}, pointer_from_objref(ca)), ind)
+Base.setindex!(ca::CA, val, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(ca)), val, ind)
 
-propertytypes(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertytypes(CA; kwargs...)
-propertytypes(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> typ isa Tuple ? first(typ) : typ, _computefields(CA))
+Base.firstindex(ca::CA) where {CA<:Carrays} = 1
+Base.lastindex(ca::CA) where {CA<:Carrays} = length(ca)
 
-Base.getproperty(ca::CA, sym::Symbol) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _getproperty(ca, _strategy(_CA), Val{_CA <: Cunion}, _typespec(_CA), Val{sym})
-Base.setproperty!(ca::CA, sym::Symbol, val) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _setproperty!(ca, _strategy(_CA), Val{_CA <: Cunion}, _typespec(_CA), Val{sym}, val)
+Base.IndexStyle(::Type{CA}) where {CA<:Carrays} = IndexLinear()
+Base.size(ca::CA) where {CA<:Carrays} = size(typeof(ca))
+Base.length(ca::CA) where {CA<:Carrays} = length(typeof(ca))
+Base.eltype(ca::CA) where {CA<:Carrays} = eltype(typeof(ca))
+Base.size(::Type{CA}) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = (N,)
+Base.length(::Type{CA}) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = N
+Base.eltype(::Type{CA}) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = T
+
+Base.keys(ca::CA) where {CA<:Carrays} = firstindex(ca):lastindex(ca)
+Base.values(ca::CA) where {CA<:Carrays} = iterate(ca)
+Base.iterate(ca::CA, state = 1) where {CA<:Carrays} = state > length(ca) ? nothing : (ca[state], state+1)
 
 
 
@@ -357,13 +350,13 @@ const ALIGN_PACKED = Val{:packed}
 alignof(::Type{ALIGN_PACKED}, ::Type{<:Any}) = 1
 
 alignof(::Type{ALIGN_PACKED}, ::Type{CE}) where {CE<:Cenum} = 1
-alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = 1
-alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = 1
+alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {CA<:Carray} = 1
+alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {CA<:Caggregate} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple} = 1
 
 alignof(::Type{ALIGN_NATIVE}, ::Type{CE}) where {CE<:Cenum} = alignof(ALIGN_NATIVE, eltype(CE))
-alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = alignof(ALIGN_NATIVE, eltype(_CA))
-alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computealign(_CA)
+alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {CA<:Carray} = alignof(ALIGN_NATIVE, eltype(CA))
+alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {CA<:Caggregate} = _computealign(CA)
 alignof(::Type{ALIGN_NATIVE}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple} = _computealign(AlignStrategy, Val{IsUnion}, TypeSpec)
 
 const (_i8a, _i16a, _i32a, _i64a, _f32a, _f64a) = let
@@ -408,7 +401,7 @@ _computealign(args...) = _computelayout(args...)[1]
 _computesize(args...) = _computelayout(args...)[2]
 _computefields(args...) = _computelayout(args...)[3]
 
-_computelayout(::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_strategy(_CA), Val{_CA <: Cunion}, _typespec(_CA))
+_computelayout(::Type{CA}) where {CA<:Caggregate} = _computelayout(_strategy(CA), Val{CA <: Cunion}, _typespec(CA))
 @generated function _computelayout(::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple}
 	op = !IsUnion ? (+) : (max)
 	
@@ -487,9 +480,10 @@ end
 	return quote $(result...) end
 end
 
-@generated function _getproperty(ca::CA, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
+@generated function _getproperty(ca::CA, ::Type{Val{Offset}}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}) where {CA<:Caggregate, Offset, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
 	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
 		nam === FieldName || continue
+		off += Offset
 		
 		return quote
 			if $(typ) isa Tuple
@@ -504,7 +498,7 @@ end
 				end
 				return reinterpret(t, val)
 			elseif $(typ) <: Caggregate || $(typ) <: Carray
-				return Caccessor{$(typ)}(ca, $(off÷8))
+				return Caccessor{$(typ)}(ca, Val($(off÷8)))
 			else
 				return unsafe_load(reinterpret(Ptr{$(typ)}, pointer_from_objref(ca) + $(off÷8)))
 			end
@@ -515,9 +509,10 @@ end
 	end
 end
 
-@generated function _setproperty!(ca::CA, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}, val) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
+@generated function _setproperty!(ca::CA, ::Type{Val{Offset}}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}, val) where {CA<:Caggregate, Offset, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
 	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
 		nam === FieldName || continue
+		off += Offset
 		
 		return quote
 			if $(typ) isa Tuple
@@ -530,10 +525,10 @@ end
 				field |= (reinterpret(ityp, convert(t, val)) << o) & mask
 				_unsafe_store!(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + $(off÷8)), ityp, Val(o), Val(b), field)
 			elseif $(typ) <: Carray
-				ca = Caccessor{$(typ)}(ca, $(off÷8))
-				length(val) == length(ca) || error("Length of value does not match the length of the array field it is being assigned to")
+				x = Caccessor{$(typ)}(ca, Val($(off÷8)))
+				length(val) == length(x) || error("Length of value does not match the length of the array field it is being assigned to")
 				for (i, v) in enumerate(val)
-					ca[i] = v
+					x[i] = v
 				end
 			else
 				unsafe_store!(reinterpret(Ptr{$(typ)}, pointer_from_objref(ca) + $(off÷8)), val)
