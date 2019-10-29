@@ -205,6 +205,25 @@ julia> e
 EnumStruct(e=<anonymous-enum>(0x00000007))
 ```
 
+CBinding.jl also allows you to apply an alignment strategy, such as `__packed__`, to an enumeration definition.
+An alignment strategy can be applied to both standalone enumeration types and enumerations nested within unions or structures.
+
+```jl
+julia> @cenum MyPackedNamedEnum {    # enum MyPackedNamedEnum {
+           PACKED_VALUE_1,           #     PACKED_VALUE_1,
+           PACKED_VALUE_2,           #     PACKED_VALUE_2,
+           PACKED_VALUE_3,           #     PACKED_VALUE_3
+       } __packed__                  # } __attribute__((packed));
+MyPackedNamedEnum
+
+julia> sizeof(MyNamedEnum)
+4
+
+julia> sizeof(MyPackedNamedEnum)
+1
+```
+
+
 ## C Bit Fields
 
 Specifying C bit fields is another feature provided by CBinding.jl.
