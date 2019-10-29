@@ -740,4 +740,108 @@ const LAYOUT_TESTS = [
 		VAL3 = 0xffffffff,
 	}
 }""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1,
+		VAL2,
+		VAL3,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1,
+		VAL2 = VAL1,
+		VAL3 = 1 << 10,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 1,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 0xffffffff,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1,
+		VAL2,
+		VAL3,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1,
+		VAL2 = VAL1,
+		VAL3 = 1 << 10,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 1,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 0xffffffff,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1,
+		VAL2,
+		VAL3,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1,
+		VAL2 = VAL1,
+		VAL3 = 1 << 10,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 1,
+	} __packed__
+}""",
+
+"""@cstruct T {
+	x::Cchar:3
+	e::@cenum {
+		VAL1 = -1,
+		VAL2 = 0,
+		VAL3 = 0xffffffff,
+	} __packed__
+}""",
 ]

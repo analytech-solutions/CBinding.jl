@@ -1,6 +1,6 @@
 
 
-_fields(::Type{CE}) where {CE<:Cenum} = error("Attempted to get values of an enumeration without any")
+_enumvalues(::Type{CE}) where {CE<:Cenum} = error("Attempted to get values of an enumeration without any")
 
 isanonymous(ce::Cenum) = isanonymous(typeof(ce))
 isanonymous(::Type{CE}) where {T, CE<:Cenum{T}} = match(r"^##anonymous#\d+$", string(CE.name.name)) !== nothing
@@ -14,7 +14,7 @@ function Base.show(io::IO, ce::Cenum{T}) where {T}
 	print(io, "(")
 	value = convert(T, ce)
 	found = false
-	for (name, val) in _fields(typeof(ce))
+	for (name, val) in _enumvalues(typeof(ce))
 		if value == val
 			print(io, "<", name, ">", "(")
 			show(io, value)
@@ -40,24 +40,33 @@ Base.convert(::Type{CE1}, x::CE2) where {T1, CE1<:Cenum{T1}, T2, CE2<:Cenum{T2}}
 Base.eltype(::Type{CE}) where {T, CE<:Cenum{T}} = T
 Base.eltype(ce::Cenum) = eltype(typeof(ce))
 
-Base.typemin(::Type{CE}) where {CE<:Cenum} = minimum(map(last, _fields(CE)))
-Base.typemax(::Type{CE}) where {CE<:Cenum} = maximum(map(last, _fields(CE)))
+Base.typemin(::Type{CE}) where {CE<:Cenum} = minimum(map(last, _enumvalues(CE)))
+Base.typemax(::Type{CE}) where {CE<:Cenum} = maximum(map(last, _enumvalues(CE)))
 
 
 
 macro cenum(exprs...) return _cenum(__module__, nothing, exprs...) end
 
 function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Symbol)
-	return _cenum(mod, deps, name, nothing)
+	return _cenum(mod, deps, name, nothing, nothing)
 end
 
 function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, body::Expr)
-	return _cenum(mod, deps, nothing, body)
+	return _cenum(mod, deps, nothing, body, nothing)
 end
 
-function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing})
+function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, body::Expr, strategy::Symbol)
+	return _cenum(mod, deps, nothing, body, strategy)
+end
+
+function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Symbol, body::Expr)
+	return _cenum(mod, deps, name, body, nothing)
+end
+
+function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
 	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @cenum to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 	
+	strategy = isnothing(strategy) ? :(CBinding.ALIGN_NATIVE) : :(Val{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
 	name = isnothing(name) ? gensym("anonymous") : name
 	escName = esc(name)
 	
@@ -93,11 +102,14 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 			end
 		end
 		
+		isempty(values) && error("Expected @cenum to have at least 1 value")
+		
 		values = map(x -> :($(QuoteNode(Base.is_expr(x, :escape, 1) && x.args[1] isa Symbol ? x.args[1] : x)) => $(x)), values)
 		push!(deps, name => quote
 			$(fields...)
-			primitive type $(escName) <: Cenum{_computeEnumType(($(values...),))} sizeof(_computeEnumType(($(values...),)))*8 end
-			CBinding._fields(::Type{$(escName)}) = map(((x, y),) -> x => eltype($(escName))(y), ($(values...),))
+			primitive type $(escName) <: Cenum{_computeEnumType($(strategy), ($(values...),))} sizeof(_computeEnumType($(strategy), ($(values...),)))*8 end
+			CBinding._strategy(::Type{$(escName)}) = $(strategy)
+			CBinding._enumvalues(::Type{$(escName)}) = map(((x, y),) -> x => eltype($(escName))(y), ($(values...),))
 		end)
 	end
 	
@@ -106,15 +118,18 @@ end
 
 
 
-_computeEnumType(::Type{CE}) where {_CE<:Cenum, CE<:Union{_CE, Caccessor{_CE}}} = eltype(_CE)
-function _computeEnumType(fields::Tuple)
+_computeEnumType(::Type{CE}) where {CE<:Cenum} = eltype(CE)
+
+function _computeEnumType(::Type{AlignStrategy}, fields::Tuple) where {AlignStrategy}
 	(min, max) = extrema(map(last, fields))
 	
-	for typ in (UInt32, Int32, UInt64, Int64, UInt128, Int128)
+	for typ in _enumTypes(AlignStrategy)
 		typemin(typ) <= min && max <= typemax(typ) && return typ
 	end
 	
 	error("Unable to determine suitable enumeration storage type for the values provided")
 end
 
+_enumTypes(::Type{ALIGN_NATIVE}) = (UInt32, Int32, UInt64, Int64, UInt128, Int128)
+_enumTypes(::Type{ALIGN_PACKED}) = (UInt8, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, UInt128, Int128)
 
