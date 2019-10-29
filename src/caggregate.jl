@@ -1,7 +1,9 @@
 
 
+const _ANONYMOUS_FIELD = Symbol("")
+
 _strategy(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get alignment strategy for an aggregate without one")
-_fields(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get fields of an aggregate without any")
+_typespec(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get type specification for an aggregate without one")
 
 
 function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
@@ -113,98 +115,19 @@ Base.iterate(ca::Caccessor{CA}, state = 1) where {T, N, CA<:Carray{T, N}} = stat
 Base.getindex(ca::Caccessor{CA}) where {CA<:Caggregate} = unsafe_load(reinterpret(Ptr{CA}, pointer_from_objref(ca)))
 Base.setindex!(ca::Caccessor{CA}, val::CA) where {CA<:Caggregate} = unsafe_store!(reinterpret(Ptr{CA}, pointer_from_objref(ca)), val)
 
+
+
 Base.propertynames(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertynames(CA; kwargs...)
-Base.propertynames(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> sym, _computelayout(CA))
+Base.propertynames(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> sym, _computefields(CA))
 
 Base.fieldnames(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = fieldnames(CA; kwargs...)
 Base.fieldnames(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertynames(CA; kwargs...)
 
 propertytypes(ca::CA; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = propertytypes(CA; kwargs...)
-propertytypes(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> typ isa Tuple ? first(typ) : typ, _computelayout(CA))
+propertytypes(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = map(((sym, typ, off),) -> typ isa Tuple ? first(typ) : typ, _computefields(CA))
 
-_strategy(::Type{<:Caccessor{CA}}) where {CA<:Caggregate} = _strategy(CA)
-_fields(::Type{<:Caccessor{CA}}) where {CA<:Caggregate} = _fields(CA)
-
-aggregatetype(::Type{CA}) where {CA<:Caggregate} = CA
-aggregatetype(::Type{Caccessor{CA}}) where {CA<:Caggregate} = CA
-
-@generated function _bitmask(::Type{ityp}, ::Val{bits}) where {ityp, bits}
-	mask = zero(ityp)
-	for i in 1:bits
-		mask = (mask << one(ityp)) | one(ityp)
-	end
-	return :(ityp($(mask)))
-end
-
-@generated function _unsafe_load(base::Ptr{UInt8}, ::Type{ityp}, ::Val{offset}, ::Val{bits}) where {ityp, offset, bits}
-	sym = gensym("bitfield")
-	result = [:($(sym) = ityp(0))]
-	for i in 1:sizeof(ityp)
-		todo"verify correctness on big endian machine"  #$((ENDIAN_BOM != 0x04030201 ? (sizeof(ityp)-i) : (i-1))*8)
-		offset <= i*8 && (i-1)*8 < offset+bits && push!(result, :($(sym) |= ityp(unsafe_load(base + $(i-1))) << ityp($((i-1)*8))))
-	end
-	return quote let ; $(result...) ; $(sym) end end
-end
-
-@generated function _unsafe_store!(base::Ptr{UInt8}, ::Type{ityp}, ::Val{offset}, ::Val{bits}, val::ityp) where {ityp, offset, bits}
-	result = []
-	for i in 1:sizeof(ityp)
-		todo"verify correctness on big endian machine"  #$((ENDIAN_BOM != 0x04030201 ? (sizeof(ityp)-i) : (i-1))*8)
-		offset <= i*8 && (i-1)*8 < offset+bits && push!(result, :(unsafe_store!(base + $(i-1), UInt8((val >> $((i-1)*8)) & 0xff))))
-	end
-	return quote $(result...) end
-end
-
-function Base.getproperty(ca::Union{CA, Caccessor{CA}}, sym::Symbol) where {CA<:Caggregate}
-	for (nam, typ, off) in _computelayout(typeof(ca))
-		sym === nam || continue
-		
-		if typ isa Tuple
-			(t, b) = typ
-			ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
-			o = ityp(off & (8-1))
-			field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + off÷8), ityp, Val(o), Val(b))
-			mask = _bitmask(ityp, Val(b))
-			val = (field >> o) & mask
-			if t <: Signed && ((val >> (b-1)) & 1) != 0  # 0 = pos, 1 = neg
-				val |= ~ityp(0) & ~mask
-			end
-			return reinterpret(t, val)
-		elseif typ <: Caggregate || typ <: Carray
-			return Caccessor{typ}(ca, off÷8)
-		else
-			return unsafe_load(reinterpret(Ptr{typ}, pointer_from_objref(ca) + off÷8))
-		end
-	end
-	return getfield(ca, sym)
-end
-
-function Base.setproperty!(ca::Union{CA, Caccessor{CA}}, sym::Symbol, val) where {CA<:Caggregate}
-	for (nam, typ, off) in _computelayout(typeof(ca))
-		sym === nam || continue
-		
-		if typ isa Tuple
-			(t, b) = typ
-			ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
-			o = ityp(off & (8-1))
-			field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + off÷8), ityp, Val(o), Val(b))
-			mask = _bitmask(ityp, Val(b)) << o
-			field &= ~mask
-			field |= (reinterpret(ityp, convert(t, val)) << o) & mask
-			_unsafe_store!(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + off÷8), ityp, Val(o), Val(b), field)
-		elseif typ <: Carray
-			ca = Caccessor{typ}(ca, off÷8)
-			length(val) == length(ca) || error("Length of value does not match the length of the array field it is being assigned to")
-			for (i, v) in enumerate(val)
-				ca[i] = v
-			end
-		else
-			unsafe_store!(reinterpret(Ptr{typ}, pointer_from_objref(ca) + off÷8), val)
-		end
-		return val
-	end
-	return setfield!(ca, sym, val)
-end
+Base.getproperty(ca::CA, sym::Symbol) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _getproperty(ca, _strategy(_CA), Val{_CA <: Cunion}, _typespec(_CA), Val{sym})
+Base.setproperty!(ca::CA, sym::Symbol, val) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _setproperty!(ca, _strategy(_CA), Val{_CA <: Cunion}, _typespec(_CA), Val{sym}, val)
 
 
 
@@ -319,24 +242,24 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			arg = _expand(mod, deps, arg)
 			if Base.is_expr(arg, :align, 1)
 				align = arg.args[1]
-				push!(fields, :(nothing => $(align)))
+				push!(fields, :(Pair{nothing, Tuple{$(align)}}))
 			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous#")
 				# this is just a type definition, not a field
 			else
-				Base.is_expr(arg, :(::)) && (length(arg.args) != 2 || arg.args[1] === :_) && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
+				Base.is_expr(arg, :(::)) && (length(arg.args) != 2 || arg.args[1] === _ANONYMOUS_FIELD) && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
 				
 				argType = Base.is_expr(arg, :(::)) ? arg.args[end] : arg
-				args = Base.is_expr(arg, :(::), 1) || !Base.is_expr(arg, :(::)) ? :_ : arg.args[1]
+				args = Base.is_expr(arg, :(::), 1) || !Base.is_expr(arg, :(::)) ? _ANONYMOUS_FIELD : arg.args[1]
 				args = Base.is_expr(args, :tuple) ? args.args : (args,)
 				for arg in args
 					if arg isa Symbol
-						push!(fields, :($(QuoteNode(arg)) => $(argType)))
+						push!(fields, :(Pair{$(QuoteNode(arg)), $(argType) <: CBinding.Caggregate ? Tuple{$(argType), CBinding._strategy($(argType)), CBinding._typespec($(argType))} : Tuple{$(argType)}}))
 					elseif Base.is_expr(arg, :escape, 1) && arg.args[1] isa Symbol
-						push!(fields, :($(QuoteNode(arg.args[1])) => $(argType)))
+						push!(fields, :(Pair{$(QuoteNode(arg.args[1])), $(argType) <: CBinding.Caggregate ? Tuple{$(argType), CBinding._strategy($(argType)), CBinding._typespec($(argType))} : Tuple{$(argType)}}))
 					elseif Base.is_expr(arg, :call, 3) && arg.args[1] === :(:) && arg.args[3] isa Integer
-						push!(fields, :($(QuoteNode(arg.args[2])) => ($(argType), $(arg.args[3]))))
+						push!(fields, :(Pair{$(QuoteNode(arg.args[2])), Tuple{$(argType), $(arg.args[3])}}))
 					elseif Base.is_expr(arg, :call, 3) && Base.is_expr(arg.args[1], :escape, 1) && arg.args[1].args[1] === :(:) && Base.is_expr(arg.args[3], :escape, 1) && arg.args[3].args[1] isa Integer
-						push!(fields, :($(QuoteNode(arg.args[2].args[1])) => ($(argType), $(arg.args[3].args[1]))))
+						push!(fields, :(Pair{$(QuoteNode(arg.args[2].args[1])), Tuple{$(argType), $(arg.args[3].args[1])}}))
 					else
 						function _parseAugmentedField(a)
 							a = deepcopy(a)
@@ -371,7 +294,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 						end
 						
 						(aname, atype) = _parseAugmentedField(arg)
-						push!(fields, :($(QuoteNode(aname)) => $(atype)))
+						push!(fields, :(Pair{$(QuoteNode(aname)), Tuple{$(atype)}}))
 					end
 				end
 			end
@@ -389,12 +312,20 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 		
 		push!(deps, name => quote
 			mutable struct $(escName) <: $(super)
-				mem::NTuple{_computelayout($(strategy), $(super), ($(map(_stripPtrTypes, deepcopy(fields))...),), total = true)÷8, UInt8}
+				mem::NTuple{_computesize($(strategy), Val{$(super) <: Cunion}, Tuple{$(map(_stripPtrTypes, deepcopy(fields))...)})÷8, UInt8}
 				
 				$(escName)(::UndefInitializer) = new()
 			end
+			#=
+				TypeSpec = Tuple{
+					Pair{:sym1, Tuple{PrimType}},  # primitive field `sym1`
+					Pair{:sym2, Tuple{PrimType, NBits}},  # bit field `sym2`
+					Pair{:sym3, Tuple{AggType, AggStrategy, AggTypeSpec}},  # nested aggregate `sym3`
+					Pair{Symbol(""), Tuple{AggType, AggStrategy, AggTypeSpec}}  # anonymous nested aggregate
+				}
+			=#
 			CBinding._strategy(::Type{$(escName)}) = $(strategy)
-			CBinding._fields(::Type{$(escName)}) = ($(fields...),)
+			CBinding._typespec(::Type{$(escName)}) = Tuple{$(fields...)}
 		end)
 	end
 	
@@ -428,10 +359,12 @@ alignof(::Type{ALIGN_PACKED}, ::Type{<:Any}) = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CE}) where {CE<:Cenum} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = 1
+alignof(::Type{ALIGN_PACKED}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple} = 1
 
 alignof(::Type{ALIGN_NATIVE}, ::Type{CE}) where {CE<:Cenum} = alignof(ALIGN_NATIVE, eltype(CE))
 alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Carray, CA<:Union{_CA, Caccessor{_CA}}} = alignof(ALIGN_NATIVE, eltype(_CA))
-alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_CA, alignment = true)
+alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computealign(_CA)
+alignof(::Type{ALIGN_NATIVE}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple} = _computealign(AlignStrategy, Val{IsUnion}, TypeSpec)
 
 const (_i8a, _i16a, _i32a, _i64a, _f32a, _f64a) = let
 	(i8a, i16a, i32a, i64a, f32a, f64a) = refs = ((Ref{UInt}() for i in 1:6)...,)
@@ -454,63 +387,162 @@ alignof(::Type{ALIGN_NATIVE}, ::Type{S}) where {S<:Signed} = alignof(ALIGN_NATIV
 alignof(::Type{ALIGN_NATIVE}, ::Type{UInt128}) = 2*alignof(ALIGN_NATIVE, UInt64)
 alignof(::Type{ALIGN_NATIVE}, ::Type{Clongdouble}) = 2*alignof(ALIGN_NATIVE, Cdouble)
 
-function checked_alignof(x, y)
-	a = alignof(x, y)
+function checked_alignof(args...)
+	a = alignof(args...)
 	a == 0 || a == nextpow(2, a) || error("Alignment must be a power of 2")
 	return a
 end
 
 padding(::Type{ALIGN_PACKED}, offset::Int, align::Int) = (align%8) == 0 ? padding(ALIGN_NATIVE, offset, align) : 0
-padding(::Type{ALIGN_PACKED}, offset::Int, typ::DataType, bits::Int = 0) = bits == 0 ? padding(ALIGN_PACKED, offset, checked_alignof(ALIGN_PACKED, typ)*8) : 0
+padding(::Type{ALIGN_PACKED}, offset::Int, bits::Int, args...) = bits == 0 ? padding(ALIGN_PACKED, offset, checked_alignof(ALIGN_PACKED, args...)*8) : 0
 
 padding(::Type{ALIGN_NATIVE}, offset::Int, align::Int) = -offset & (align - 1)
-function padding(::Type{ALIGN_NATIVE}, offset::Int, typ::DataType, bits::Int = 0)
-	pad = padding(ALIGN_NATIVE, offset, checked_alignof(ALIGN_NATIVE, typ)*8)
+function padding(::Type{ALIGN_NATIVE}, offset::Int, bits::Int, args...)
+	pad = padding(ALIGN_NATIVE, offset, checked_alignof(ALIGN_NATIVE, args...)*8)
 	return 0 < bits <= pad ? 0 : pad
 end
 
-_computelayout(::Type{CA}; kwargs...) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_strategy(CA), CA, _fields(CA); kwargs...)
-function _computelayout(strategy::DataType, ::Type{CA}, fields::Tuple; total::Bool = false, alignment::Bool = false) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}}
-	op = aggregatetype(CA) <: Cstruct ? (+) : (max)
+
+
+_computealign(args...) = _computelayout(args...)[1]
+_computesize(args...) = _computelayout(args...)[2]
+_computefields(args...) = _computelayout(args...)[3]
+
+_computelayout(::Type{CA}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}} = _computelayout(_strategy(_CA), Val{_CA <: Cunion}, _typespec(_CA))
+@generated function _computelayout(::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple}
+	op = !IsUnion ? (+) : (max)
 	
 	align = 1  # in bytes
 	size = 0  # in bits
 	result = ()  # ((symbol, (type, bits), offset), ...)
-	for (sym, typ) in fields
-		start = aggregatetype(CA) <: Cstruct ? size : 0
-		if sym === :_ && typ <: Caggregate
-			offset = op(start, padding(strategy, start, typ))
-			result = (result..., map(((s, t, o),) -> (s, t, offset+o), _computelayout(typ))...)
-			align = max(align, checked_alignof(strategy, typ))
-			size = op(size, padding(strategy, start, typ) + sizeof(typ)*8)
-		elseif isnothing(sym)
+	for field in TypeSpec.parameters
+		field <: Pair || continue
+		(sym, typ) = field.parameters
+		bits = 0
+		
+		typ <: Tuple || continue
+		if length(typ.parameters) == 1
+			(typ,) = typ.parameters
+		elseif length(typ.parameters) == 2
+			(typ, bits) = typ.parameters
+		elseif length(typ.parameters) == 3
+			(typ, typStrat, typSpec) = typ.parameters
+			typIsUnion = Val{typ <: Cunion}
+		end
+		
+		start = !IsUnion ? size : 0
+		if sym === _ANONYMOUS_FIELD && typ <: Caggregate
+			pad = padding(AlignStrategy, start, 0, typStrat, typIsUnion, typSpec)
+			offset = op(start, pad)
+			result = (result..., map(((s, t, o),) -> (s, t, offset+o), _computefields(typStrat, typIsUnion, typSpec))...)
+			align = max(align, checked_alignof(AlignStrategy, typStrat, typIsUnion, typSpec))
+			size = op(size, pad + sizeof(typ)*8)
+		elseif sym === nothing
+			pad = padding(AlignStrategy, start, typ*8)
 			align = max(align, typ)
-			size = op(size, padding(strategy, start, typ*8))
+			size = op(size, pad)
 		else
-			if typ isa Tuple
-				(typ, bits) = typ
-			else
-				bits = 0
-			end
-			
-			offset = op(start, padding(strategy, start, typ, bits))
-			if sym !== :_
+			pad = typ <: Caggregate ? padding(AlignStrategy, start, bits, typStrat, typIsUnion, typSpec) : padding(AlignStrategy, start, bits, typ)
+			alignas = typ <: Caggregate ? checked_alignof(AlignStrategy, typStrat, typIsUnion, typSpec) : checked_alignof(AlignStrategy, typ)
+			offset = op(start, pad)
+			if sym !== _ANONYMOUS_FIELD
 				result = (result..., (sym, (bits == 0 ? typ : (typ, bits)), offset))
 			end
-			align = max(align, checked_alignof(strategy, typ))
-			size = op(size, padding(strategy, start, typ, bits) + (bits == 0 ? sizeof(typ)*8 : bits))
+			align = max(align, alignas)
+			size = op(size, pad + (bits == 0 ? sizeof(typ)*8 : bits))
 		end
 	end
 	
-	if alignment
-		return align
-	end
+	size += padding(AlignStrategy, size, align*8)
+	size += -size & (8-1)  # ensure size is divisible by 8
 	
-	if total
-		size += padding(strategy, size, align*8)
-		size += -size & (8-1)  # ensure size is divisible by 8
-		return size
-	end
-	
-	return result
+	return (align::Int, size::Int, result)
 end
+
+
+@generated function _bitmask(::Type{ityp}, ::Val{bits}) where {ityp, bits}
+	mask = zero(ityp)
+	for i in 1:bits
+		mask = (mask << one(ityp)) | one(ityp)
+	end
+	return :(ityp($(mask)))
+end
+
+@generated function _unsafe_load(base::Ptr{UInt8}, ::Type{ityp}, ::Val{offset}, ::Val{bits}) where {ityp, offset, bits}
+	sym = gensym("bitfield")
+	result = [:($(sym) = ityp(0))]
+	for i in 1:sizeof(ityp)
+		todo"verify correctness on big endian machine"  #$((ENDIAN_BOM != 0x04030201 ? (sizeof(ityp)-i) : (i-1))*8)
+		offset <= i*8 && (i-1)*8 < offset+bits && push!(result, :($(sym) |= ityp(unsafe_load(base + $(i-1))) << ityp($((i-1)*8))))
+	end
+	return quote let ; $(result...) ; $(sym) end end
+end
+
+@generated function _unsafe_store!(base::Ptr{UInt8}, ::Type{ityp}, ::Val{offset}, ::Val{bits}, val::ityp) where {ityp, offset, bits}
+	result = []
+	for i in 1:sizeof(ityp)
+		todo"verify correctness on big endian machine"  #$((ENDIAN_BOM != 0x04030201 ? (sizeof(ityp)-i) : (i-1))*8)
+		offset <= i*8 && (i-1)*8 < offset+bits && push!(result, :(unsafe_store!(base + $(i-1), UInt8((val >> $((i-1)*8)) & 0xff))))
+	end
+	return quote $(result...) end
+end
+
+@generated function _getproperty(ca::CA, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
+	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
+		nam === FieldName || continue
+		
+		return quote
+			if $(typ) isa Tuple
+				(t, b) = $(typ)
+				ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
+				o = ityp($(off & (8-1)))
+				field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + $(off÷8)), ityp, Val(o), Val(b))
+				mask = _bitmask(ityp, Val(b))
+				val = (field >> o) & mask
+				if t <: Signed && ((val >> (b-1)) & 1) != 0  # 0 = pos, 1 = neg
+					val |= ~ityp(0) & ~mask
+				end
+				return reinterpret(t, val)
+			elseif $(typ) <: Caggregate || $(typ) <: Carray
+				return Caccessor{$(typ)}(ca, $(off÷8))
+			else
+				return unsafe_load(reinterpret(Ptr{$(typ)}, pointer_from_objref(ca) + $(off÷8)))
+			end
+		end
+	end
+	return quote
+		return getfield(ca, $(FieldName))
+	end
+end
+
+@generated function _setproperty!(ca::CA, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}, val) where {_CA<:Caggregate, CA<:Union{_CA, Caccessor{_CA}}, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
+	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
+		nam === FieldName || continue
+		
+		return quote
+			if $(typ) isa Tuple
+				(t, b) = $(typ)
+				ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
+				o = ityp($(off & (8-1)))
+				field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + $(off÷8)), ityp, Val(o), Val(b))
+				mask = _bitmask(ityp, Val(b)) << o
+				field &= ~mask
+				field |= (reinterpret(ityp, convert(t, val)) << o) & mask
+				_unsafe_store!(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + $(off÷8)), ityp, Val(o), Val(b), field)
+			elseif $(typ) <: Carray
+				ca = Caccessor{$(typ)}(ca, $(off÷8))
+				length(val) == length(ca) || error("Length of value does not match the length of the array field it is being assigned to")
+				for (i, v) in enumerate(val)
+					ca[i] = v
+				end
+			else
+				unsafe_store!(reinterpret(Ptr{$(typ)}, pointer_from_objref(ca) + $(off÷8)), val)
+			end
+			return val
+		end
+	end
+	return quote
+		return setfield!(ca, $(FieldName), val)
+	end
+end
+
