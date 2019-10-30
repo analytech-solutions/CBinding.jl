@@ -78,20 +78,20 @@ julia> zeroed
 MySecondCStruct(i=100, j=0, w=UInt8[0x00, 0x00, 0xff, 0x00], x=16711680, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0xff), (c=0x00)], z=MyFirstCStruct[(i=16711680)], m=MyFirstCStruct(i=0))
 ```
 
-When accessing a nested aggregate type, a `Caccessor` object is used to maintain a reference to the enclosing object.
+When accessing a nested aggregate (or array) type, a `Caccessor` object is used to maintain a reference to the enclosing object.
 To get the aggregate itself that a `Caccessor` is referring to you must use `[]` similar to Julia `Ref` usage.
 This will lead to some surprising results/behavior if you forget this detail.
 The implemented `Base.show` function will also cause the `Caccessor` to appear as if you are working with the aggregate, so trust `typeof`.
 
 ```jl
 julia> typeof(zeroed.m)
-Caccessor{MyFirstCStruct}
+CBinding.Caccessor{MyFirstCStruct,MySecondCStruct,Val{12}}
 
 julia> typeof(zeroed.m[])
 MyFirstCStruct
 
 julia> sizeof(zeroed.m)
-16
+8
 
 julia> sizeof(zeroed.m[])
 4
