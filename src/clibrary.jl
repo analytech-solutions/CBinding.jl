@@ -3,7 +3,7 @@
 struct Clibrary
 	handle::Ptr{Cvoid}
 	
-	Clibrary(libName::Union{AbstractString, Nothing} = nothing) = new(Libdl.dlopen(libName === nothing ? _NullCString() : libName, Libdl.RTLD_LAZY | Libdl.RTLD_DEEPBIND | Libdl.RTLD_LOCAL))
+	Clibrary(libName::Union{AbstractString, Nothing} = nothing, flags = Libdl.RTLD_LAZY | Libdl.RTLD_DEEPBIND | Libdl.RTLD_LOCAL) = new(Libdl.dlopen(libName === nothing ? _NullCString() : libName, flags))
 end
 
 Base.close(lib::Clibrary) = Libdl.dlclose(lib.handle)
