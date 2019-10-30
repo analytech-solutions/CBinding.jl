@@ -346,6 +346,18 @@ include("layout-tests.jl")
 		@test bl.x.y == 0 && bl.x.z == 0
 		bl.x.z = 123
 		@test bl.x.y == 0 && bl.x.z == 123
+		
+		@cstruct ArrayOfStruct {
+			x::BrokenLayout[2]
+		}
+		@test sizeof(ArrayOfStruct) == 2*2*sizeof(Cint)
+		aos = ArrayOfStruct()
+		@test typeof(aos.x) <: CBinding.Caccessor
+		@test typeof(aos.x[]) <: Carray
+		@test typeof(aos.x[2]) <: CBinding.Caccessor
+		@test typeof(aos.x[2][]) <: BrokenLayout
+		@test typeof(aos.x[2].x) <: CBinding.Caccessor
+		@test typeof(aos.x[2].x.y) <: Cint
 	end
 	
 	

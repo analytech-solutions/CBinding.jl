@@ -58,6 +58,7 @@ Base.sizeof(::Type{CA}) where {T, N, CA<:Carray{T, N}} = sizeof(T)*N
 
 
 
+
 # the following provides a deferred access mechanism to handle nested aggregate fields (in aggregates or arrays) to support correct/efficient behavior of:
 #   a.b[3].c.d = x
 #   y = a.b[3].c.d
@@ -103,7 +104,7 @@ Base.getproperty(ca::CA, sym::Symbol) where {CA<:Caggregates} = _getproperty(_ba
 Base.setproperty!(ca::CA, sym::Symbol, val) where {CA<:Caggregates} = _setproperty!(_base(ca), Val{_fieldoffset(ca)}, _strategy(_fieldtype(ca)), Val{_fieldtype(ca) <: Cunion}, _typespec(_fieldtype(ca)), Val{sym}, val)
 
 # AbstractArray interface
-Base.getindex(ca::CA, ind) where {T<:Cdeferrable, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = Caccessor{T}(ca, Val(_fieldoffset(ca) + (ind-1)*sizeof(T)))
+Base.getindex(ca::CA, ind) where {T<:Cdeferrable, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = Caccessor{T}(_base(ca), Val(_fieldoffset(ca) + (ind-1)*sizeof(T)))
 Base.getindex(ca::CA, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_load(reinterpret(Ptr{T}, pointer_from_objref(ca)), ind)
 Base.setindex!(ca::CA, val, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(ca)), val, ind)
 
@@ -246,9 +247,9 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 				args = Base.is_expr(args, :tuple) ? args.args : (args,)
 				for arg in args
 					if arg isa Symbol
-						push!(fields, :(Pair{$(QuoteNode(arg)), $(argType) <: CBinding.Caggregate ? Tuple{$(argType), CBinding._strategy($(argType)), CBinding._typespec($(argType))} : Tuple{$(argType)}}))
+						push!(fields, :(Pair{$(QuoteNode(arg)), $(argType) <: CBinding.Caggregate || ($(argType) <: CBinding.Carray && eltype($(argType)) <: CBinding.Caggregate) ? Tuple{$(argType), CBinding._strategy($(argType) <: Carray ? eltype($(argType)) : $(argType)), CBinding._typespec($(argType) <: Carray ? eltype($(argType)) : $(argType))} : Tuple{$(argType)}}))
 					elseif Base.is_expr(arg, :escape, 1) && arg.args[1] isa Symbol
-						push!(fields, :(Pair{$(QuoteNode(arg.args[1])), $(argType) <: CBinding.Caggregate ? Tuple{$(argType), CBinding._strategy($(argType)), CBinding._typespec($(argType))} : Tuple{$(argType)}}))
+						push!(fields, :(Pair{$(QuoteNode(arg.args[1])), $(argType) <: CBinding.Caggregate || ($(argType) <: CBinding.Carray && eltype($(argType)) <: CBinding.Caggregate) ? Tuple{$(argType), CBinding._strategy($(argType) <: Carray ? eltype($(argType)) : $(argType)), CBinding._typespec($(argType) <: Carray ? eltype($(argType)) : $(argType))} : Tuple{$(argType)}}))
 					elseif Base.is_expr(arg, :call, 3) && arg.args[1] === :(:) && arg.args[3] isa Integer
 						push!(fields, :(Pair{$(QuoteNode(arg.args[2])), Tuple{$(argType), $(arg.args[3])}}))
 					elseif Base.is_expr(arg, :call, 3) && Base.is_expr(arg.args[1], :escape, 1) && arg.args[1].args[1] === :(:) && Base.is_expr(arg.args[3], :escape, 1) && arg.args[3].args[1] isa Integer
@@ -287,7 +288,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 						end
 						
 						(aname, atype) = _parseAugmentedField(arg)
-						push!(fields, :(Pair{$(QuoteNode(aname)), Tuple{$(atype)}}))
+						push!(fields, :(Pair{$(QuoteNode(aname)), $(atype) <: CBinding.Caggregate || ($(atype) <: CBinding.Carray && eltype($(atype)) <: CBinding.Caggregate) ? Tuple{$(atype), CBinding._strategy($(atype) <: Carray ? eltype($(atype)) : $(atype)), CBinding._typespec($(atype) <: Carray ? eltype($(atype)) : $(atype))} : Tuple{$(atype)}}))
 					end
 				end
 			end
@@ -420,7 +421,7 @@ _computelayout(::Type{CA}) where {CA<:Caggregate} = _computelayout(_strategy(CA)
 			(typ, bits) = typ.parameters
 		elseif length(typ.parameters) == 3
 			(typ, typStrat, typSpec) = typ.parameters
-			typIsUnion = Val{typ <: Cunion}
+			typIsUnion = Val{(typ <: Carray ? eltype(typ) : typ) <: Cunion}
 		end
 		
 		start = !IsUnion ? size : 0
@@ -435,8 +436,8 @@ _computelayout(::Type{CA}) where {CA<:Caggregate} = _computelayout(_strategy(CA)
 			align = max(align, typ)
 			size = op(size, pad)
 		else
-			pad = typ <: Caggregate ? padding(AlignStrategy, start, bits, typStrat, typIsUnion, typSpec) : padding(AlignStrategy, start, bits, typ)
-			alignas = typ <: Caggregate ? checked_alignof(AlignStrategy, typStrat, typIsUnion, typSpec) : checked_alignof(AlignStrategy, typ)
+			pad = typ <: Caggregate || (typ <: Carray && eltype(typ) <: Caggregate) ? padding(AlignStrategy, start, bits, typStrat, typIsUnion, typSpec) : padding(AlignStrategy, start, bits, typ)
+			alignas = typ <: Caggregate || (typ <: Carray && eltype(typ) <: Caggregate) ? checked_alignof(AlignStrategy, typStrat, typIsUnion, typSpec) : checked_alignof(AlignStrategy, typ)
 			offset = op(start, pad)
 			if sym !== _ANONYMOUS_FIELD
 				result = (result..., (sym, (bits == 0 ? typ : (typ, bits)), offset))
