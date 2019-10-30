@@ -18,7 +18,12 @@ function checkJL(expr, val)
 	types = Base.invokelatest(CBinding.propertytypes, x)
 	for (ind, prop) in enumerate(Base.invokelatest(propertynames, x))
 		x = Base.invokelatest(X.X)
-		Base.invokelatest(setproperty!, x, prop, sizeof(types[ind]) < sizeof(val) ? Core.Intrinsics.trunc_int(types[ind], val) : reinterpret(types[ind], val))
+		v1 = sizeof(types[ind]) < sizeof(val) ? Core.Intrinsics.trunc_int(types[ind], val) : reinterpret(types[ind], val)
+		Base.invokelatest(setproperty!, x, prop, v1)
+		v2 = Base.invokelatest(getproperty, x, prop)
+		Base.invokelatest(setproperty!, x, prop, v2)
+		v3 = Base.invokelatest(getproperty, x, prop)
+		@test v2 === v3
 		push!(result, "$(String(prop)): $(bytes2hex(UInt8[getfield(x, :mem)...,]))")
 	end
 	return result
@@ -346,6 +351,18 @@ include("layout-tests.jl")
 		@test bl.x.y == 0 && bl.x.z == 0
 		bl.x.z = 123
 		@test bl.x.y == 0 && bl.x.z == 123
+		
+		@cstruct ArrayOfStruct {
+			x::BrokenLayout[2]
+		}
+		@test sizeof(ArrayOfStruct) == 2*2*sizeof(Cint)
+		aos = ArrayOfStruct()
+		@test typeof(aos.x) <: CBinding.Caccessor
+		@test typeof(aos.x[]) <: Carray
+		@test typeof(aos.x[2]) <: CBinding.Caccessor
+		@test typeof(aos.x[2][]) <: BrokenLayout
+		@test typeof(aos.x[2].x) <: CBinding.Caccessor
+		@test typeof(aos.x[2].x.y) <: Cint
 	end
 	
 	

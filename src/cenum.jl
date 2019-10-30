@@ -123,13 +123,13 @@ _computeEnumType(::Type{CE}) where {CE<:Cenum} = eltype(CE)
 function _computeEnumType(::Type{AlignStrategy}, fields::Tuple) where {AlignStrategy}
 	(min, max) = extrema(map(last, fields))
 	
-	for typ in _enumTypes(AlignStrategy)
+	for typ in enumtypes(AlignStrategy)
 		typemin(typ) <= min && max <= typemax(typ) && return typ
 	end
 	
 	error("Unable to determine suitable enumeration storage type for the values provided")
 end
 
-_enumTypes(::Type{ALIGN_NATIVE}) = (UInt32, Int32, UInt64, Int64, UInt128, Int128)
-_enumTypes(::Type{ALIGN_PACKED}) = (UInt8, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, UInt128, Int128)
+enumtypes(::Type{ALIGN_NATIVE}) = (UInt32, Int32, UInt64, Int64, UInt128, Int128)
+enumtypes(::Type{ALIGN_PACKED}) = (UInt8, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, UInt128, Int128)
 
