@@ -3,7 +3,7 @@ module CBinding
 	using Todo: @todo_str
 	
 	
-	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention
+	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Cconst
 	export STDCALL, CDECL, FASTCALL, THISCALL
 	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings
 	export propertytypes
