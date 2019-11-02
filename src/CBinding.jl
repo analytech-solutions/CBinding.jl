@@ -20,10 +20,18 @@ module CBinding
 	abstract type Cenum{T<:Integer} <: Integer end
 	
 	
+	# alignment strategies
+	const ALIGN_NATIVE = Val{:native}
+	const ALIGN_PACKED = Val{:packed}
+	
+	
 	include("clibrary.jl")
 	include("cbindings.jl")
-	include("caggregate.jl")
 	include("cenum.jl")
+	include("cconst.jl")
+	include("carray.jl")
+	include("caggregate.jl")
+	include("caccessor.jl")
 	include("cglobal.jl")
 	include("cfunction.jl")
 end
