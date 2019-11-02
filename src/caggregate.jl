@@ -14,7 +14,8 @@ struct Cconst{T, S}
 	Cconst{T}(x) where {T} = new{T, sizeof(T)}(x)
 end
 Cconst(::Type{T}) where {T} = Cconst{T, sizeof(T)}
-Cconst(x) = Cconst{typeof(x)}(x)
+Cconst(x) = x
+Cconst(cc::Cconst) = cc
 Cconst(ca::Caggregate) = Cconst{typeof(ca)}(getfield(ca, :mem))
 Cconst{T}(; kwargs...) where {T} = Cconst(T(; kwargs...))
 
@@ -104,37 +105,40 @@ _typespec(::Type{CA}) where {T<:Caggregate, N, CA<:Carray{T, N}} = _typespec(T)
 # the following provides a deferred access mechanism to handle nested aggregate fields (in aggregates or arrays) to support correct/efficient behavior of:
 #   a.b[3].c.d = x
 #   y = a.b[3].c.d
-const Cdeferrable = Union{Caggregate, Carray, Cconst{<:Caggregate}, Cconst{<:Carray}}
-struct Caccessor{FieldType<:Cdeferrable, BaseType<:Cdeferrable, Offset<:Val}
+const Cdeferrable = Union{Caggregate, Carray}
+struct Caccessor{FieldType<:Union{Cdeferrable, Cconst}, BaseType<:Union{Caggregate, Carray, Ptr{<:Caggregate}, Ptr{<:Carray}}, Offset<:Val}
 	base::BaseType
 	
-	Caccessor{FieldType}(b::BaseType, ::Val{Offset}) where {FieldType<:Cdeferrable, BaseType<:Cdeferrable, Offset} = new{FieldType, BaseType, Val{Offset}}(b)
+	Caccessor{FieldType}(b::BaseType, ::Val{Offset} = Val(0)) where {FieldType, BaseType, Offset} = new{FieldType, BaseType, Val{Offset}}(b)
 end
-const Caggregates = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{Cconst{CA}}} where {CA<:Caggregate}
-const Carrays = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{Cconst{CA}}} where {CA<:Carray}
+Caccessor{T}(sym::Symbol, libs::Clibrary...) where {T<:Cdeferrable} = Caccessor{T}(reinterpret(Ptr{T}, _dlsym(sym, libs...)))
+Caccessor{T}(lib::Clibrary, sym::Symbol) where {T<:Cdeferrable} = Caccessor{T}(sym, lib)
+Caccessor{T}(args...) where {T<:Cconst} = Cconst(Caccessor{nonconst(T)}(args...)[])
 
-_fieldoffset(cx::Union{Cdeferrable, Caccessor}) = _fieldoffset(typeof(cx))
+_fieldoffset(cx::Union{Cdeferrable, Cconst, Caccessor}) = _fieldoffset(typeof(cx))
 _fieldoffset(::Type{CD}) where {CD<:Cdeferrable} = 0
 _fieldoffset(::Type{CC}) where {T, CC<:Cconst{T}} = _fieldoffset(T)
 _fieldoffset(::Type{Caccessor{FieldType, BaseType, Val{Offset}}}) where {FieldType, BaseType, Offset} = Offset
 
-_fieldtype(cx::Union{Cdeferrable, Caccessor}) = _fieldtype(typeof(cx))
+_fieldtype(cx::Union{Cdeferrable, Cconst, Caccessor}) = _fieldtype(typeof(cx))
 _fieldtype(::Type{CD}) where {CD<:Cdeferrable} = CD
 _fieldtype(::Type{CC}) where {T, CC<:Cconst{T}} = _fieldtype(T)
 _fieldtype(::Type{Caccessor{FieldType, BaseType, Val{Offset}}}) where {FieldType, BaseType, Offset} = FieldType
 
-_base(cx::Cdeferrable) = cx
+_base(cx::Union{Cdeferrable, Cconst}) = cx
 _base(ca::Caccessor) = getfield(ca, :base)
 
 Base.convert(::Type{CD}, ca::Caccessor{CD}) where {CD<:Cdeferrable} = ca[]
 Base.show(io::IO, ca::Caccessor{CD}) where {CD<:Cdeferrable} = show(io, ca[])
 
-Base.pointer_from_objref(ca::Caccessor) = reinterpret(Ptr{_fieldtype(ca)}, pointer_from_objref(_base(ca))+_fieldoffset(ca))
+Base.pointer_from_objref(ca::Caccessor{FieldType, BaseType, Offset}) where {FieldType, BaseType<:Ptr, Offset} = reinterpret(Ptr{_fieldtype(ca)}, _base(ca)+_fieldoffset(ca))
+Base.pointer_from_objref(ca::Caccessor{FieldType, BaseType, Offset}) where {FieldType, BaseType<:Union{Caggregate, Carray}, Offset} = reinterpret(Ptr{_fieldtype(ca)}, pointer_from_objref(_base(ca))+_fieldoffset(ca))
 
 Base.getindex(ca::Caccessor{CA}) where {CA<:Cdeferrable} = unsafe_load(pointer_from_objref(ca))
 Base.setindex!(ca::Caccessor{CA}, val::CA) where {CA<:Cdeferrable} = unsafe_store!(pointer_from_objref(ca), val)
 
 # Caggregate interface
+const Caggregates = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{Cconst{CA}}} where {CA<:Caggregate}
 Base.propertynames(ca::CA; kwargs...) where {CA<:Caggregates} = propertynames(typeof(ca); kwargs...)
 Base.propertynames(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, typ, off),) -> sym, _computefields(_fieldtype(CA)))
 
@@ -148,6 +152,7 @@ Base.getproperty(ca::CA, sym::Symbol) where {CA<:Caggregates} = _getproperty(_ba
 Base.setproperty!(ca::CA, sym::Symbol, val) where {CA<:Caggregates} = _setproperty!(_base(ca), Val{_fieldoffset(ca)}, _strategy(_fieldtype(ca)), Val{_fieldtype(ca) <: Cunion}, _typespec(_fieldtype(ca)), Val{sym}, val)
 
 # AbstractArray interface
+const Carrays = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{Cconst{CA}}} where {CA<:Carray}
 Base.getindex(ca::CA, ind) where {T<:Cdeferrable, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = Caccessor{T}(_base(ca), Val(_fieldoffset(ca) + (ind-1)*sizeof(T)))
 Base.getindex(ca::CA, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_load(reinterpret(Ptr{T}, pointer_from_objref(ca)), ind)
 Base.setindex!(ca::CA, val, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_store!(reinterpret(Ptr{T}, pointer_from_objref(ca)), val, ind)
@@ -388,19 +393,6 @@ end
 
 
 
-macro cconst(exprs...) _cconst(__module__, nothing, exprs...) end
-
-function _cconst(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Union{Symbol, Expr})
-	isOuter = isnothing(deps)
-	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	expr = _expand(mod, deps, expr)
-	def = :(Cconst{$(expr), sizeof(Cconst{$(expr)})})
-	
-	return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
-end
-
-
-
 # alignment strategies
 const ALIGN_NATIVE = Val{:native}
 const ALIGN_PACKED = Val{:packed}
@@ -550,27 +542,35 @@ end
 	return quote $(result...) end
 end
 
-@generated function _getproperty(ca::CA, ::Type{Val{Offset}}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}) where {CA<:Caggregate, Offset, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
+@generated function _getproperty(ca::Union{CA, Ptr{CA}}, ::Type{Val{Offset}}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}) where {CA<:Caggregate, Offset, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
 	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
 		nam === FieldName || continue
 		off += Offset
 		
-		return quote
-			if $(typ) isa Tuple
+		if typ isa Tuple
+			return quote
 				(t, b) = $(typ)
 				ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
 				o = ityp($(off & (8-1)))
-				field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + $(off÷8)), ityp, Val(o), Val(b))
+				field = _unsafe_load(reinterpret(Ptr{UInt8}, (ca isa Ptr ? ca : pointer_from_objref(ca)) + $(off÷8)), ityp, Val(o), Val(b))
 				mask = _bitmask(ityp, Val(b))
 				val = (field >> o) & mask
 				if t <: Signed && ((val >> (b-1)) & 1) != 0  # 0 = pos, 1 = neg
 					val |= ~ityp(0) & ~mask
 				end
-				return reinterpret(t, val)
-			elseif $(typ) <: Caggregate || $(typ) <: Carray
+				return reinterpret((t <: Cconst ? nonconst(t) : t), val)
+			end
+		elseif typ <: Caggregate || typ <: Carray
+			return quote
 				return Caccessor{$(typ)}(ca, Val($(off÷8)))
-			else
-				return unsafe_load(reinterpret(Ptr{$(typ)}, pointer_from_objref(ca) + $(off÷8)))
+			end
+		elseif typ <: Cconst{<:Caggregate} || typ <: Cconst{<:Carray}
+			return quote
+				return Cconst{nonconst($(typ))}(($(map(i -> :(unsafe_load(reinterpret(Ptr{UInt8}, (ca isa Ptr ? ca : pointer_from_objref(ca))), $(i))), off÷8+1:off÷8+sizeof(typ))...),))
+			end
+		else
+			return quote
+				return unsafe_load(reinterpret(Ptr{$(typ) <: Cconst ? nonconst($(typ)) : $(typ)}, (ca isa Ptr ? ca : pointer_from_objref(ca)) + $(off÷8)))
 			end
 		end
 	end
@@ -579,31 +579,40 @@ end
 	end
 end
 
-@generated function _setproperty!(ca::CA, ::Type{Val{Offset}}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}, val) where {CA<:Caggregate, Offset, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
+@generated function _setproperty!(ca::Union{CA, Ptr{CA}}, ::Type{Val{Offset}}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}, val) where {CA<:Caggregate, Offset, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
 	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
 		nam === FieldName || continue
 		off += Offset
 		
-		return quote
-			if $(typ) isa Tuple
+		if typ isa Tuple
+			return quote
 				(t, b) = $(typ)
+				t <: Cconst && error("Unable to change the value of a Cconst field")
 				ityp = sizeof(t) == sizeof(UInt8) ? UInt8 : sizeof(t) == sizeof(UInt16) ? UInt16 : sizeof(t) == sizeof(UInt32) ? UInt32 : sizeof(t) == sizeof(UInt64) ? UInt64 : UInt128
 				o = ityp($(off & (8-1)))
-				field = _unsafe_load(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + $(off÷8)), ityp, Val(o), Val(b))
+				field = _unsafe_load(reinterpret(Ptr{UInt8}, (ca isa Ptr ? ca : pointer_from_objref(ca)) + $(off÷8)), ityp, Val(o), Val(b))
 				mask = _bitmask(ityp, Val(b)) << o
 				field &= ~mask
 				field |= (reinterpret(ityp, convert(t, val)) << o) & mask
-				_unsafe_store!(reinterpret(Ptr{UInt8}, pointer_from_objref(ca) + $(off÷8)), ityp, Val(o), Val(b), field)
-			elseif $(typ) <: Carray
+				_unsafe_store!(reinterpret(Ptr{UInt8}, (ca isa Ptr ? ca : pointer_from_objref(ca)) + $(off÷8)), ityp, Val(o), Val(b), field)
+				return val
+			end
+		elseif typ <: Carray
+			return quote
+				$(typ) <: Cconst && error("Unable to change the value of a Cconst field")
 				x = Caccessor{$(typ)}(ca, Val($(off÷8)))
 				length(val) == length(x) || error("Length of value does not match the length of the array field it is being assigned to")
 				for (i, v) in enumerate(val)
 					x[i] = v
 				end
-			else
-				unsafe_store!(reinterpret(Ptr{$(typ)}, pointer_from_objref(ca) + $(off÷8)), val)
+				return val
 			end
-			return val
+		else
+			return quote
+				$(typ) <: Cconst && error("Unable to change the value of a Cconst field")
+				unsafe_store!(reinterpret(Ptr{$(typ)}, (ca isa Ptr ? ca : pointer_from_objref(ca)) + $(off÷8)), val)
+				return val
+			end
 		end
 	end
 	return quote
@@ -631,8 +640,8 @@ end
 		nam === FieldName || continue
 		off += Offset
 		
-		return quote
-			if $(typ) isa Tuple
+		if typ isa Tuple
+			return quote
 				(t, b) = $(typ)
 				ityp = _uintize(t)
 				o = ityp($(off & (8-1)))
@@ -642,11 +651,15 @@ end
 				if t <: Signed && ((val >> (b-1)) & 1) != 0  # 0 = pos, 1 = neg
 					val |= ~ityp(0) & ~mask
 				end
-				return reinterpret(t, val)
-			elseif $(typ) <: Caggregate || $(typ) <: Carray
+				return reinterpret((t <: Cconst ? nonconst(t) : t), val)
+			end
+		elseif typ <: Caggregate || typ <: Carray || typ <: Cconst{<:Caggregate} || typ <: Cconst{<:Carray}
+			return quote
 				return Cconst{$(typ)}(_extract(getfield(ca, :mem), Val($(off÷8)), Val($(sizeof(typ)))))
-			else
-				return reinterpret($(typ), _unsafe_load(getfield(ca, :mem), Val($(off÷8)), _uintize($(typ)), Val(0), Val(sizeof($(typ))*8)))
+			end
+		else
+			return quote
+				return reinterpret(($(typ) <: Cconst ? nonconst($(typ)) : $(typ)), _unsafe_load(getfield(ca, :mem), Val($(off÷8)), _uintize($(typ)), Val(0), Val(sizeof($(typ))*8)))
 			end
 		end
 	end
