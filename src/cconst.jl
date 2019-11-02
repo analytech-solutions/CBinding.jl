@@ -5,11 +5,12 @@ struct Cconst{T, S}
 	
 	Cconst{T}(x) where {T} = new{T, sizeof(T)}(x)
 end
-Cconst(::Type{T}) where {T} = Cconst{T, sizeof(T)}
+Cconst{T, S}(args...; kwargs...) where {T, S} = Cconst{T}(args...; kwargs...)
+Cconst{T}(; kwargs...) where {T} = Cconst(T(; kwargs...))
+Cconst(::Type{T}) where {T} = Cconst{nonconst(T), sizeof(nonconst(T))}
 Cconst(x) = x
 Cconst(cc::Cconst) = cc
 Cconst(ca::Caggregate) = Cconst{typeof(ca)}(getfield(ca, :mem))
-Cconst{T}(; kwargs...) where {T} = Cconst(T(; kwargs...))
 
 nonconst(::Type{T}) where {T} = T
 nonconst(::Type{CC}) where {T, CC<:Cconst{T}} = T

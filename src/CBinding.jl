@@ -3,7 +3,7 @@ module CBinding
 	using Todo: @todo_str
 	
 	
-	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Cconst
+	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Calignment, Cconst, Caccessor
 	export STDCALL, CDECL, FASTCALL, THISCALL
 	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings
 	export propertytypes
@@ -21,8 +21,21 @@ module CBinding
 	
 	
 	# alignment strategies
-	const ALIGN_NATIVE = Val{:native}
-	const ALIGN_PACKED = Val{:packed}
+	struct Calignment{SymT}
+	end
+	
+	const ALIGN_NATIVE = Calignment{:native}
+	const ALIGN_PACKED = Calignment{:packed}
+	
+	
+	# calling conventions
+	struct Cconvention{SymT}
+	end
+	
+	const STDCALL  = Cconvention{:stdcall}
+	const CDECL    = Cconvention{:cdecl}
+	const FASTCALL = Cconvention{:fastcall}
+	const THISCALL = Cconvention{:thiscall}
 	
 	
 	include("clibrary.jl")
