@@ -21,13 +21,16 @@ Base.setindex!(ca::Caccessor{CD}, val::CD) where {CD<:Cdeferrable} = unsafe_stor
 # Caggregate interface
 const Caggregates = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{Cconst{CA}}} where {CA<:Caggregate}
 Base.propertynames(ca::CA; kwargs...) where {CA<:Caggregates} = propertynames(typeof(ca); kwargs...)
-Base.propertynames(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, typ, off),) -> sym, _computefields(_fieldtype(CA)))
+Base.propertynames(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, fld),) -> sym, (sort(collect(Ctypelayout(_fieldtype(CA)).fields), by = ((sym, fld),) -> fld.ind)...,))
+
+propertytypes(ca::CA; kwargs...) where {CA<:Caggregates} = propertytypes(typeof(ca); kwargs...)
+propertytypes(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, fld),) -> fld.type, (sort(collect(Ctypelayout(_fieldtype(CA)).fields), by = ((sym, fld),) -> fld.ind)...,))
 
 Base.fieldnames(ca::CA; kwargs...) where {CA<:Caggregates} = fieldnames(typeof(ca); kwargs...)
 Base.fieldnames(::Type{CA}; kwargs...) where {CA<:Caggregates} = propertynames(_fieldtype(CA); kwargs...)
 
-Base.getproperty(cx::CX, sym::Symbol) where {CA<:Caggregates, CX<:Union{CA, Caccessor{CA}}} = _getproperty(_base(cx), Val{_fieldoffset(cx)}, _fieldtype(cx), _strategy(_fieldtype(cx)), Val{_fieldtype(cx) <: Cunion}, _typespec(_fieldtype(cx)), Val{sym})
-Base.setproperty!(cx::CX, sym::Symbol, val) where {CA<:Caggregate, CX<:Union{CA, Caccessor{CA}}} = _setproperty!(_base(cx), Val{_fieldoffset(cx)}, _fieldtype(cx), _strategy(_fieldtype(cx)), Val{_fieldtype(cx) <: Cunion}, _typespec(_fieldtype(cx)), Val{sym}, val)
+Base.getproperty(cx::CX, sym::Symbol) where {CA<:Caggregates, CX<:Union{CA, Caccessor{CA}}} = _getproperty(_base(cx), Val(_fieldoffset(cx)), Ctypespec(_fieldtype(cx)), Val(sym))
+Base.setproperty!(cx::CX, sym::Symbol, val) where {CA<:Caggregate, CX<:Union{CA, Caccessor{CA}}} = _setproperty!(_base(cx), Val(_fieldoffset(cx)), Ctypespec(_fieldtype(cx)), Val(sym), val)
 
 # Carray interface
 const Carrays = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{Cconst{CA}}} where {CA<:Carray}
@@ -110,27 +113,19 @@ end
 	return quote $(result...) end
 end
 
-# TODO: group AlignStrategy, IsUnion, TypeSpec into a Tuple{...}
-@generated function _getproperty(base::Union{CA, Cconst{CA}, Ptr{CA}}, ::Type{Val{Offset}}, ::Type{CX}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}) where {CA<:Caggregate, Offset, CX<:Union{Cdeferrable, Cconst{<:Cdeferrable}}, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
-	# fields = _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
-	# if haskey(FieldName, fields)
-	# 	(nam, typ, bits, off) = fields[FieldName]
-		
-	# 	if bits != 0  # typ isa Tuple
-	# 	elseif typ <: Union{Cdeferrable, Cconst{<:Cdeferrable}}
-	# 	elseif base <: Cconst || CX <: Cconst
-	# 	else
-	# 	end
-	# end
-	# return :(error("..."))
-	
-	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
-		nam === FieldName || continue
-		off += Offset
+
+
+@generated function _getproperty(base::Union{CA, Cconst{CA}, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}) where {CA<:Caggregate, offset, spec<:Ctypespec, name}
+	fields = Ctypelayout(spec).fields
+	if haskey(fields, name)
+		typ = fields[name].type
+		bits = fields[name].size
+		off = fields[name].offset + offset*8
 		
 		mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
-		if typ isa Tuple
-			(t, b) = typ
+		if bits != 0
+			t = typ
+			b = bits
 			uint = _uint(t)
 			o = off & (8-1)
 			mask = _bitmask(uint, b)
@@ -144,25 +139,28 @@ end
 				return reinterpret(nonconst($(t)), val)
 			end
 		elseif typ <: Union{Cdeferrable, Cconst{<:Cdeferrable}}
-			return :(Caccessor{$(base <: Cconst || CX <: Cconst ? Cconst(typ) : typ)}(base, Val($(off÷8))))
-		elseif base <: Cconst
-			return :(reinterpret(nonconst($(typ)), _unsafe_load(base, Val($(off÷8)), $(_uint(typ)), Val(0), Val(sizeof($(typ))*8))))
+			return :(Caccessor{$(base <: Cconst || _type(spec) <: Cconst ? Cconst(typ) : typ)}(base, Val($(off÷8))))
+		# elseif base <: Cconst
 		else
-			return :(unsafe_load(reinterpret(Ptr{nonconst($(typ))}, $(mem) + $(off÷8))))
+			return :(reinterpret(nonconst($(typ)), _unsafe_load($(mem), Val($(off÷8)), $(_uint(typ)), Val(0), Val(sizeof($(typ))*8))))
+			# return :(unsafe_load(reinterpret(Ptr{nonconst($(typ))}, $(mem) + $(off÷8))))
 		end
 	end
-	return :(error("Unable to get property `$(FieldName)`, it is not a field of $(typeof(base))"))
+	return :(error("Unable to get property `$(name)`, it is not a field of $(typeof(base))"))
 end
 
 
-@generated function _setproperty!(base::Union{CA, Ptr{CA}}, ::Type{Val{Offset}}, ::Type{CX}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}, ::Type{Val{FieldName}}, val) where {CA<:Caggregate, Offset, CX<:Cdeferrable, AlignStrategy, IsUnion, TypeSpec<:Tuple, FieldName}
-	for (nam, typ, off) in _computefields(AlignStrategy, Val{IsUnion}, TypeSpec)
-		nam === FieldName || continue
-		off += Offset
+@generated function _setproperty!(base::Union{CA, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}, val) where {CA<:Caggregate, offset, spec<:Ctypespec, name}
+	fields = Ctypelayout(spec).fields
+	if haskey(fields, name)
+		typ = fields[name].type
+		bits = fields[name].size
+		off = fields[name].offset + offset*8
 		
 		mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
-		if typ isa Tuple
-			(t, b) = typ
+		if bits != 0
+			t = typ
+			b = bits
 			uint = _uint(t)
 			o = off & (8-1)
 			mask = _bitmask(uint, b) << o
@@ -193,6 +191,6 @@ end
 			end
 		end
 	end
-	return :(error("Unable to set property `$(FieldName)`, it is not a field of $(typeof(base))"))
+	return :(error("Unable to set property `$(name)`, it is not a field of $(typeof(base))"))
 end
 

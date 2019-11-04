@@ -20,6 +20,10 @@ Base.convert(::Type{T}, cc::Cconst{T}) where {T<:Caggregate} = T(cc)
 Base.sizeof(::Type{CC}) where {T, CC<:Cconst{T}} = sizeof(T)
 
 
-_strategy(::Type{CC}) where {CA<:Caggregate, CC<:Cconst{CA}} = _strategy(nonconst(CC))
-_typespec(::Type{CC}) where {CA<:Caggregate, CC<:Cconst{CA}} = _typespec(nonconst(CC))
+function Ctypespec(::Type{CC}) where {CC<:Cconst}
+	_fix(::Type{Tuple{typ}}) where {typ} = Tuple{Cconst(typ)}
+	_fix(::Type{Tuple{typ, bits}}) where {typ, bits} = Tuple{Cconst(typ), bits}
+	_fix(::Type{spec}) where {spec<:Ctypespec} = Ctypespec{Cconst(_type(spec)), _aggregate(spec), _strategy(spec), _specification(spec)}
+	return _fix(Ctypespec(nonconst(CC)))
+end
 

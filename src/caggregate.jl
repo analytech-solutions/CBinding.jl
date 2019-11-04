@@ -52,10 +52,6 @@ function Base.show(io::IO, ca::Union{Caggregate, Cconst{<:Caggregate}})
 end
 
 
-_strategy(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get alignment strategy for an aggregate without one")
-_typespec(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get type specification for an aggregate without one")
-
-
 
 const _alignExprs = (Symbol("@calign"), :(CBinding.$(Symbol("@calign"))))
 const _enumExprs = (Symbol("@cenum"), :(CBinding.$(Symbol("@cenum"))))
@@ -168,7 +164,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			arg = _expand(mod, deps, arg)
 			if Base.is_expr(arg, :align, 1)
 				align = arg.args[1]
-				push!(fields, :(Pair{nothing, Tuple{$(align)}}))
+				push!(fields, :(Calignment{$(align)}))
 			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous#")
 				# this is just a type definition, not a field
 			else
@@ -179,13 +175,13 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 				args = Base.is_expr(args, :tuple) ? args.args : (args,)
 				for arg in args
 					if arg isa Symbol
-						push!(fields, :(Pair{$(QuoteNode(arg)), _isaggregate($(argType)) ? Tuple{$(argType), CBinding._strategy($(argType)), CBinding._typespec($(argType))} : Tuple{$(argType)}}))
+						push!(fields, :(Pair{$(QuoteNode(arg)), Ctypespec($(argType))}))
 					elseif Base.is_expr(arg, :escape, 1) && arg.args[1] isa Symbol
-						push!(fields, :(Pair{$(QuoteNode(arg.args[1])), _isaggregate($(argType)) ? Tuple{$(argType), CBinding._strategy($(argType)), CBinding._typespec($(argType))} : Tuple{$(argType)}}))
+						push!(fields, :(Pair{$(QuoteNode(arg.args[1])), Ctypespec($(argType))}))
 					elseif Base.is_expr(arg, :call, 3) && arg.args[1] === :(:) && arg.args[3] isa Integer
-						push!(fields, :(Pair{$(QuoteNode(arg.args[2])), Tuple{$(argType), $(arg.args[3])}}))
+						push!(fields, :(Pair{$(QuoteNode(arg.args[2])), Ctypespec($(argType), Val($(arg.args[3])))}))
 					elseif Base.is_expr(arg, :call, 3) && Base.is_expr(arg.args[1], :escape, 1) && arg.args[1].args[1] === :(:) && Base.is_expr(arg.args[3], :escape, 1) && arg.args[3].args[1] isa Integer
-						push!(fields, :(Pair{$(QuoteNode(arg.args[2].args[1])), Tuple{$(argType), $(arg.args[3].args[1])}}))
+						push!(fields, :(Pair{$(QuoteNode(arg.args[2].args[1])), Ctypespec($(argType), Val($(arg.args[3].args[1])))}))
 					else
 						function _parseAugmentedField(a)
 							a = deepcopy(a)
@@ -220,7 +216,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 						end
 						
 						(aname, atype) = _parseAugmentedField(arg)
-						push!(fields, :(Pair{$(QuoteNode(aname)), _isaggregate($(atype)) ? Tuple{$(atype), CBinding._strategy($(atype)), CBinding._typespec($(atype))} : Tuple{$(atype)}}))
+						push!(fields, :(Pair{$(QuoteNode(aname)), Ctypespec($(atype))}))
 					end
 				end
 			end
@@ -238,7 +234,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 		
 		push!(deps, name => quote
 			mutable struct $(escName) <: $(super)
-				mem::NTuple{_computesize($(strategy), Val{$(super) <: Cunion}, Tuple{$(map(_stripPtrTypes, deepcopy(fields))...)})÷8, UInt8}
+				mem::NTuple{Ctypelayout(Ctypespec($(super), $(strategy), Tuple{$(map(_stripPtrTypes, deepcopy(fields))...)})).size÷8, UInt8}
 				
 				$(escName)(::UndefInitializer) = new()
 			end
@@ -246,12 +242,13 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 				TypeSpec = Tuple{
 					Pair{:sym1, Tuple{PrimType}},  # primitive field `sym1`
 					Pair{:sym2, Tuple{PrimType, NBits}},  # bit field `sym2`
-					Pair{:sym3, Tuple{AggType, AggStrategy, AggTypeSpec}},  # nested aggregate `sym3`
-					Pair{Symbol(""), Tuple{AggType, AggStrategy, AggTypeSpec}}  # anonymous nested aggregate
+					Pair{:sym3, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # nested aggregate `sym3`
+					Pair{nothing, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # anonymous nested aggregate
+					Calignment{align}  # alignment "field"
 				}
 			=#
 			CBinding._strategy(::Type{$(escName)}) = $(strategy)
-			CBinding._typespec(::Type{$(escName)}) = Tuple{$(fields...)}
+			CBinding._specification(::Type{$(escName)}) = Tuple{$(fields...)}
 		end)
 	end
 	
@@ -273,122 +270,4 @@ function _carray(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, 
 	
 	return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
 end
-
-
-
-alignof(::Type{ALIGN_PACKED}, ::Type{<:Any}) = 1
-
-alignof(::Type{ALIGN_PACKED}, ::Type{CC}) where {CC<:Cconst} = alignof(ALIGN_PACKED, nonconst(CC))
-alignof(::Type{ALIGN_PACKED}, ::Type{CE}) where {CE<:Cenum} = 1
-alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {CA<:Carray} = 1
-alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {CA<:Caggregate} = 1
-alignof(::Type{ALIGN_PACKED}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple} = 1
-
-alignof(::Type{ALIGN_NATIVE}, ::Type{CC}) where {CC<:Cconst} = alignof(ALIGN_NATIVE, nonconst(CC))
-alignof(::Type{ALIGN_NATIVE}, ::Type{CE}) where {CE<:Cenum} = alignof(ALIGN_NATIVE, eltype(CE))
-alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {CA<:Carray} = alignof(ALIGN_NATIVE, eltype(CA))
-alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {CA<:Caggregate} = _computealign(CA)
-alignof(::Type{ALIGN_NATIVE}, ::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple} = _computealign(AlignStrategy, Val{IsUnion}, TypeSpec)
-
-const (_i8a, _i16a, _i32a, _i64a, _f32a, _f64a) = let
-	(i8a, i16a, i32a, i64a, f32a, f64a) = refs = ((Ref{UInt}() for i in 1:6)...,)
-	ccall("jl_native_alignment",
-		Nothing,
-		(Ptr{UInt}, Ptr{UInt}, Ptr{UInt}, Ptr{UInt}, Ptr{UInt}, Ptr{UInt}),
-		i8a, i16a, i32a, i64a, f32a, f64a
-	)
-	(Int(r[]) for r in refs)
-end
-alignof(::Type{ALIGN_NATIVE}, ::Type{UInt8})   = _i8a
-alignof(::Type{ALIGN_NATIVE}, ::Type{UInt16})  = _i16a
-alignof(::Type{ALIGN_NATIVE}, ::Type{UInt32})  = _i32a
-alignof(::Type{ALIGN_NATIVE}, ::Type{UInt64})  = _i64a
-alignof(::Type{ALIGN_NATIVE}, ::Type{Float32}) = _f32a
-alignof(::Type{ALIGN_NATIVE}, ::Type{Float64}) = _f64a
-alignof(::Type{ALIGN_NATIVE}, ::Type{<:Ptr})   = alignof(ALIGN_NATIVE, sizeof(Ptr{Cvoid}) == sizeof(UInt32) ? UInt32 : UInt64)
-alignof(::Type{ALIGN_NATIVE}, ::Type{Cstring}) = alignof(ALIGN_NATIVE, Ptr)
-alignof(::Type{ALIGN_NATIVE}, ::Type{S}) where {S<:Signed} = alignof(ALIGN_NATIVE, unsigned(S))
-alignof(::Type{ALIGN_NATIVE}, ::Type{UInt128}) = 2*alignof(ALIGN_NATIVE, UInt64)
-alignof(::Type{ALIGN_NATIVE}, ::Type{Clongdouble}) = 2*alignof(ALIGN_NATIVE, Cdouble)
-
-function checked_alignof(args...)
-	a = alignof(args...)
-	a == 0 || a == nextpow(2, a) || error("Alignment must be a power of 2")
-	return a
-end
-
-padding(::Type{ALIGN_PACKED}, offset::Int, align::Int) = (align%8) == 0 ? padding(ALIGN_NATIVE, offset, align) : 0
-padding(::Type{ALIGN_PACKED}, offset::Int, bits::Int, args...) = bits == 0 ? padding(ALIGN_PACKED, offset, checked_alignof(ALIGN_PACKED, args...)*8) : 0
-
-padding(::Type{ALIGN_NATIVE}, offset::Int, align::Int) = -offset & (align - 1)
-function padding(::Type{ALIGN_NATIVE}, offset::Int, bits::Int, args...)
-	pad = padding(ALIGN_NATIVE, offset, checked_alignof(ALIGN_NATIVE, args...)*8)
-	return 0 < bits <= pad ? 0 : pad
-end
-
-
-
-_isaggregate(::Type{T}) where {T} = false
-_isaggregate(::Type{CA}) where {CA<:Caggregate} = true
-_isaggregate(::Type{CC}) where {CC<:Cconst} = _isaggregate(nonconst(CC))
-_isaggregate(::Type{CA}) where {CA<:Carray} = _isaggregate(eltype(CA))
-
-_computealign(args...) = _computelayout(args...)[1]
-_computesize(args...) = _computelayout(args...)[2]
-_computefields(args...) = _computelayout(args...)[3]
-
-_computelayout(::Type{CC}) where {CC<:Cconst} = _computelayout(nonconst(CC))
-_computelayout(::Type{CA}) where {CA<:Caggregate} = _computelayout(_strategy(CA), Val{CA <: Cunion}, _typespec(CA))
-@generated function _computelayout(::Type{AlignStrategy}, ::Type{Val{IsUnion}}, ::Type{TypeSpec}) where {AlignStrategy, IsUnion, TypeSpec<:Tuple}
-	op = !IsUnion ? (+) : (max)
-	
-	align = 1  # in bytes
-	size = 0  # in bits
-	result = ()  # ((symbol, (type, bits), offset), ...)
-	for field in TypeSpec.parameters
-		field <: Pair || continue
-		(sym, typ) = field.parameters
-		bits = 0
-		
-		typ <: Tuple || continue
-		if length(typ.parameters) == 1
-			(typ,) = typ.parameters
-		elseif length(typ.parameters) == 2
-			(typ, bits) = typ.parameters
-		elseif length(typ.parameters) == 3
-			(typ, typStrat, typSpec) = typ.parameters
-			x = typ <: Carray ? eltype(typ) : typ
-			x = x <: Cconst ? nonconst(x) : x
-			typIsUnion = Val{x <: Cunion}
-		end
-		
-		start = !IsUnion ? size : 0
-		if sym === _ANONYMOUS_FIELD && _isaggregate(typ)
-			pad = padding(AlignStrategy, start, 0, typStrat, typIsUnion, typSpec)
-			offset = op(start, pad)
-			result = (result..., map(((s, t, o),) -> (s, t, offset+o), _computefields(typStrat, typIsUnion, typSpec))...)
-			align = max(align, checked_alignof(AlignStrategy, typStrat, typIsUnion, typSpec))
-			size = op(size, pad + sizeof(typ)*8)
-		elseif sym === nothing
-			pad = padding(AlignStrategy, start, typ*8)
-			align = max(align, typ)
-			size = op(size, pad)
-		else
-			pad = _isaggregate(typ) ? padding(AlignStrategy, start, bits, typStrat, typIsUnion, typSpec) : padding(AlignStrategy, start, bits, typ)
-			alignas = _isaggregate(typ) ? checked_alignof(AlignStrategy, typStrat, typIsUnion, typSpec) : checked_alignof(AlignStrategy, typ)
-			offset = op(start, pad)
-			if sym !== _ANONYMOUS_FIELD
-				result = (result..., (sym, (bits == 0 ? typ : (typ, bits)), offset))
-			end
-			align = max(align, alignas)
-			size = op(size, pad + (bits == 0 ? sizeof(typ)*8 : bits))
-		end
-	end
-	
-	size += padding(AlignStrategy, size, align*8)
-	size += -size & (8-1)  # ensure size is divisible by 8
-	
-	return (align::Int, size::Int, result)
-end
-
 

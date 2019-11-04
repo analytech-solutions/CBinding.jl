@@ -38,13 +38,15 @@ module CBinding
 	const THISCALL = Cconvention{:thiscall}
 	
 	
+	include("ctypespec.jl")
 	include("clibrary.jl")
 	include("cbindings.jl")
 	include("cenum.jl")
 	include("cconst.jl")
 	include("carray.jl")
 	include("caggregate.jl")
-	include("caccessor.jl")
 	include("cglobal.jl")
 	include("cfunction.jl")
+	include("ctypelayout.jl")
+	include("caccessor.jl")
 end

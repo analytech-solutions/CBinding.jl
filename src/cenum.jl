@@ -130,6 +130,3 @@ function _computeEnumType(::Type{AlignStrategy}, fields::Tuple) where {AlignStra
 	error("Unable to determine suitable enumeration storage type for the values provided")
 end
 
-enumtypes(::Type{ALIGN_NATIVE}) = (UInt32, Int32, UInt64, Int64, UInt128, Int128)
-enumtypes(::Type{ALIGN_PACKED}) = (UInt8, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, UInt128, Int128)
-
