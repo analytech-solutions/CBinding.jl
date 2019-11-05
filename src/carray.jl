@@ -16,6 +16,8 @@ end
 
 Base.zero(::Type{CA}) where {CA<:Union{Caggregate, Carray}} = CA()
 Base.sizeof(::Type{CA}) where {T, N, CA<:Carray{T, N}} = sizeof(T)*N
+Base.isequal(x::Carray, y::Carray) = length(x) == length(y) && all(i -> x[i] == y[i], eachindex(x))
+Base.:(==)(x::Carray, y::Carray) = isequal(x, y)
 
 
 function Ctypespec(::Type{CA}) where {T, N, CA<:Carray{T, N}}

@@ -19,13 +19,14 @@ function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
 end
 
 Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(; nt...)
+Base.isequal(x::CA, y::CA) where {CA<:Caggregate} = getfield(x, :mem) == getfield(y, :mem)
+Base.:(==)(x::CA, y::CA) where {CA<:Caggregate} = isequal(x, y)
 
 isanonymous(ca::Caggregate) = isanonymous(typeof(ca))
 isanonymous(::Type{CA}) where {CA<:Caggregate} = match(r"^##anonymous#\d+$", string(CA.name.name)) !== nothing
 
-function Base.show(io::IO, ::Type{CA}) where {CA<:Caggregate}
-	print(io, isanonymous(CA) ? (CA <: Cunion ? "<anonymous-union>" : "<anonymous-struct>") : string(CA.name))
-end
+Base.show(io::IO, ::Type{CS}) where {CS<:Cstruct} = print(io, isanonymous(CS) ? "<anonymous-struct" : string(CS.name))
+Base.show(io::IO, ::Type{CU}) where {CU<:Cunion}  = print(io, isanonymous(CU) ? "<anonymous-union" : string(CU.name))
 
 function Base.show(io::IO, ca::Union{Caggregate, Cconst{<:Caggregate}})
 	if !(ca isa get(io, :typeinfo, Nothing))
