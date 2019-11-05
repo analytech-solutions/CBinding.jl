@@ -3,7 +3,7 @@ module CBinding
 	using Todo: @todo_str
 	
 	
-	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention
+	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Calignment, Cconst, Caccessor
 	export STDCALL, CDECL, FASTCALL, THISCALL
 	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings
 	export propertytypes
@@ -13,17 +13,40 @@ module CBinding
 	primitive type Clongdouble <: AbstractFloat sizeof(Cdouble)*2*8 end
 	
 	
-	abstract type Caggregate end
-	abstract type Cstruct <: Caggregate end
-	abstract type Cunion <: Caggregate end
+	abstract type Cstruct end
+	abstract type Cunion end
+	const Caggregate = Union{Cstruct, Cunion}
 	
 	abstract type Cenum{T<:Integer} <: Integer end
 	
 	
+	# alignment strategies
+	struct Calignment{SymT}
+	end
+	
+	const ALIGN_NATIVE = Calignment{:native}
+	const ALIGN_PACKED = Calignment{:packed}
+	
+	
+	# calling conventions
+	struct Cconvention{SymT}
+	end
+	
+	const STDCALL  = Cconvention{:stdcall}
+	const CDECL    = Cconvention{:cdecl}
+	const FASTCALL = Cconvention{:fastcall}
+	const THISCALL = Cconvention{:thiscall}
+	
+	
+	include("ctypespec.jl")
 	include("clibrary.jl")
 	include("cbindings.jl")
-	include("caggregate.jl")
 	include("cenum.jl")
+	include("carray.jl")
+	include("cconst.jl")
+	include("caggregate.jl")
 	include("cglobal.jl")
 	include("cfunction.jl")
+	include("ctypelayout.jl")
+	include("caccessor.jl")
 end

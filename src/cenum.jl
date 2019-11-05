@@ -66,7 +66,7 @@ end
 function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
 	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @cenum to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 	
-	strategy = isnothing(strategy) ? :(CBinding.ALIGN_NATIVE) : :(Val{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
+	strategy = isnothing(strategy) ? :(CBinding.ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
 	name = isnothing(name) ? gensym("anonymous") : name
 	escName = esc(name)
 	
@@ -129,7 +129,4 @@ function _computeEnumType(::Type{AlignStrategy}, fields::Tuple) where {AlignStra
 	
 	error("Unable to determine suitable enumeration storage type for the values provided")
 end
-
-enumtypes(::Type{ALIGN_NATIVE}) = (UInt32, Int32, UInt64, Int64, UInt128, Int128)
-enumtypes(::Type{ALIGN_PACKED}) = (UInt8, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, UInt128, Int128)
 
