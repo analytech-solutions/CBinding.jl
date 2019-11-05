@@ -106,7 +106,7 @@ _addfield(layout::Ctypelayout, ::Nothing, typ) = error("Encountered an unnamed f
 
 function _addfield(layout::Ctypelayout, ::Nothing, ::Type{spec}, bits) where {spec<:Ctypespec}
 	for (sym, field) in Ctypelayout(spec).fields
-		_addfield(layout, sym, Ctypefield(length(layout.fields), field.type, field.size, layout.offset+field.offset))
+		_addfield(layout, sym, Ctypefield(length(layout.fields), (_type(spec) <: Cconst ? Cconst(field.type) : field.type), field.size, layout.offset+field.offset))
 	end
 	return sizeof(_type(spec))*8
 end
