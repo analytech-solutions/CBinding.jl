@@ -116,34 +116,32 @@ end
 
 
 @generated function _getproperty(base::Union{CA, Cconst{CA}, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}) where {CA<:Caggregate, offset, spec<:Ctypespec, name}
+	mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
+	
 	fields = Ctypelayout(spec).fields
 	if haskey(fields, name)
 		typ = fields[name].type
 		bits = fields[name].size
 		off = fields[name].offset + offset*8
 		
-		mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
-		if bits != 0
-			t = typ
-			b = bits
-			uint = _uint(t)
+		if typ <: Union{Cdeferrable, Cconst{<:Cdeferrable}}
+			return :(Caccessor{$(base <: Cconst || _type(spec) <: Cconst ? Cconst(typ) : typ)}(base, Val($(off÷8))))
+		else
+			t = nonconst(typ)
 			o = off & (8-1)
+			b = iszero(bits) ? sizeof(t)*8 : bits
+			uint = _uint(t)
 			mask = _bitmask(uint, b)
 			return quote
-				uint = $(uint)
-				field = _unsafe_load($(mem), Val($(off÷8)), uint, Val($(o)), Val($(b)))
-				val = (field >> uint($(o))) & uint($(mask))
-				if $(t) <: Signed && ((val >> $(b-1)) & 1) != 0  # 0 = pos, 1 = neg
-					val |= ~uint(0) & ~uint($(mask))
+				val = _unsafe_load($(mem), Val($(off÷8)), $(uint), Val($(o)), Val($(b)))
+				if $(!iszero(bits))
+					val = (val >> $(uint)($(o))) & $(uint)($(mask))
+					if $(t) <: Signed && ((val >> $(b-1)) & 1) != 0  # 0 = pos, 1 = neg
+						val |= ~$(uint)(0) & ~$(uint)($(mask))
+					end
 				end
-				return reinterpret(nonconst($(t)), val)
+				return reinterpret($(t), val)
 			end
-		elseif typ <: Union{Cdeferrable, Cconst{<:Cdeferrable}}
-			return :(Caccessor{$(base <: Cconst || _type(spec) <: Cconst ? Cconst(typ) : typ)}(base, Val($(off÷8))))
-		# elseif base <: Cconst
-		else
-			return :(reinterpret(nonconst($(typ)), _unsafe_load($(mem), Val($(off÷8)), $(_uint(typ)), Val(0), Val(sizeof($(typ))*8))))
-			# return :(unsafe_load(reinterpret(Ptr{nonconst($(typ))}, $(mem) + $(off÷8))))
 		end
 	end
 	return :(error("Unable to get property `$(name)`, it is not a field of $(typeof(base))"))
@@ -151,31 +149,18 @@ end
 
 
 @generated function _setproperty!(base::Union{CA, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}, val) where {CA<:Caggregate, offset, spec<:Ctypespec, name}
+	mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
+	
 	fields = Ctypelayout(spec).fields
 	if haskey(fields, name)
 		typ = fields[name].type
 		bits = fields[name].size
 		off = fields[name].offset + offset*8
 		
-		mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
-		if bits != 0
-			t = typ
-			b = bits
-			uint = _uint(t)
-			o = off & (8-1)
-			mask = _bitmask(uint, b) << o
+		typ <: Cconst && error("Unable to change the value of a Cconst field")
+		
+		if typ <: Carray
 			return quote
-				$(t) <: Cconst && error("Unable to change the value of a Cconst field")
-				uint = $(uint)
-				field = _unsafe_load($(mem), Val($(off÷8)), uint, Val($(o)), Val($(b)))
-				field &= ~uint($(mask))
-				field |= (reinterpret(uint, convert($(t), val)) << $(o)) & uint($(mask))
-				_unsafe_store!($(mem), Val($(off÷8)), uint, Val($(o)), Val($(b)), field)
-				return val
-			end
-		elseif typ <: Carray
-			return quote
-				$(typ) <: Cconst && error("Unable to change the value of a Cconst field")
 				arr = Caccessor{$(typ)}(base, Val($(off÷8)))
 				length(val) == length(arr) || error("Length of value does not match the length of the array field it is being assigned to")
 				for (i, v) in enumerate(val)
@@ -183,9 +168,20 @@ end
 				end
 				return val
 			end
+		elseif !iszero(bits)
+			o = off & (8-1)
+			b = iszero(bits) ? sizeof(typ)*8 : bits
+			uint = _uint(typ)
+			mask = _bitmask(uint, b) << o
+			return quote
+				field = _unsafe_load($(mem), Val($(off÷8)), $(uint), Val($(o)), Val($(b)))
+				field &= ~$(uint)($(mask))
+				field |= (reinterpret($(uint), convert($(typ), val)) << $(o)) & $(uint)($(mask))
+				_unsafe_store!($(mem), Val($(off÷8)), $(uint), Val($(o)), Val($(b)), field)
+				return val
+			end
 		else
 			return quote
-				$(typ) <: Cconst && error("Unable to change the value of a Cconst field")
 				unsafe_store!(reinterpret(Ptr{$(typ)}, $(mem) + $(off÷8)), val)
 				return val
 			end
