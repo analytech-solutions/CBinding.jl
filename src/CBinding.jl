@@ -13,9 +13,9 @@ module CBinding
 	primitive type Clongdouble <: AbstractFloat sizeof(Cdouble)*2*8 end
 	
 	
-	abstract type Caggregate end
-	abstract type Cstruct <: Caggregate end
-	abstract type Cunion <: Caggregate end
+	abstract type Cstruct end
+	abstract type Cunion end
+	const Caggregate = Union{Cstruct, Cunion}
 	
 	abstract type Cenum{T<:Integer} <: Integer end
 	
