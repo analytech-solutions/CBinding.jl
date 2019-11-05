@@ -13,7 +13,7 @@ function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
 		setfield!(result, :mem, map(zero, getfield(result, :mem)))
 	else
 		CA <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
-		foreach(kwarg -> setproperty!(result, kwarg...), kwargs)
+		foreach(kwarg -> _initproperty!(result, kwarg...), kwargs)
 	end
 	return result
 end

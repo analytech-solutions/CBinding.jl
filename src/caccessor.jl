@@ -147,7 +147,8 @@ end
 end
 
 
-@generated function _setproperty!(base::Union{CA, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}, val) where {CA<:Caggregate, offset, spec<:Ctypespec, name}
+_initproperty!(cx::CX, sym::Symbol, val) where {CA<:Caggregate, CX<:Union{CA, Caccessor{CA}}} = _setproperty!(_base(cx), Val(_fieldoffset(cx)), Ctypespec(_fieldtype(cx)), Val(sym), val, Val(true))
+@generated function _setproperty!(base::Union{CA, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}, val, ::Val{force} = Val(false)) where {CA<:Caggregate, offset, spec<:Ctypespec, name, force}
 	mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
 	
 	fields = Ctypelayout(spec).fields
@@ -156,6 +157,7 @@ end
 		bits = fields[name].size
 		off = fields[name].offset + offset*8
 		
+		typ = force ? nonconst(typ) : typ
 		typ <: Cconst && error("Unable to change the value of a Cconst field")
 		
 		if typ <: Carray
