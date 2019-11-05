@@ -1,8 +1,5 @@
 
 
-const _ANONYMOUS_FIELD = Symbol("")
-
-
 # <:Caggregate functions
 function (::Type{CA})(cc::Cconst{CA}) where {CA<:Caggregate}
 	result = CA(undef)
@@ -168,14 +165,18 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous#")
 				# this is just a type definition, not a field
 			else
-				Base.is_expr(arg, :(::)) && (length(arg.args) != 2 || arg.args[1] === _ANONYMOUS_FIELD) && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
+				Base.is_expr(arg, :(::)) && length(arg.args) != 2 && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
 				
 				argType = Base.is_expr(arg, :(::)) ? arg.args[end] : arg
-				args = Base.is_expr(arg, :(::), 1) || !Base.is_expr(arg, :(::)) ? _ANONYMOUS_FIELD : arg.args[1]
+				args = !Base.is_expr(arg, :(::)) ? nothing : arg.args[1]
 				args = Base.is_expr(args, :tuple) ? args.args : (args,)
 				for arg in args
-					if arg isa Symbol
+					if isnothing(arg)
+						push!(fields, :(Ctypespec($(argType))))
+					elseif arg isa Symbol
 						push!(fields, :(Pair{$(QuoteNode(arg)), Ctypespec($(argType))}))
+					elseif Base.is_expr(arg, :escape, 1) && isnothing(arg.args[1])
+						push!(fields, :(Ctypespec($(argType))))
 					elseif Base.is_expr(arg, :escape, 1) && arg.args[1] isa Symbol
 						push!(fields, :(Pair{$(QuoteNode(arg.args[1])), Ctypespec($(argType))}))
 					elseif Base.is_expr(arg, :call, 3) && arg.args[1] === :(:) && arg.args[3] isa Integer

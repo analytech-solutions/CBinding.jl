@@ -89,10 +89,11 @@ _size(::Type{spec}, args...) where {spec<:Ctypespec} = _size(_kind(spec), args..
 _size(::Type{Cstruct}, args...) = +(args...)
 _size(::Type{Cunion}, args...) = max(args...)
 
-_typebits(::Type{T}) where {T} = error("Unable to handle field type `$(T)` found in type specification")
-_typebits(::Type{Tuple{T}}) where {T} = (T, 0)
-_typebits(::Type{Tuple{T, B}}) where {T, B} = (T, B)
-_typebits(::Type{TS}) where {TS<:Ctypespec} = (TS, 0)
+_field(::Type{T}) where {T} = error("Unable to handle field type `$(T)` found in type specification")
+_field(::Type{Pair{sym, Tuple{T}}}) where {sym, T} = (sym, T, 0)
+_field(::Type{Pair{sym, Tuple{T, B}}}) where {sym, T, B} = (sym, T, B)
+_field(::Type{Pair{sym, TS}}) where {sym, TS<:Ctypespec} = (sym, TS, 0)
+_field(::Type{TS}) where {TS<:Ctypespec} = (nothing, TS, 0)
 
 
 function _addfield(layout::Ctypelayout, sym::Symbol, field::Ctypefield)
@@ -121,15 +122,13 @@ function _addfield(layout::Ctypelayout, sym::Symbol, typ, bits)
 end
 
 
-_addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ctypespec, T} = error("Unable to handle field `$(T)` found in type specification")
-
-function _addfield(layout::Ctypelayout, ::Type{Pair{sym, T}}, ::Type{spec}) where {spec<:Ctypespec, sym, T}
-	(typ, bits) = _typebits(T)
+function _addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ctypespec, T}
+	(sym, typ, bits) = _field(T)
 	pad = padding(_strategy(spec), layout.offset, bits, typ)
 	align = checked_alignof(_strategy(spec), typ)
 	layout.offset = _size(spec, layout.offset, pad)
 	
-	bits = _addfield(layout, (sym === _ANONYMOUS_FIELD ? nothing : sym), typ, bits)
+	bits = _addfield(layout, sym, typ, bits)
 	
 	layout.align = max(layout.align, align)
 	layout.size = _size(spec, layout.size, pad + bits)

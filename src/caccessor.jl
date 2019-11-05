@@ -10,7 +10,6 @@ struct Caccessor{FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}, BaseType<
 	Caccessor{FieldType}(b::BaseType, ::Val{Offset} = Val(0)) where {FieldType, BaseType, Offset} = new{FieldType, BaseType, Val{Offset}}(b)
 end
 
-# TODO:  get these straightened out
 Base.convert(::Type{T}, ca::Caccessor{T}) where {T} = ca[]
 Base.show(io::IO, ca::Caccessor) = show(io, ca[])
 
