@@ -1,13 +1,11 @@
 
 
+abstract type Cenum_anonymous{T<:Integer} <: Cenum{T} end
+isanonymous(::Type{<:Cenum_anonymous}) = true
+Base.show(io::IO, ::Type{CS}) where {CS<:Cenum_anonymous} = print(io, "<anonymous-enum>")
+
+
 _enumvalues(::Type{CE}) where {CE<:Cenum} = error("Attempted to get values of an enumeration without any")
-
-isanonymous(ce::Cenum) = isanonymous(typeof(ce))
-isanonymous(::Type{CE}) where {T, CE<:Cenum{T}} = match(r"^##anonymous#\d+$", string(CE.name.name)) !== nothing
-
-function Base.show(io::IO, ::Type{CE}) where {T, CE<:Cenum{T}}
-	print(io, isanonymous(CE) ? "<anonymous-enum>" : string(CE.name))
-end
 
 function Base.show(io::IO, ce::Cenum{T}) where {T}
 	ce isa get(io, :typeinfo, Nothing) || show(io, typeof(ce))
@@ -67,7 +65,8 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @cenum to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 	
 	strategy = isnothing(strategy) ? :(CBinding.ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	name = isnothing(name) ? gensym("anonymous") : name
+	isanon = isnothing(name)
+	name = isanon ? gensym("anonymous-cenum") : name
 	escName = esc(name)
 	
 	isOuter = isnothing(deps)

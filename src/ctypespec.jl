@@ -7,8 +7,8 @@ Ctypespec(::Type{T}) where {T} = Tuple{T}
 Ctypespec(::Type{T}, ::Val{bits}) where {T, bits} = Tuple{T, bits}
 Ctypespec(::Type{CA}) where {CA<:Caggregate} = Ctypespec{CA, CA, _strategy(CA), _specification(CA)}
 
-Ctypespec(::Type{Cstruct}, ::Type{S}, ::Type{TS}) where {S, TS} = Ctypespec{Cstruct, Cstruct, S, TS}
-Ctypespec(::Type{Cunion}, ::Type{S}, ::Type{TS}) where {S, TS} = Ctypespec{Cunion, Cunion, S, TS}
+Ctypespec(::Type{CS}, ::Type{S}, ::Type{TS}) where {CS<:Cstruct, S, TS} = Ctypespec{CS, CS, S, TS}
+Ctypespec(::Type{CU}, ::Type{S}, ::Type{TS}) where {CU<:Cunion, S, TS} = Ctypespec{CU, CU, S, TS}
 
 
 _type(::Type{Ctypespec{T, CA, S, TS}}) where {T, CA, S, TS} = T

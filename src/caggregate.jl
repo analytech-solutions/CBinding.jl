@@ -1,5 +1,18 @@
 
 
+isanonymous(x) = isanonymous(typeof(x))
+isanonymous(::Type) = false
+
+
+abstract type Cstruct_anonymous <: Cstruct end
+isanonymous(::Type{<:Cstruct_anonymous}) = true
+Base.show(io::IO, ::Type{CS}) where {CS<:Cstruct_anonymous} = print(io, "<anonymous-struct>")
+
+abstract type Cunion_anonymous <: Cunion end
+isanonymous(::Type{<:Cunion_anonymous}) = true
+Base.show(io::IO, ::Type{CU}) where {CU<:Cunion_anonymous}  = print(io, "<anonymous-union>")
+
+
 # <:Caggregate functions
 function (::Type{CA})(cc::Cconst{CA}) where {CA<:Caggregate}
 	result = CA(undef)
@@ -21,12 +34,6 @@ end
 Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(; nt...)
 Base.isequal(x::CA, y::CA) where {CA<:Caggregate} = getfield(x, :mem) == getfield(y, :mem)
 Base.:(==)(x::CA, y::CA) where {CA<:Caggregate} = isequal(x, y)
-
-isanonymous(ca::Caggregate) = isanonymous(typeof(ca))
-isanonymous(::Type{CA}) where {CA<:Caggregate} = match(r"^##anonymous#\d+$", string(CA.name.name)) !== nothing
-
-Base.show(io::IO, ::Type{CS}) where {CS<:Cstruct} = print(io, isanonymous(CS) ? "<anonymous-struct" : string(CS.name))
-Base.show(io::IO, ::Type{CU}) where {CU<:Cunion}  = print(io, isanonymous(CU) ? "<anonymous-union" : string(CU.name))
 
 function Base.show(io::IO, ca::Union{Caggregate, Cconst{<:Caggregate}})
 	if !(ca isa get(io, :typeinfo, Nothing))
@@ -144,7 +151,8 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 	isnothing(strategy) || (startswith(String(strategy), "__") && endswith(String(strategy), "__") && length(String(strategy)) > 4) || error("Expected @$(kind) to have packing specified as `__STRATEGY__`, such as `__packed__` or `__native__`")
 	
 	strategy = isnothing(strategy) ? :(CBinding.ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	name = isnothing(name) ? gensym("anonymous") : name
+	isanon = isnothing(name)
+	name = isanon ? gensym("anonymous-$(kind)") : name
 	escName = esc(name)
 	
 	isOuter = isnothing(deps)
@@ -156,14 +164,14 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			end
 		end)
 	else
-		super = kind === :cunion ? :(Cunion) : :(Cstruct)
+		super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
 		fields = []
 		for arg in body.args
 			arg = _expand(mod, deps, arg)
 			if Base.is_expr(arg, :align, 1)
 				align = arg.args[1]
 				push!(fields, :(Calignment{$(align)}))
-			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous#")
+			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous")
 				# this is just a type definition, not a field
 			else
 				Base.is_expr(arg, :(::)) && length(arg.args) != 2 && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
