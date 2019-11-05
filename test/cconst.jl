@@ -25,6 +25,16 @@
 			ci::Cconst{Cint}
 		}}
 		
+		(as::{}[1])::@cstruct {
+			i::Cint
+			ci::Cconst{Cint}
+		}
+		
+		(acs::{}[1])::Cconst{@cstruct {
+			i::Cint
+			ci::Cconst{Cint}
+		}}
+		
 		@cstruct {
 			si::Cint
 			sci::Cconst{Cint}
@@ -45,7 +55,7 @@
 			cuci::Cconst{Cint}
 		}}
 	}
-	@test sizeof(CconstStruct) == sizeof(Cint)*14
+	@test sizeof(CconstStruct) == sizeof(Cint)*18
 	
 	x = CconstStruct()
 	@test typeof(x.i) === Cint
@@ -62,6 +72,14 @@
 	@test typeof(x.cu) <: Caccessor{<:Cconst{<:Cunion}}
 	@test typeof(x.cu.i) === Cint
 	@test typeof(x.cu.ci) === Cint
+	@test typeof(x.as) <: Caccessor{<:Carray{<:Cstruct}}
+	@test typeof(x.as[1]) <: Caccessor{<:Cstruct}
+	@test typeof(x.as[1].i) === Cint
+	@test typeof(x.as[1].ci) === Cint
+	@test typeof(x.acs) <: Caccessor{<:Carray{<:Cconst{<:Cstruct}}}
+	@test typeof(x.acs[1]) <: Caccessor{<:Cconst{<:Cstruct}}
+	@test typeof(x.acs[1].i) === Cint
+	@test typeof(x.acs[1].ci) === Cint
 	@test typeof(x.si) === Cint
 	@test typeof(x.sci) === Cint
 	@test typeof(x.csi) === Cint
@@ -77,6 +95,8 @@
 		x.cs.i + x.cs.ci + 
 		x.u.i + x.u.ci + 
 		x.cu.i + x.cu.ci + 
+		# x.as[1].i + x.as[1].ci +   # TODO: fix these to not allocate
+		# x.acs[1].i + x.acs[1].ci + 
 		x.si + x.sci + 
 		x.csi + x.csci + 
 		x.ui + x.uci + 
@@ -212,6 +232,14 @@
 	@test typeof(x.cu) <: Caccessor{<:Cconst{<:Cunion}}
 	@test typeof(x.cu.i) === Cint
 	@test typeof(x.cu.ci) === Cint
+	@test typeof(x.as) <: Caccessor{<:Carray{<:Cconst{<:Cstruct}}}
+	@test typeof(x.as[1]) <: Caccessor{<:Cconst{<:Cstruct}}
+	@test typeof(x.as[1].i) === Cint
+	@test typeof(x.as[1].ci) === Cint
+	@test typeof(x.acs) <: Caccessor{<:Carray{<:Cconst{<:Cstruct}}}
+	@test typeof(x.acs[1]) <: Caccessor{<:Cconst{<:Cstruct}}
+	@test typeof(x.acs[1].i) === Cint
+	@test typeof(x.acs[1].ci) === Cint
 	@test typeof(x.si) === Cint
 	@test typeof(x.sci) === Cint
 	@test typeof(x.csi) === Cint

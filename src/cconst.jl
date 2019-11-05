@@ -8,11 +8,13 @@ end
 Cconst{T, S}(args...; kwargs...) where {T, S} = Cconst{T}(args...; kwargs...)
 Cconst{T}(; kwargs...) where {T} = Cconst(T(; kwargs...))
 Cconst(::Type{T}) where {T} = Cconst{nonconst(T), sizeof(nonconst(T))}
+Cconst(::Type{CA}) where {T, N, CA<:Carray{T, N}} = Carray(Cconst(nonconst(T)), Val(N))
 Cconst(x) = x
 Cconst(cc::Cconst) = cc
 Cconst(ca::Caggregate) = Cconst{typeof(ca)}(getfield(ca, :mem))
 
 nonconst(::Type{T}) where {T} = T
+nonconst(::Type{CA}) where {T<:Cconst, N, CA<:Carray{T, N}} = Carray(nonconst(T), Val(N))
 nonconst(::Type{CC}) where {T, CC<:Cconst{T}} = T
 
 Base.convert(::Type{T}, cc::Cconst{T}) where {T} = reinterpret(T, getfield(cc, :mem)[1])

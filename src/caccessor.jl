@@ -33,7 +33,7 @@ Base.setproperty!(cx::CX, sym::Symbol, val) where {CA<:Caggregate, CX<:Union{CA,
 
 # Carray interface
 const Carrays = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{<:Cconst{CA}}} where {CA<:Carray}
-Base.getindex(ca::CA, ind) where {T<:Cdeferrable, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = Caccessor{T}(_base(ca), Val(_fieldoffset(ca) + (ind-1)*sizeof(T)))
+Base.getindex(ca::CA, ind) where {T<:Union{Cdeferrable, Cconst{<:Cdeferrable}}, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = Caccessor{T}(_base(ca), Val(_fieldoffset(ca) + (ind-1)*sizeof(T)))
 Base.getindex(ca::CA, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_load(reinterpret(Ptr{T}, _pointer(ca)), ind)
 Base.setindex!(ca::CA, val, ind) where {T, N, _CA<:Carray{T, N}, CA<:Carrays{_CA}} = unsafe_store!(reinterpret(Ptr{T}, _pointer(ca)), val, ind)
 
