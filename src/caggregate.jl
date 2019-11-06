@@ -15,22 +15,25 @@ Base.show(io::IO, ::Type{CU}) where {CU<:Cunion_anonymous}  = print(io, "<anonym
 
 # <:Caggregate functions
 function (::Type{CA})(cc::Cconst{CA}) where {CA<:Caggregate}
-	result = CA(undef)
+	T = _concrete(CA)
+	result = T(undef)
 	setfield!(result, :mem, getfield(cc, :mem))
 	return result
 end
 
 function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
-	result = CA(undef)
+	T = _concrete(CA)
+	result = T(undef)
 	if isempty(kwargs)
 		setfield!(result, :mem, map(zero, getfield(result, :mem)))
 	else
-		CA <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
+		T <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
 		foreach(kwarg -> _initproperty!(result, kwarg...), kwargs)
 	end
 	return result
 end
 
+Base.zero(::Type{CA}) where {CA<:Caggregate} = CA()
 Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(; nt...)
 Base.isequal(x::CA, y::CA) where {CA<:Caggregate} = getfield(x, :mem) == getfield(y, :mem)
 Base.:(==)(x::CA, y::CA) where {CA<:Caggregate} = isequal(x, y)
@@ -55,6 +58,19 @@ function Base.show(io::IO, ca::Union{Caggregate, Cconst{<:Caggregate}})
 		ca isa Cconst && print(io, ")")
 	end
 end
+
+
+# NOTE:  these are several hacks to make the forward declarations work
+# it side steps dispatching when making ccalls with Ptr{Abstract} using a Ref{Concrete<:Abstract}
+struct _Ref{To, From, R<:Base.RefValue{From}}
+	r::R
+end
+Base.cconvert(::Type{Ptr{CA}}, r::R) where {CA<:Caggregate, R<:Base.RefValue{CA}} = r
+Base.cconvert(::Type{Ptr{CA}}, r::R) where {CA<:Caggregate, T<:CA, R<:Base.RefValue{T}} = _Ref{CA, T, R}(r)
+Base.unsafe_convert(::Type{Ptr{CA}}, r::_Ref{CA, T, R}) where {CA<:Caggregate, T<:CA, R<:Base.RefValue{T}} = reinterpret(Ptr{CA}, Base.unsafe_convert(Ptr{T}, r.r))
+Base.unsafe_load(p::Ptr{CA}, i::Integer = 1) where {CA<:Caggregate} = Base.pointerref(reinterpret(Ptr{_concrete(CA)}, p), Int(i), 1)
+Base.unsafe_store!(p::Ptr{CA}, x, i::Integer = 1) where {CA<:Caggregate} = Base.pointerset(reinterpret(Ptr{_concrete(CA)}, p), convert(_concrete(CA), x), Int(i), 1)
+
 
 
 
@@ -152,19 +168,18 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 	
 	strategy = isnothing(strategy) ? :(CBinding.ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
 	isanon = isnothing(name)
+	super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
 	name = isanon ? gensym("anonymous-$(kind)") : name
 	escName = esc(name)
+	concreteName = esc(Symbol(name, "\u200B"))  # this is so incredibly evil: appending a 0-width space to the type name
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	if isnothing(body)
 		push!(deps, name => quote
-			mutable struct $(escName) <: $(kind === :cunion ? :(Cunion) : :(Cstruct))
-				let constructor = false end
-			end
+			abstract type $(escName) <: $(super) end
 		end)
 	else
-		super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
 		fields = []
 		for arg in body.args
 			arg = _expand(mod, deps, arg)
@@ -232,33 +247,27 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			end
 		end
 		
-		_stripPtrTypes(x) = x
-		function _stripPtrTypes(e::Expr)
-			if Base.is_expr(e, :curly, 2) && e.args[1] in (:Ptr, esc(:Ptr), :(Base.Ptr), Expr(:., esc(:Base), esc(QuoteNode(:Ptr))))
-				e.args[2] = :Cvoid
-				return e
-			end
-			e.args = map(_stripPtrTypes, e.args)
-			return e
-		end
-		
 		push!(deps, name => quote
-			mutable struct $(escName) <: $(super)
-				mem::NTuple{Ctypelayout(Ctypespec($(super), $(strategy), Tuple{$(map(_stripPtrTypes, deepcopy(fields))...)})).size÷8, UInt8}
+			abstract type $(escName) <: $(super) end
+			mutable struct $(concreteName) <: $(escName)
+				mem::NTuple{Ctypelayout(Ctypespec($(super), $(strategy), Tuple{$(fields...)})).size÷8, UInt8}
 				
-				$(escName)(::UndefInitializer) = new()
+				$(concreteName)(::UndefInitializer) = new()
 			end
 			#=
 				TypeSpec = Tuple{
 					Pair{:sym1, Tuple{PrimType}},  # primitive field `sym1`
 					Pair{:sym2, Tuple{PrimType, NBits}},  # bit field `sym2`
 					Pair{:sym3, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # nested aggregate `sym3`
-					Pair{nothing, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # anonymous nested aggregate
+					Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}},  # anonymous nested aggregate
 					Calignment{align}  # alignment "field"
 				}
 			=#
-			CBinding._strategy(::Type{$(escName)}) = $(strategy)
-			CBinding._specification(::Type{$(escName)}) = Tuple{$(fields...)}
+			CBinding._concrete(::Type{$(escName)}) = $(concreteName)
+			CBinding._concrete(::Type{$(concreteName)}) = $(concreteName)
+			CBinding._strategy(::Type{$(concreteName)}) = $(strategy)
+			CBinding._specification(::Type{$(concreteName)})  = Tuple{$(fields...)}
+			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding._concrete($(concreteName)))
 		end)
 	end
 	

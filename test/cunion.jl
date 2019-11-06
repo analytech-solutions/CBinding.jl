@@ -1,6 +1,11 @@
 
 
 @testset "@cunion" begin
+	@cunion OpaqueUnion
+	@cunion OpaqueUnion
+	@test_throws ErrorException sizeof(OpaqueUnion)
+	@test sizeof(Ptr{OpaqueUnion}) == sizeof(Ptr{Cvoid})
+	
 	@cunion EmptyUnion {
 	} __packed__
 	@test sizeof(EmptyUnion) == 0
@@ -59,6 +64,7 @@
 	@test :s in propertynames(CunionUnion)
 	@test :i in propertynames(CunionUnion)
 	
+	@cunion PtrToUnionUnion
 	@cunion PtrToPtrToUnionUnion {
 		p::Ptr{PtrToUnionUnion}
 	} __packed__

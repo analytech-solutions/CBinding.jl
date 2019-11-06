@@ -1,5 +1,10 @@
 
 @testset "@cstruct" begin
+	@cstruct OpaqueStruct
+	@cstruct OpaqueStruct
+	@test_throws ErrorException sizeof(OpaqueStruct)
+	@test sizeof(Ptr{OpaqueStruct}) == sizeof(Ptr{Cvoid})
+	
 	@cstruct EmptyStruct {
 	} __packed__
 	@test sizeof(EmptyStruct) == 0
@@ -58,6 +63,7 @@
 	@test :s in propertynames(CunionStruct)
 	@test :i in propertynames(CunionStruct)
 	
+	@cstruct PtrToStructStruct
 	@cstruct PtrToPtrToStructStruct {
 		p::Ptr{PtrToStructStruct}
 	} __packed__
