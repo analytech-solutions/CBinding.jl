@@ -2,6 +2,7 @@
 
 This package provides improvements for specifying and using C bindings in Julia.
 CBinding.jl has the goal of making it easier to correctly connect Julia to your C API and libraries.
+We have highlighted in our blog post many of the issues encountered when [using C libraries from Julia](https://analytech-solutions.com/analytech-solutions/blog/cbinding.html), and those issues have fueled us to develop this package.
 
 # Usage
 
@@ -25,7 +26,7 @@ julia> using CBinding
 
 julia> @cstruct MyFirstCStruct {    # struct MyFirstCStruct {
            i::Cint                  #     int i;
-       } __packed__                 # } __attribute__((packed));
+       }                            # };
 
 julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MySecondCStruct {
            i::Cint                                          #     int i;
@@ -48,6 +49,7 @@ There are a few syntax differences to note though:
 - a `@ctypedef` is specified with the type name before the definition rather than after (as is done in C)  
 - likewise, an aggregate field is specified in the Julia `fieldName::FieldType` syntax rather than the C style of `FieldType fieldName`
 - in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{}, c::{}[4])::SomeType`) with the empty curly braces `{}` meaning "plug in type here"
+- Julia does not support forward declarations, so CBinding.jl uses some very dubious methods to simulate the capability which may cause grief and confusion for users when types don't appear as they should
 
 There are a couple of ways to construct an aggregate type provided by the package.
 Using the "default" constructor, or the `zero` function, will result in a zero-initialized object.
@@ -85,7 +87,7 @@ The implemented `Base.show` function will also cause the `Caccessor` to appear a
 
 ```jl
 julia> typeof(zeroed.m)
-CBinding.Caccessor{MyFirstCStruct,MySecondCStruct,Val{12}}
+Caccessor{MyFirstCStruct,MySecondCStruct,Val{12}}
 
 julia> typeof(zeroed.m[])
 MyFirstCStruct
@@ -162,6 +164,56 @@ julia> sizeof(MyStrictlyAlignedCStruct)
 16
 ```
 
+## C Const-ness
+
+One feature of C that doesn't necessarily port well into Julia is the `const` modifier on types.
+The aggregate types provided by CBinding.jl are mutable by default, but the `Cconst` type can be used to create an immutable `struct` form of the type.
+This mechanism can be used in a way that is _similar_ to the `const` modifier in C.
+
+```jl
+julia> @cstruct ConstStruct {    # struct ConstStruct {
+           i::Cint               #     int i;
+           j::Cconst{Cint}       #     int const j;
+       }                         # };
+ConstStruct
+
+julia> s = ConstStruct(i = 1, j = 2)
+ConstStruct(i=1, j=2)
+
+julia> s.i = 3
+3
+
+julia> s
+ConstStruct(i=3, j=2)
+
+julia> s.j = 4
+ERROR: Unable to change the value of a Cconst field
+Stacktrace:
+ [1] error(::String) at ./error.jl:33
+  ⁝
+
+julia> c = Cconst(s)
+Cconst(ConstStruct(i=3, j=2))
+
+julia> c.i = 5
+ERROR: Unable to change the value of a Cconst field
+Stacktrace:
+ [1] error(::String) at ./error.jl:33
+  ⁝
+
+julia> s.i = 5
+5
+
+julia> s
+ConstStruct(i=5, j=2)
+
+julia> c  # notice that `i` is not changed, `c` is a constant _copy_ of `s`
+Cconst(ConstStruct(i=3, j=2))
+```
+
+Run time and memory usage can be improved by using `Cconst` wrapped types as well.
+If you do not wish to modify any fields in an aggregate, then it is recommended that you use the `Cconst` form of the object.
+
 ## C Enumerations
 
 We also provide an implementation of C-style enumeration with a syntax very similar to that of C.
@@ -222,7 +274,6 @@ julia> sizeof(MyNamedEnum)
 julia> sizeof(MyPackedNamedEnum)
 1
 ```
-
 
 ## C Bit Fields
 
@@ -469,5 +520,5 @@ Arbitrary code can be placed in the code block, but beware, it will be evaluated
 All expressions before the begin-end block will be used as `Clibrary` arguments for loading the bindings from.
 
 Occasionally a C library will contain a type, variable, or function with a name that is a reserved word in Julia, like `global` or `end`.
-They are not yet supported by CBinding.jl (#18), but future package development will address this feature.
+They are not yet supported by CBinding.jl [#18](https://github.com/analytech-solutions/CBinding.jl/issues/18), but future package development will address this feature.
 
