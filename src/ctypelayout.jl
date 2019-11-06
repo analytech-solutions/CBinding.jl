@@ -62,6 +62,49 @@ end
 
 
 
+mutable struct Cenumlayout
+	type::DataType
+	min::Integer
+	max::Integer
+	values::Dict{Symbol, Integer}
+	
+	Cenumlayout() = new(Nothing, 0, 0, Dict{Symbol, Integer}())
+end
+Cenumlayout(::Type{CE}) where {CE<:Cenum} = Cenumlayout(Ctypespec(CE))
+
+
+function _addvalue(layout::Cenumlayout, ::Type{Pair{sym, val}}, ::Type{spec}) where {spec<:Ctypespec, sym, val}
+	haskey(layout.values, sym) && error("Encountered a duplicate value name `$(sym)` in enum specification")
+	layout.values[sym] = val
+	
+	(min, max) = extrema(values(layout.values))
+	for typ in enumtypes(_strategy(spec))
+		if typemin(typ) <= min && max <= typemax(typ)
+			layout.type = typ
+			layout.min = typ(min)
+			layout.max = typ(max)
+			return
+		end
+	end
+	error("Unable to determine suitable enumeration storage type for `$(sym) = $(val)`")
+end
+
+@generated function Cenumlayout(::Type{spec}) where {spec<:Ctypespec}
+	layout = Cenumlayout()
+	
+	values = _specification(spec)
+	while values !== Tuple{}
+		value = Base.tuple_type_head(values)
+		values = Base.tuple_type_tail(values)
+		
+		_addvalue(layout, value, spec)
+	end
+	
+	return layout
+end
+
+
+
 struct Ctypefield
 	ind::Int  # field index
 	type::DataType  # field type

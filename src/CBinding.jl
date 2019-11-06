@@ -17,7 +17,7 @@ module CBinding
 	abstract type Cunion end
 	const Caggregate = Union{Cstruct, Cunion}
 	
-	abstract type Cenum{T<:Integer} <: Integer end
+	abstract type Cenum <: Integer end
 	
 	
 	# alignment strategies
