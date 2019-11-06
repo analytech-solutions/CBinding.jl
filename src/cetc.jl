@@ -1,15 +1,15 @@
 
 
 # NOTE:  these are several hacks to make the forward declarations work
-# it side steps dispatching when making ccalls with Ptr{Abstract} using a Ref{Concrete<:Abstract}
+# this side steps dispatching when making ccalls with Ptr{Abstract} using a Ref{Concrete<:Abstract}
 struct _Ref{To, From, R<:Base.RefValue{From}}
 	r::R
 end
-Base.cconvert(::Type{Ptr{CA}}, r::R) where {CA<:Caggregate, R<:Base.RefValue{CA}} = r
-Base.cconvert(::Type{Ptr{CA}}, r::R) where {CA<:Caggregate, T<:CA, R<:Base.RefValue{T}} = _Ref{CA, T, R}(r)
-Base.unsafe_convert(::Type{Ptr{CA}}, r::_Ref{CA, T, R}) where {CA<:Caggregate, T<:CA, R<:Base.RefValue{T}} = reinterpret(Ptr{CA}, Base.unsafe_convert(Ptr{T}, r.r))
-Base.unsafe_load(p::Ptr{CA}, i::Integer = 1) where {CA<:Caggregate} = Base.pointerref(reinterpret(Ptr{_concrete(CA)}, p), Int(i), 1)
-Base.unsafe_store!(p::Ptr{CA}, x, i::Integer = 1) where {CA<:Caggregate} = Base.pointerset(reinterpret(Ptr{_concrete(CA)}, p), convert(_concrete(CA), x), Int(i), 1)
+Base.cconvert(::Type{Ptr{CX}}, r::R) where {CX<:Union{Caggregate, Cenum}, R<:Base.RefValue{CX}} = r
+Base.cconvert(::Type{Ptr{CX}}, r::R) where {CX<:Union{Caggregate, Cenum}, T<:CX, R<:Base.RefValue{T}} = _Ref{CX, T, R}(r)
+Base.unsafe_convert(::Type{Ptr{CX}}, r::_Ref{CX, T, R}) where {CX<:Union{Caggregate, Cenum}, T<:CX, R<:Base.RefValue{T}} = reinterpret(Ptr{CX}, Base.unsafe_convert(Ptr{T}, r.r))
+Base.unsafe_load(p::Ptr{CX}, i::Integer = 1) where {CX<:Union{Caggregate, Cenum}} = Base.pointerref(reinterpret(Ptr{_concrete(CX)}, p), Int(i), 1)
+Base.unsafe_store!(p::Ptr{CX}, x, i::Integer = 1) where {CX<:Union{Caggregate, Cenum}} = Base.pointerset(reinterpret(Ptr{_concrete(CX)}, p), convert(_concrete(CX), x), Int(i), 1)
 
 
 
