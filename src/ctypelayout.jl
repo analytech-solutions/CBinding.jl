@@ -11,7 +11,8 @@ alignof(::Type{ALIGN_PACKED}, ::Type{CC}) where {CC<:Cconst} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CE}) where {CE<:Cenum} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {CA<:Carray} = 1
 alignof(::Type{ALIGN_PACKED}, ::Type{CA}) where {CA<:Caggregate} = 1
-alignof(::Type{ALIGN_PACKED}, ::Type{TS}) where {TS<:Ctypespec} = 1
+alignof(::Type{ALIGN_PACKED}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}} = 1
+alignof(::Type{ALIGN_PACKED}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Cenum, <:Calignment, <:Tuple}} = 1
 
 
 enumtypes(::Type{ALIGN_NATIVE}) = (UInt32, Int32, UInt64, Int64, UInt128, Int128)
@@ -20,7 +21,8 @@ alignof(::Type{ALIGN_NATIVE}, ::Type{CC}) where {CC<:Cconst} = alignof(ALIGN_NAT
 alignof(::Type{ALIGN_NATIVE}, ::Type{CE}) where {CE<:Cenum} = alignof(ALIGN_NATIVE, eltype(CE))
 alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {CA<:Carray} = alignof(ALIGN_NATIVE, eltype(CA))
 alignof(::Type{ALIGN_NATIVE}, ::Type{CA}) where {CA<:Caggregate} = Ctypelayout(CA).align
-alignof(::Type{ALIGN_NATIVE}, ::Type{TS}) where {TS<:Ctypespec} = Ctypelayout(TS).align
+alignof(::Type{ALIGN_NATIVE}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}} = Ctypelayout(spec).align
+alignof(::Type{ALIGN_NATIVE}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Cenum, <:Calignment, <:Tuple}} = alignof(ALIGN_NATIVE, Cenumlayout(spec).type)
 
 const (_i8a, _i16a, _i32a, _i64a, _f32a, _f64a) = let
 	(i8a, i16a, i32a, i64a, f32a, f64a) = refs = ((Ref{UInt}() for i in 1:6)...,)
@@ -89,7 +91,7 @@ function _addvalue(layout::Cenumlayout, ::Type{Pair{sym, val}}, ::Type{spec}) wh
 	error("Unable to determine suitable enumeration storage type for `$(sym) = $(val)`")
 end
 
-@generated function Cenumlayout(::Type{spec}) where {spec<:Ctypespec}
+@generated function Cenumlayout(::Type{spec}) where {spec<:Ctypespec{<:Any, <:Cenum, <:Calignment, <:Tuple}}
 	layout = Cenumlayout()
 	
 	values = _specification(spec)
@@ -147,14 +149,14 @@ end
 
 _addfield(layout::Ctypelayout, ::Nothing, typ) = error("Encountered an unnamed field of type `$(typ)` in type specification")
 
-function _addfield(layout::Ctypelayout, ::Nothing, ::Type{spec}, bits) where {spec<:Ctypespec}
+function _addfield(layout::Ctypelayout, ::Nothing, ::Type{spec}, bits) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}}
 	for (sym, field) in Ctypelayout(spec).fields
 		_addfield(layout, sym, Ctypefield(length(layout.fields), (_type(spec) <: Cconst ? Cconst(field.type) : field.type), field.size, layout.offset+field.offset))
 	end
 	return sizeof(_type(spec))*8
 end
 
-function _addfield(layout::Ctypelayout, sym::Symbol, ::Type{spec}, bits) where {spec<:Ctypespec}
+function _addfield(layout::Ctypelayout, sym::Symbol, ::Type{spec}, bits) where {spec<:Ctypespec{<:Any, <:Copaques, <:Calignment, <:Tuple}}
 	_addfield(layout, sym, Ctypefield(length(layout.fields), _type(spec), 0, layout.offset))
 	return sizeof(_type(spec))*8
 end
@@ -165,7 +167,7 @@ function _addfield(layout::Ctypelayout, sym::Symbol, typ, bits)
 end
 
 
-function _addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ctypespec, T}
+function _addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}, T}
 	(sym, typ, bits) = _field(T)
 	pad = padding(_strategy(spec), layout.offset, bits, typ)
 	align = checked_alignof(_strategy(spec), typ)
@@ -177,14 +179,14 @@ function _addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ct
 	layout.size = _size(spec, layout.size, pad + bits)
 end
 
-function _addfield(layout::Ctypelayout, ::Type{Calignment{align}}, ::Type{spec}) where {spec<:Ctypespec, align}
+function _addfield(layout::Ctypelayout, ::Type{Calignment{align}}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}, align}
 	pad = padding(_strategy(spec), layout.offset, align*8)
 	layout.align = max(layout.align, align)
 	layout.size = _size(spec, layout.size, pad)
 end
 
 
-@generated function Ctypelayout(::Type{spec}) where {spec<:Ctypespec}
+@generated function Ctypelayout(::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}}
 	layout = Ctypelayout()
 	
 	fields = _specification(spec)
