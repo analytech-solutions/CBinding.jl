@@ -2,12 +2,14 @@
 
 abstract type Cenum_anonymous <: Cenum end
 isanonymous(::Type{<:Cenum_anonymous}) = true
-Base.show(io::IO, ::Type{CS}) where {CS<:Cenum_anonymous} = print(io, "<anonymous-enum>")
+Base.show(io::IO, ::Type{CE}) where {CE<:Cenum_anonymous} = print(io, "<anonymous-enum>")
 
 
 function Base.show(io::IO, ce::CE) where {CE<:Cenum}
-	ce isa get(io, :typeinfo, Nothing) || show(io, typeof(ce))
-	print(io, "(")
+	if !(ce isa get(io, :typeinfo, Nothing))
+		show(io, typeof(ce))
+		print(io, "(")
+	end
 	value = convert(eltype(CE), ce)
 	found = false
 	for (name, val) in Cenumlayout(CE).values
@@ -20,7 +22,9 @@ function Base.show(io::IO, ce::CE) where {CE<:Cenum}
 		end
 	end
 	found || show(io, value)
-	print(io, ")")
+	if !(ce isa get(io, :typeinfo, Nothing))
+		print(io, ")")
+	end
 end
 
 Base.promote_rule(::Type{T}, ::Type{CE}) where {T<:Integer, CE<:Cenum} = promote_type(T, eltype(CE))
@@ -73,7 +77,7 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	if isnothing(body)
 		push!(deps, name => quote
-			abstract type $(escName) <: Cenum end
+			abstract type $(escName) <: $(super) end
 		end)
 	else
 		fields = []
@@ -103,8 +107,8 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 		
 		push!(deps, name => quote
 			$(fields...)
-			abstract type $(escName) <: Cenum end
-			primitive type $(concreteName) <: $(escName) sizeof(Cenumlayout(Ctypespec(Cenum, $(strategy), Tuple{$(values...)})).type)*8 end
+			abstract type $(escName) <: $(super) end
+			primitive type $(concreteName) <: $(escName) sizeof(Cenumlayout(Ctypespec($(super), $(strategy), Tuple{$(values...)})).type)*8 end
 			#=
 				EnumSpec = Tuple{
 					Pair{:name, value}  # each enum constant's name and value
