@@ -28,8 +28,8 @@ propertytypes(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, fld),)
 Base.fieldnames(ca::CA; kwargs...) where {CA<:Caggregates} = fieldnames(typeof(ca); kwargs...)
 Base.fieldnames(::Type{CA}; kwargs...) where {CA<:Caggregates} = propertynames(_fieldtype(CA); kwargs...)
 
-Base.getproperty(cx::CX, sym::Symbol) where {CA<:Caggregates, CX<:Union{CA, Caccessor{CA}}} = _getproperty(_base(cx), Val(_fieldoffset(cx)), Ctypespec(_fieldtype(cx)), Val(sym))
-Base.setproperty!(cx::CX, sym::Symbol, val) where {CA<:Caggregate, CX<:Union{CA, Caccessor{CA}}} = _setproperty!(_base(cx), Val(_fieldoffset(cx)), Ctypespec(_fieldtype(cx)), Val(sym), val)
+Base.getproperty(ca::CA, sym::Symbol) where {CA<:Caggregates} = _getproperty(_base(ca), Val(_fieldoffset(ca)), Ctypespec(_fieldtype(ca)), Val(sym))
+Base.setproperty!(ca::CA, sym::Symbol, val) where {CA<:Caggregates} = _setproperty!(_base(ca), Val(_fieldoffset(ca)), Ctypespec(_fieldtype(ca)), Val(sym), val)
 
 # Carray interface
 const Carrays = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{<:Cconst{CA}}} where {CA<:Carray}
@@ -148,6 +148,7 @@ end
 
 
 _initproperty!(cx::CX, sym::Symbol, val) where {CA<:Caggregate, CX<:Union{CA, Caccessor{CA}}} = _setproperty!(_base(cx), Val(_fieldoffset(cx)), Ctypespec(_fieldtype(cx)), Val(sym), val, Val(true))
+_setproperty!(base::Cconst{CA}, ::Val{offset}, ::Type{spec}, ::Val{name}, val, ::Val{force} = Val(false)) where {CA<:Caggregate, offset, spec<:Ctypespec, name, force} = error("Unable to change the value of a Cconst field")
 @generated function _setproperty!(base::Union{CA, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}, val, ::Val{force} = Val(false)) where {CA<:Caggregate, offset, spec<:Ctypespec, name, force}
 	mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
 	
