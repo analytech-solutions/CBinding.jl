@@ -19,6 +19,8 @@ module CBinding
 	
 	abstract type Cenum <: Integer end
 	
+	const Copaques = Union{Caggregate, Cenum}
+	
 	
 	# alignment strategies
 	struct Calignment{SymT}

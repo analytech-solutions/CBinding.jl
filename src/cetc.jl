@@ -5,11 +5,11 @@
 struct _Ref{To, From, R<:Base.RefValue{From}}
 	r::R
 end
-Base.cconvert(::Type{Ptr{CX}}, r::R) where {CX<:Union{Caggregate, Cenum}, R<:Base.RefValue{CX}} = r
-Base.cconvert(::Type{Ptr{CX}}, r::R) where {CX<:Union{Caggregate, Cenum}, T<:CX, R<:Base.RefValue{T}} = _Ref{CX, T, R}(r)
-Base.unsafe_convert(::Type{Ptr{CX}}, r::_Ref{CX, T, R}) where {CX<:Union{Caggregate, Cenum}, T<:CX, R<:Base.RefValue{T}} = reinterpret(Ptr{CX}, Base.unsafe_convert(Ptr{T}, r.r))
-Base.unsafe_load(p::Ptr{CX}, i::Integer = 1) where {CX<:Union{Caggregate, Cenum}} = Base.pointerref(reinterpret(Ptr{_concrete(CX)}, p), Int(i), 1)
-Base.unsafe_store!(p::Ptr{CX}, x, i::Integer = 1) where {CX<:Union{Caggregate, Cenum}} = Base.pointerset(reinterpret(Ptr{_concrete(CX)}, p), convert(_concrete(CX), x), Int(i), 1)
+Base.cconvert(::Type{Ptr{CO}}, r::R) where {CO<:Copaques, R<:Base.RefValue{CO}} = r
+Base.cconvert(::Type{Ptr{CO}}, r::R) where {CO<:Copaques, T<:CO, R<:Base.RefValue{T}} = _Ref{CO, T, R}(r)
+Base.unsafe_convert(::Type{Ptr{CO}}, r::_Ref{CO, T, R}) where {CO<:Copaques, T<:CO, R<:Base.RefValue{T}} = reinterpret(Ptr{CO}, Base.unsafe_convert(Ptr{T}, r.r))
+Base.unsafe_load(p::Ptr{CO}, i::Integer = 1) where {CO<:Copaques} = Base.pointerref(reinterpret(Ptr{_concrete(CO)}, p), Int(i), 1)
+Base.unsafe_store!(p::Ptr{CO}, x, i::Integer = 1) where {CO<:Copaques} = Base.pointerset(reinterpret(Ptr{_concrete(CO)}, p), convert(_concrete(CO), x), Int(i), 1)
 
 
 
