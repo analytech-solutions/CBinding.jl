@@ -124,7 +124,7 @@ end
 		off = fields[name].offset + offset*8
 		
 		if typ <: Union{Cdeferrable, Cconst{<:Cdeferrable}}
-			return :(Caccessor{$(base <: Cconst || _type(spec) <: Cconst ? Cconst(typ) : typ)}(base, Val($(off÷8))))
+			return :(Caccessor{$(base <: Cconst || type(spec) <: Cconst ? Cconst(typ) : typ)}(base, Val($(off÷8))))
 		else
 			t = nonconst(typ)
 			o = off & (8-1)
