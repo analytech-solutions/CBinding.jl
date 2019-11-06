@@ -8,8 +8,8 @@ end
 Base.cconvert(::Type{Ptr{CO}}, r::R) where {CO<:Copaques, R<:Base.RefValue{CO}} = r
 Base.cconvert(::Type{Ptr{CO}}, r::R) where {CO<:Copaques, T<:CO, R<:Base.RefValue{T}} = _Ref{CO, T, R}(r)
 Base.unsafe_convert(::Type{Ptr{CO}}, r::_Ref{CO, T, R}) where {CO<:Copaques, T<:CO, R<:Base.RefValue{T}} = reinterpret(Ptr{CO}, Base.unsafe_convert(Ptr{T}, r.r))
-Base.unsafe_load(p::Ptr{CO}, i::Integer = 1) where {CO<:Copaques} = Base.pointerref(reinterpret(Ptr{_concrete(CO)}, p), Int(i), 1)
-Base.unsafe_store!(p::Ptr{CO}, x, i::Integer = 1) where {CO<:Copaques} = Base.pointerset(reinterpret(Ptr{_concrete(CO)}, p), convert(_concrete(CO), x), Int(i), 1)
+Base.unsafe_load(p::Ptr{CO}, i::Integer = 1) where {CO<:Copaques} = Base.pointerref(reinterpret(Ptr{concrete(CO)}, p), Int(i), 1)
+Base.unsafe_store!(p::Ptr{CO}, x, i::Integer = 1) where {CO<:Copaques} = Base.pointerset(reinterpret(Ptr{concrete(CO)}, p), convert(concrete(CO), x), Int(i), 1)
 
 
 

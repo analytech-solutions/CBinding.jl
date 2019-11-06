@@ -80,7 +80,7 @@ function _addvalue(layout::Cenumlayout, ::Type{Pair{sym, val}}, ::Type{spec}) wh
 	layout.values[sym] = val
 	
 	(min, max) = extrema(values(layout.values))
-	for typ in enumtypes(_strategy(spec))
+	for typ in enumtypes(strategy(spec))
 		if typemin(typ) <= min && max <= typemax(typ)
 			layout.type = typ
 			layout.min = typ(min)
@@ -94,7 +94,7 @@ end
 @generated function Cenumlayout(::Type{spec}) where {spec<:Ctypespec{<:Any, <:Cenum, <:Calignment, <:Tuple}}
 	layout = Cenumlayout()
 	
-	values = _specification(spec)
+	values = specification(spec)
 	while values !== Tuple{}
 		value = Base.tuple_type_head(values)
 		values = Base.tuple_type_tail(values)
@@ -126,11 +126,11 @@ Ctypelayout(::Type{CC}) where {CC<:Cconst} = Ctypelayout(nonconst(CC))
 Ctypelayout(::Type{CA}) where {CA<:Caggregate} = Ctypelayout(Ctypespec(CA))
 
 
-_offset(::Type{spec}, offset::Int) where {spec<:Ctypespec} = _offset(_kind(spec), offset)
+_offset(::Type{spec}, offset::Int) where {spec<:Ctypespec} = _offset(kind(spec), offset)
 _offset(::Type{Cstruct}, offset::Int) = offset
 _offset(::Type{Cunion}, offset::Int) = 0
 
-_size(::Type{spec}, args...) where {spec<:Ctypespec} = _size(_kind(spec), args...)
+_size(::Type{spec}, args...) where {spec<:Ctypespec} = _size(kind(spec), args...)
 _size(::Type{Cstruct}, args...) = +(args...)
 _size(::Type{Cunion}, args...) = max(args...)
 
@@ -151,14 +151,14 @@ _addfield(layout::Ctypelayout, ::Nothing, typ) = error("Encountered an unnamed f
 
 function _addfield(layout::Ctypelayout, ::Nothing, ::Type{spec}, bits) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}}
 	for (sym, field) in Ctypelayout(spec).fields
-		_addfield(layout, sym, Ctypefield(length(layout.fields), (_type(spec) <: Cconst ? Cconst(field.type) : field.type), field.size, layout.offset+field.offset))
+		_addfield(layout, sym, Ctypefield(length(layout.fields), (type(spec) <: Cconst ? Cconst(field.type) : field.type), field.size, layout.offset+field.offset))
 	end
-	return sizeof(_type(spec))*8
+	return sizeof(type(spec))*8
 end
 
 function _addfield(layout::Ctypelayout, sym::Symbol, ::Type{spec}, bits) where {spec<:Ctypespec{<:Any, <:Copaques, <:Calignment, <:Tuple}}
-	_addfield(layout, sym, Ctypefield(length(layout.fields), _type(spec), 0, layout.offset))
-	return sizeof(_type(spec))*8
+	_addfield(layout, sym, Ctypefield(length(layout.fields), type(spec), 0, layout.offset))
+	return sizeof(type(spec))*8
 end
 
 function _addfield(layout::Ctypelayout, sym::Symbol, typ, bits)
@@ -169,8 +169,8 @@ end
 
 function _addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}, T}
 	(sym, typ, bits) = _field(T)
-	pad = padding(_strategy(spec), layout.offset, bits, typ)
-	align = checked_alignof(_strategy(spec), typ)
+	pad = padding(strategy(spec), layout.offset, bits, typ)
+	align = checked_alignof(strategy(spec), typ)
 	layout.offset = _size(spec, layout.offset, pad)
 	
 	bits = _addfield(layout, sym, typ, bits)
@@ -180,7 +180,7 @@ function _addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ct
 end
 
 function _addfield(layout::Ctypelayout, ::Type{Calignment{align}}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}, align}
-	pad = padding(_strategy(spec), layout.offset, align*8)
+	pad = padding(strategy(spec), layout.offset, align*8)
 	layout.align = max(layout.align, align)
 	layout.size = _size(spec, layout.size, pad)
 end
@@ -189,7 +189,7 @@ end
 @generated function Ctypelayout(::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}}
 	layout = Ctypelayout()
 	
-	fields = _specification(spec)
+	fields = specification(spec)
 	while fields !== Tuple{}
 		field = Base.tuple_type_head(fields)
 		fields = Base.tuple_type_tail(fields)
@@ -198,7 +198,7 @@ end
 		_addfield(layout, field, spec)
 	end
 	
-	layout.size += padding(_strategy(spec), layout.size, layout.align*8)
+	layout.size += padding(strategy(spec), layout.size, layout.align*8)
 	layout.size += -layout.size & (8-1)  # ensure size is divisible by 8
 	
 	return layout

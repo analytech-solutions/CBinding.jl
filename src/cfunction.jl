@@ -58,7 +58,7 @@ cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 
 
 (f::Ptr{Cfunction{RetT, ArgsT}})(args...) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT, default_convention(ArgsT)}(reinterpret(Ptr{Cvoid}, f))(args...)
-(f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = invoke(reinterpret(Ptr{Cfunction{_concrete(RetT), ArgsT, ConvT}}, f), args...)
+(f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = invoke(reinterpret(Ptr{Cfunction{concrete(RetT), ArgsT, ConvT}}, f), args...)
 @generated function invoke(f::Ptr{Cfunction{RetT, ArgsT, ConvT}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
 	error = nothing
 	_tuplize(::Type{Tuple{}}) = ()

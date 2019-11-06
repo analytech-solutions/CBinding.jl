@@ -25,12 +25,12 @@ end
 
 Base.promote_rule(::Type{T}, ::Type{CE}) where {T<:Integer, CE<:Cenum} = promote_type(T, eltype(CE))
 
-Base.convert(::Type{CE}, x::T) where {CE<:Cenum, T<:Integer} = reinterpret(CE, convert(eltype(CE), x))
+Base.convert(::Type{CE}, x::T) where {CE<:Cenum, T<:Integer} = reinterpret(concrete(CE), convert(eltype(CE), x))
 Base.convert(::Type{T}, x::CE) where {CE<:Cenum, T<:Integer} = convert(T, reinterpret(eltype(CE), x))
 Base.convert(::Type{CE1}, x::CE2) where {CE1<:Cenum, CE2<:Cenum} = convert(CE1, convert(eltype(CE2), x))
 
 (::Type{CE1})(x::CE2) where {CE1<:Cenum, CE2<:Cenum} = convert(CE1, convert(eltype(CE2), x))
-(::Type{CE})(x::T) where {CE<:Cenum, T<:Integer} = convert(CE, x)
+(::Type{CE})(x::T = zero(eltype(CE))) where {CE<:Cenum, T<:Integer} = convert(CE, x)
 (::Type{T})(x::CE) where {CE<:Cenum, T<:Integer} = convert(T, x)
 
 Base.eltype(ce::Cenum) = eltype(typeof(ce))
@@ -110,11 +110,11 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 					Pair{:name, value}  # each enum constant's name and value
 				}
 			=#
-			CBinding._concrete(::Type{$(escName)}) = $(concreteName)
-			CBinding._concrete(::Type{$(concreteName)}) = $(concreteName)
-			CBinding._strategy(::Type{$(concreteName)}) = $(strategy)
-			CBinding._specification(::Type{$(concreteName)})  = Tuple{$(values...)}
-			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding._concrete($(concreteName)))
+			CBinding.concrete(::Type{$(escName)}) = $(concreteName)
+			CBinding.concrete(::Type{$(concreteName)}) = $(concreteName)
+			CBinding.strategy(::Type{$(concreteName)}) = $(strategy)
+			CBinding.specification(::Type{$(concreteName)})  = Tuple{$(values...)}
+			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding.concrete($(concreteName)))
 		end)
 	end
 	

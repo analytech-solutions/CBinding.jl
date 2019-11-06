@@ -15,14 +15,14 @@ Base.show(io::IO, ::Type{CU}) where {CU<:Cunion_anonymous}  = print(io, "<anonym
 
 # <:Caggregate functions
 function (::Type{CA})(cc::Cconst{CA}) where {CA<:Caggregate}
-	T = _concrete(CA)
+	T = concrete(CA)
 	result = T(undef)
 	setfield!(result, :mem, getfield(cc, :mem))
 	return result
 end
 
 function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
-	T = _concrete(CA)
+	T = concrete(CA)
 	result = T(undef)
 	if isempty(kwargs)
 		setfield!(result, :mem, map(zero, getfield(result, :mem)))
@@ -183,11 +183,11 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 					Calignment{align}  # alignment "field"
 				}
 			=#
-			CBinding._concrete(::Type{$(escName)}) = $(concreteName)
-			CBinding._concrete(::Type{$(concreteName)}) = $(concreteName)
-			CBinding._strategy(::Type{$(concreteName)}) = $(strategy)
-			CBinding._specification(::Type{$(concreteName)})  = Tuple{$(fields...)}
-			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding._concrete($(concreteName)))
+			CBinding.concrete(::Type{$(escName)}) = $(concreteName)
+			CBinding.concrete(::Type{$(concreteName)}) = $(concreteName)
+			CBinding.strategy(::Type{$(concreteName)}) = $(strategy)
+			CBinding.specification(::Type{$(concreteName)})  = Tuple{$(fields...)}
+			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding.concrete($(concreteName)))
 		end)
 	end
 	

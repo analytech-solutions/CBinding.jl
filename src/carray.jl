@@ -23,7 +23,7 @@ Base.:(==)(x::Carray, y::Carray) = isequal(x, y)
 function Ctypespec(::Type{CA}) where {T, N, CA<:Carray{T, N}}
 	_fix(::Type{Tuple{typ}}) where {typ} = Tuple{Carray(typ, Val(N))}
 	_fix(::Type{Tuple{typ, bits}}) where {typ, bits} = error("A Carray of a bit field is not supported")
-	_fix(::Type{spec}) where {spec<:Ctypespec} = Ctypespec{Carray(_type(spec), Val(N)), _opaque(spec), _strategy(spec), _specification(spec)}
+	_fix(::Type{spec}) where {spec<:Ctypespec} = Ctypespec{Carray(type(spec), Val(N)), opaque(spec), strategy(spec), specification(spec)}
 	return _fix(Ctypespec(eltype(CA)))
 end
 
