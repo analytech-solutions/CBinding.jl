@@ -1,32 +1,42 @@
 
 
+isanonymous(x) = isanonymous(typeof(x))
+isanonymous(::Type) = false
+
+
+abstract type Cstruct_anonymous <: Cstruct end
+isanonymous(::Type{<:Cstruct_anonymous}) = true
+Base.show(io::IO, ::Type{CS}) where {CS<:Cstruct_anonymous} = print(io, "<anonymous-struct>")
+
+abstract type Cunion_anonymous <: Cunion end
+isanonymous(::Type{<:Cunion_anonymous}) = true
+Base.show(io::IO, ::Type{CU}) where {CU<:Cunion_anonymous}  = print(io, "<anonymous-union>")
+
+
 # <:Caggregate functions
 function (::Type{CA})(cc::Cconst{CA}) where {CA<:Caggregate}
-	result = CA(undef)
+	T = concrete(CA)
+	result = T(undef)
 	setfield!(result, :mem, getfield(cc, :mem))
 	return result
 end
 
 function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
-	result = CA(undef)
+	T = concrete(CA)
+	result = T(undef)
 	if isempty(kwargs)
 		setfield!(result, :mem, map(zero, getfield(result, :mem)))
 	else
-		CA <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
+		T <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
 		foreach(kwarg -> _initproperty!(result, kwarg...), kwargs)
 	end
 	return result
 end
 
+Base.zero(::Type{CA}) where {CA<:Caggregate} = CA()
 Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(; nt...)
 Base.isequal(x::CA, y::CA) where {CA<:Caggregate} = getfield(x, :mem) == getfield(y, :mem)
 Base.:(==)(x::CA, y::CA) where {CA<:Caggregate} = isequal(x, y)
-
-isanonymous(ca::Caggregate) = isanonymous(typeof(ca))
-isanonymous(::Type{CA}) where {CA<:Caggregate} = match(r"^##anonymous#\d+$", string(CA.name.name)) !== nothing
-
-Base.show(io::IO, ::Type{CS}) where {CS<:Cstruct} = print(io, isanonymous(CS) ? "<anonymous-struct" : string(CS.name))
-Base.show(io::IO, ::Type{CU}) where {CU<:Cunion}  = print(io, isanonymous(CU) ? "<anonymous-union" : string(CU.name))
 
 function Base.show(io::IO, ca::Union{Caggregate, Cconst{<:Caggregate}})
 	if !(ca isa get(io, :typeinfo, Nothing))
@@ -47,73 +57,6 @@ function Base.show(io::IO, ca::Union{Caggregate, Cconst{<:Caggregate}})
 	if !(ca isa get(io, :typeinfo, Nothing))
 		ca isa Cconst && print(io, ")")
 	end
-end
-
-
-
-const _alignExprs = (Symbol("@calign"), :(CBinding.$(Symbol("@calign"))))
-const _enumExprs = (Symbol("@cenum"), :(CBinding.$(Symbol("@cenum"))))
-const _arrayExprs = (Symbol("@carray"), :(CBinding.$(Symbol("@carray"))))
-const _structExprs = (Symbol("@cstruct"), :(CBinding.$(Symbol("@cstruct"))))
-const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
-const _externExprs = (Symbol("@cextern"), :(CBinding.$(Symbol("@cextern"))))
-
-# macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
-_expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = escape ? esc(x) : x
-function _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, e::Expr, escape::Bool = true)
-	if Base.is_expr(e, :macrocall)
-		if length(e.args) > 1 && e.args[1] in (_alignExprs..., _enumExprs..., _arrayExprs..., _structExprs..., _unionExprs...)
-			if e.args[1] in _alignExprs
-				return _calign(mod, deps, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
-			elseif e.args[1] in _enumExprs
-				return _cenum(mod, deps, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
-			elseif e.args[1] in _arrayExprs
-				return _carray(mod, deps, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
-			elseif e.args[1] in _structExprs
-				return _caggregate(mod, deps, :cstruct, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
-			elseif e.args[1] in _unionExprs
-				return _caggregate(mod, deps, :cunion, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
-			end
-		else
-			return _expand(mod, deps, macroexpand(mod, e, recursive = false))
-		end
-	elseif Base.is_expr(e, :ref, 2)
-		return _carray(mod, deps, e)
-	else
-		for i in eachindex(e.args)
-			e.args[i] = _expand(mod, deps, e.args[i], escape)
-		end
-		return e
-	end
-end
-
-
-
-macro calign(exprs...) return _calign(__module__, nothing, exprs...) end
-
-function _calign(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Union{Integer, Expr})
-	isOuter = isnothing(deps)
-	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	def = Expr(:align, _expand(mod, deps, expr))
-	
-	return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
-end
-
-
-
-macro ctypedef(exprs...) return _ctypedef(__module__, nothing, exprs...) end
-
-function _ctypedef(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Symbol, expr::Union{Symbol, Expr})
-	escName = esc(name)
-	
-	isOuter = isnothing(deps)
-	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	expr = _expand(mod, deps, expr)
-	push!(deps, name => quote
-		const $(escName) = $(expr)
-	end)
-	
-	return isOuter ? quote $(map(last, deps)...) ; $(escName) end : escName
 end
 
 
@@ -144,26 +87,26 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 	isnothing(strategy) || (startswith(String(strategy), "__") && endswith(String(strategy), "__") && length(String(strategy)) > 4) || error("Expected @$(kind) to have packing specified as `__STRATEGY__`, such as `__packed__` or `__native__`")
 	
 	strategy = isnothing(strategy) ? :(CBinding.ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	name = isnothing(name) ? gensym("anonymous") : name
+	isanon = isnothing(name)
+	super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
+	name = isanon ? gensym("anonymous-$(kind)") : name
 	escName = esc(name)
+	concreteName = esc(Symbol(name, "\u200B"))  # this is so incredibly evil: appending a 0-width space to the type name
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	if isnothing(body)
 		push!(deps, name => quote
-			mutable struct $(escName) <: $(kind === :cunion ? :(Cunion) : :(Cstruct))
-				let constructor = false end
-			end
+			abstract type $(escName) <: $(super) end
 		end)
 	else
-		super = kind === :cunion ? :(Cunion) : :(Cstruct)
 		fields = []
 		for arg in body.args
 			arg = _expand(mod, deps, arg)
 			if Base.is_expr(arg, :align, 1)
 				align = arg.args[1]
 				push!(fields, :(Calignment{$(align)}))
-			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous#")
+			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous")
 				# this is just a type definition, not a field
 			else
 				Base.is_expr(arg, :(::)) && length(arg.args) != 2 && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
@@ -224,52 +167,30 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			end
 		end
 		
-		_stripPtrTypes(x) = x
-		function _stripPtrTypes(e::Expr)
-			if Base.is_expr(e, :curly, 2) && e.args[1] in (:Ptr, esc(:Ptr), :(Base.Ptr), Expr(:., esc(:Base), esc(QuoteNode(:Ptr))))
-				e.args[2] = :Cvoid
-				return e
-			end
-			e.args = map(_stripPtrTypes, e.args)
-			return e
-		end
-		
 		push!(deps, name => quote
-			mutable struct $(escName) <: $(super)
-				mem::NTuple{Ctypelayout(Ctypespec($(super), $(strategy), Tuple{$(map(_stripPtrTypes, deepcopy(fields))...)})).size÷8, UInt8}
+			abstract type $(escName) <: $(super) end
+			mutable struct $(concreteName) <: $(escName)
+				mem::NTuple{Ctypelayout(Ctypespec($(super), $(strategy), Tuple{$(fields...)})).size÷8, UInt8}
 				
-				$(escName)(::UndefInitializer) = new()
+				$(concreteName)(::UndefInitializer) = new()
 			end
 			#=
 				TypeSpec = Tuple{
 					Pair{:sym1, Tuple{PrimType}},  # primitive field `sym1`
 					Pair{:sym2, Tuple{PrimType, NBits}},  # bit field `sym2`
 					Pair{:sym3, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # nested aggregate `sym3`
-					Pair{nothing, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # anonymous nested aggregate
+					Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}},  # anonymous nested aggregate
 					Calignment{align}  # alignment "field"
 				}
 			=#
-			CBinding._strategy(::Type{$(escName)}) = $(strategy)
-			CBinding._specification(::Type{$(escName)}) = Tuple{$(fields...)}
+			CBinding.concrete(::Type{$(escName)}) = $(concreteName)
+			CBinding.concrete(::Type{$(concreteName)}) = $(concreteName)
+			CBinding.strategy(::Type{$(concreteName)}) = $(strategy)
+			CBinding.specification(::Type{$(concreteName)})  = Tuple{$(fields...)}
+			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding.concrete($(concreteName)))
 		end)
 	end
 	
 	return isOuter ? quote $(map(last, deps)...) ; $(escName) end : escName
-end
-
-
-
-macro carray(exprs...) _carray(__module__, nothing, exprs...) end
-
-function _carray(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Expr)
-	Base.is_expr(expr, :ref, 2) || error("Expected C array definition to be of the form `ElementType[N]`")
-	
-	isOuter = isnothing(deps)
-	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	expr.args[1] = _expand(mod, deps, expr.args[1])
-	expr.args[2] = _expand(mod, deps, expr.args[2])
-	def = :(Carray{$(expr.args[1]), $(expr.args[2]), sizeof(Carray{$(expr.args[1]), $(expr.args[2])})})
-	
-	return isOuter ? quote $(map(last, deps)...) ; $(def) end : def
 end
 

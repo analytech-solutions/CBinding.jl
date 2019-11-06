@@ -5,7 +5,7 @@ using CBinding
 
 function checkJL(expr, val)
 	def = expr
-	def = replace(def, r"(\n\s+)([^:\n]+)(::)([^:\n]+)(:)(\d+)" => s"\1(\2\5\6)\3\4")
+	def = replace(def, r"(\w+)::(\w+):(\d+)" => s"(\1:\3)::\2")
 	
 	X = @eval module $(gensym())
 		using CBinding

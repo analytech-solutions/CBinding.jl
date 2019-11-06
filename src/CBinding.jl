@@ -17,7 +17,9 @@ module CBinding
 	abstract type Cunion end
 	const Caggregate = Union{Cstruct, Cunion}
 	
-	abstract type Cenum{T<:Integer} <: Integer end
+	abstract type Cenum <: Integer end
+	
+	const Copaques = Union{Caggregate, Cenum}
 	
 	
 	# alignment strategies
@@ -47,6 +49,7 @@ module CBinding
 	include("caggregate.jl")
 	include("cglobal.jl")
 	include("cfunction.jl")
+	include("cetc.jl")
 	include("ctypelayout.jl")
 	include("caccessor.jl")
 end

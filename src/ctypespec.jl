@@ -1,26 +1,27 @@
 
 
-struct Ctypespec{T, CA<:Caggregate, S<:Calignment, TS<:Tuple}
+struct Ctypespec{T, CO<:Copaques, S<:Calignment, TS<:Tuple}
 end
 
 Ctypespec(::Type{T}) where {T} = Tuple{T}
 Ctypespec(::Type{T}, ::Val{bits}) where {T, bits} = Tuple{T, bits}
-Ctypespec(::Type{CA}) where {CA<:Caggregate} = Ctypespec{CA, CA, _strategy(CA), _specification(CA)}
+Ctypespec(::Type{CO}) where {CO<:Copaques} = Ctypespec{concrete(CO), concrete(CO), strategy(CO), specification(CO)}
 
-Ctypespec(::Type{Cstruct}, ::Type{S}, ::Type{TS}) where {S, TS} = Ctypespec{Cstruct, Cstruct, S, TS}
-Ctypespec(::Type{Cunion}, ::Type{S}, ::Type{TS}) where {S, TS} = Ctypespec{Cunion, Cunion, S, TS}
+Ctypespec(::Type{CO}, ::Type{S}, ::Type{TS}) where {CO<:Copaques, S, TS} = Ctypespec{CO, CO, S, TS}
 
 
-_type(::Type{Ctypespec{T, CA, S, TS}}) where {T, CA, S, TS} = T
-_aggregate(::Type{Ctypespec{T, CA, S, TS}}) where {T, CA, S, TS} = CA
-_strategy(::Type{Ctypespec{T, CA, S, TS}}) where {T, CA, S, TS} = S
-_specification(::Type{Ctypespec{T, CA, S, TS}}) where {T, CA, S, TS} = TS
+type(::Type{Ctypespec{T, CO, S, TS}}) where {T, CO, S, TS} = T
+opaque(::Type{Ctypespec{T, CO, S, TS}}) where {T, CO, S, TS} = CO
+strategy(::Type{Ctypespec{T, CO, S, TS}}) where {T, CO, S, TS} = S
+specification(::Type{Ctypespec{T, CO, S, TS}}) where {T, CO, S, TS} = TS
 
-_strategy(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get alignment strategy for an aggregate without one")
+concrete(::Type{T}) where {T} = T
+concrete(::Type{CO}) where {CO<:Copaques} = error("Attempted to get type specification details of an opaque type `$(CO)`")
+strategy(::Type{CO}) where {CO<:Copaques} = strategy(concrete(CO))
+specification(::Type{CO}) where {CO<:Copaques} = specification(concrete(CO))
 
-_specification(::Type{CA}) where {CA<:Caggregate} = error("Attempted to get type specification for an aggregate without one")
-
-_kind(::Type{TS}) where {TS<:Ctypespec} = _kind(_aggregate(TS))
-_kind(::Type{CS}) where {CS<:Cstruct} = Cstruct
-_kind(::Type{CU}) where {CU<:Cunion} = Cunion
+kind(::Type{TS}) where {TS<:Ctypespec} = kind(opaque(TS))
+kind(::Type{CS}) where {CS<:Cstruct} = Cstruct
+kind(::Type{CU}) where {CU<:Cunion} = Cunion
+kind(::Type{CE}) where {CE<:Cenum} = Cenum
 

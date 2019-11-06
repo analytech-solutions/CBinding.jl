@@ -25,7 +25,7 @@ Base.sizeof(::Type{CC}) where {T, CC<:Cconst{T}} = sizeof(T)
 function Ctypespec(::Type{CC}) where {CC<:Cconst}
 	_fix(::Type{Tuple{typ}}) where {typ} = Tuple{Cconst(typ)}
 	_fix(::Type{Tuple{typ, bits}}) where {typ, bits} = Tuple{Cconst(typ), bits}
-	_fix(::Type{spec}) where {spec<:Ctypespec} = Ctypespec{Cconst(_type(spec)), _aggregate(spec), _strategy(spec), _specification(spec)}
+	_fix(::Type{spec}) where {spec<:Ctypespec} = Ctypespec{Cconst(type(spec)), opaque(spec), strategy(spec), specification(spec)}
 	return _fix(Ctypespec(nonconst(CC)))
 end
 

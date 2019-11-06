@@ -1,6 +1,12 @@
 
 
 @testset "@cenum" begin
+	@eval @cenum OpaqueEnum
+	@eval @cenum OpaqueEnum
+	@test_throws ErrorException sizeof(OpaqueEnum)
+	@test sizeof(Ptr{OpaqueEnum}) == sizeof(Ptr{Cvoid})
+	
+	@eval @cenum SimpleEnum
 	@eval @cenum SimpleEnum {
 		SE1,
 		SE2,
