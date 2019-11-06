@@ -21,6 +21,11 @@ function (::Type{CA})(cc::Cconst{CA}) where {CA<:Caggregate}
 	return result
 end
 
+function (::Type{CA})(u::UndefInitializer) where {CA<:Caggregate}
+	T = concrete(CA)
+	return T(u)
+end
+
 function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
 	T = concrete(CA)
 	result = T(undef)
