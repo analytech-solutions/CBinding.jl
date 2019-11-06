@@ -47,6 +47,7 @@ module CBinding
 	include("caggregate.jl")
 	include("cglobal.jl")
 	include("cfunction.jl")
+	include("cetc.jl")
 	include("ctypelayout.jl")
 	include("caccessor.jl")
 end
