@@ -13,12 +13,12 @@ Base.unsafe_store!(p::Ptr{CO}, x, i::Integer = 1) where {CO<:Copaques} = Base.po
 
 
 
-const _alignExprs = (Symbol("@calign"), :(CBinding.$(Symbol("@calign"))))
-const _enumExprs = (Symbol("@cenum"), :(CBinding.$(Symbol("@cenum"))))
-const _arrayExprs = (Symbol("@carray"), :(CBinding.$(Symbol("@carray"))))
-const _structExprs = (Symbol("@cstruct"), :(CBinding.$(Symbol("@cstruct"))))
-const _unionExprs = (Symbol("@cunion"), :(CBinding.$(Symbol("@cunion"))))
-const _externExprs = (Symbol("@cextern"), :(CBinding.$(Symbol("@cextern"))))
+const _alignExprs = (Symbol("@calign"),)
+const _enumExprs = (Symbol("@cenum"),)
+const _arrayExprs = (Symbol("@carray"),)
+const _structExprs = (Symbol("@cstruct"),)
+const _unionExprs = (Symbol("@cunion"),)
+const _externExprs = (Symbol("@cextern"),)
 
 # macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
 _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = escape ? esc(x) : x
