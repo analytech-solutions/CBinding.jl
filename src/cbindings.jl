@@ -85,16 +85,20 @@ function _cextern_function(mod::Module, conv::Union{Symbol, Nothing}, func::Expr
 	sig = (
 		retType,
 		:(Tuple{$(argTypes...)}),
-		(isnothing(conv) ? () : (:(CBinding.Cconvention{$(QuoteNode(conv))}),))...,
+		(isnothing(conv) ? () : (:(Cconvention{$(QuoteNode(conv))}),))...,
 	)
 	
 	# NOTE: about quote block:
 	#   1. inner @eval the function type in module scope in case it defines new types
 	#   2. outer @eval bind the function pointer and "bake" it into the function
 	return quote
-		@eval $(name)($(argNames...)) = $(Expr(:$, :(
-			(@eval CBinding.Cfunction{$(sig...)})($(QuoteNode(name)), $(libs...))
-		)))($(argNames...))
+		try
+			@eval $(name)($(argNames...)) = $(Expr(:$, :(
+				(@eval $(@__MODULE__).Cfunction{$(sig...)})($(QuoteNode(name)), $(libs...))
+			)))($(argNames...))
+		catch
+			@warn "unable to bind to function `$($(String(name)))`, the symbol couldn't be found in the library or it conflicts with an existing identifier"
+		end
 	end
 end
 
@@ -103,7 +107,11 @@ function _cextern_variable(mod::Module, unused::Nothing, varName::Symbol, varTyp
 	
 	# NOTE: @eval the variable type in module scope in case it defines new types and so it can be const
 	return quote
-		@eval const $(varName) = CBinding.Cglobal{$(varType)}($(QuoteNode(varName)), $(libs...))
+		try
+			@eval const $(varName) = $(@__MODULE__).Cglobal{$(varType)}($(QuoteNode(varName)), $(libs...))
+		catch
+			@warn "unable to bind to global variable `$($(String(varName)))`, the symbol couldn't be found in the library or it conflicts with an existing identifier"
+		end
 	end
 end
 
