@@ -9,6 +9,10 @@ module CBinding
 	export propertytypes
 	
 	
+	# in auto-generated bindings, macros can be used to avoid naming conflicts between Julia and C, so `@CBinding().include(...)` will not conflict with `include(...)`
+	macro CBinding() return @__MODULE__ end
+	
+	
 	# provide a temporary placeholder for 128-bit floating point primitive
 	primitive type Clongdouble <: AbstractFloat sizeof(Cdouble)*2*8 end
 	
