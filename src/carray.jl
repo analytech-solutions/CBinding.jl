@@ -8,13 +8,19 @@ end
 Carray{T, N}(u::UndefInitializer) where {T, N} = Carray{T, N, sizeof(Carray{T, N})}(u)
 Carray(::Type{T}, ::Val{N}) where {T, N} = Carray{T, N, sizeof(Carray{T, N})}
 
-function (::Type{CA})() where {CA<:Carray}
+function (::Type{CA})(init::Union{CA, Cconst{CA}, typeof(undef), typeof(zero)}) where {CA<:Carray}
 	result = CA(undef)
-	setfield!(result, :mem, map(zero, getfield(result, :mem)))
+	
+	if init isa CA || init isa Cconst{CA}
+		setfield!(result, :mem, getfield(init, :mem))
+	elseif init isa typeof(zero)
+		setfield!(result, :mem, map(init, getfield(result, :mem)))
+	end
+	
 	return result
 end
 
-Base.zero(::Type{CA}) where {CA<:Union{Caggregate, Carray}} = CA()
+Base.zero(::Type{CA}) where {CA<:Carray} = CA(zero)
 Base.sizeof(::Type{CA}) where {T, N, CA<:Carray{T, N}} = sizeof(T)*N
 Base.isequal(x::Carray, y::Carray) = length(x) == length(y) && all(i -> x[i] == y[i], eachindex(x))
 Base.:(==)(x::Carray, y::Carray) = isequal(x, y)
