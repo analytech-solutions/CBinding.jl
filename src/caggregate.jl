@@ -14,31 +14,23 @@ Base.show(io::IO, ::Type{CU}) where {CU<:Cunion_anonymous}  = print(io, "<anonym
 
 
 # <:Caggregate functions
-function (::Type{CA})(cc::Cconst{CA}) where {CA<:Caggregate}
+function (::Type{CA})(init::Union{CA, Cconst{CA}, typeof(undef), typeof(zero)}; kwargs...) where {CA<:Caggregate}
 	T = concrete(CA)
 	result = T(undef)
-	setfield!(result, :mem, getfield(cc, :mem))
-	return result
-end
-
-function (::Type{CA})(u::UndefInitializer) where {CA<:Caggregate}
-	T = concrete(CA)
-	return T(u)
-end
-
-function (::Type{CA})(; kwargs...) where {CA<:Caggregate}
-	T = concrete(CA)
-	result = T(undef)
-	if isempty(kwargs)
-		setfield!(result, :mem, map(zero, getfield(result, :mem)))
-	else
-		T <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
-		foreach(kwarg -> _initproperty!(result, kwarg...), kwargs)
+	
+	if init isa CA || init isa Cconst{CA}
+		setfield!(result, :mem, getfield(init, :mem))
+	elseif init isa typeof(zero)
+		setfield!(result, :mem, map(init, getfield(result, :mem)))
 	end
+	
+	T <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
+	foreach(kwarg -> _initproperty!(result, kwarg...), kwargs)
+	
 	return result
 end
 
-Base.zero(::Type{CA}) where {CA<:Caggregate} = CA()
+Base.zero(::Type{CA}) where {CA<:Caggregate} = CA(zero)
 Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(; nt...)
 Base.isequal(x::CA, y::CA) where {CA<:Caggregate} = getfield(x, :mem) == getfield(y, :mem)
 Base.:(==)(x::CA, y::CA) where {CA<:Caggregate} = isequal(x, y)
