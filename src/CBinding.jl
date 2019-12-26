@@ -25,6 +25,12 @@ module CBinding
 	
 	const Copaques = Union{Caggregate, Cenum}
 	
+	struct Cconst{T, S}
+		mem::NTuple{S, UInt8}
+		
+		Cconst{T}(x::NTuple{X, UInt8}) where {T, X} = new{T, sizeof(T)}(x)
+	end
+	
 	
 	# alignment strategies
 	struct Calignment{SymT}

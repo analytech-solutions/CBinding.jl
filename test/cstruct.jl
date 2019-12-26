@@ -75,7 +75,7 @@
 	@test sizeof(PtrToStructStruct) == sizeof(Ptr)
 	@test :p in propertynames(PtrToStructStruct)
 	
-	cus = CunionStruct()
+	cus = CunionStruct(zero)
 	@test cus.i == 0
 	@test cus.c[1] == 0
 	@test cus.c[4] == 0
@@ -150,7 +150,7 @@
 	@test :u in propertynames(Cint16CintBitfields)
 	@test :i in propertynames(Cint16CintBitfields)
 	
-	bf = Cuint16Cint16Bitfields()
+	bf = Cuint16Cint16Bitfields(zero)
 	@test bf.u == 0
 	@test bf.i == 0
 	bf.i = Cint(-1)
@@ -160,7 +160,7 @@
 	@test bf.u == 0x0001
 	@test bf.i == -1
 	
-	bf = Cint16CalignCint16Bitfields()
+	bf = Cint16CalignCint16Bitfields(zero)
 	@test bf.i1 == 0
 	@test bf.i2 == 0
 	bf.i1 = -1
@@ -180,7 +180,7 @@
 			y::Cchar
 		}
 	}
-	aaf = AnonymousAggregateField(u = (x = -1,))
+	aaf = AnonymousAggregateField(zero, u = (x = -1,))
 	@test aaf.u.x == -1
 	aaf.u = (x = 0,)
 	@test aaf.u.x == 0
@@ -193,7 +193,7 @@
 			y::Cchar
 		}
 	}
-	aaf = NestedAnonymousAggregateField(u = (x = (z = -1,),))
+	aaf = NestedAnonymousAggregateField(zero, u = (x = (z = -1,),))
 	@test aaf.u.x.z == -1
 	aaf.u = (x = (z = 0,),)
 	@test aaf.u.x.z == 0
@@ -205,7 +205,7 @@
 			z::Cint
 		}
 	}
-	bl = BrokenLayout()
+	bl = BrokenLayout(zero)
 	@test bl.x.y == 0 && bl.x.z == 0
 	bl.x.z = 123
 	@test bl.x.y == 0 && bl.x.z == 123
@@ -214,7 +214,7 @@
 		x::BrokenLayout[2]
 	}
 	@test sizeof(ArrayOfStruct) == 2*2*sizeof(Cint)
-	aos = ArrayOfStruct()
+	aos = ArrayOfStruct(zero)
 	@test typeof(aos.x) <: CBinding.Caccessor
 	@test typeof(aos.x[]) <: Carray
 	@test typeof(aos.x[2]) <: CBinding.Caccessor

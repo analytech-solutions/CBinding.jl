@@ -76,7 +76,7 @@
 	@test sizeof(PtrToUnionUnion) == sizeof(Ptr)
 	@test :p in propertynames(PtrToUnionUnion)
 	
-	cuu = CunionUnion()
+	cuu = CunionUnion(zero)
 	@test cuu.i == 0
 	@test cuu.c[1] == 0
 	@test cuu.c[4] == 0
@@ -149,7 +149,7 @@
 	} __packed__
 	@test sizeof(Cint16CintBitfieldsUnion) == sizeof(Cint)
 	
-	bfUnion = Cuint16Cint16BitfieldsUnion()
+	bfUnion = Cuint16Cint16BitfieldsUnion(zero)
 	@test bfUnion.u == 0
 	@test bfUnion.i == 0
 	bfUnion.i = Cint(-1)
@@ -159,7 +159,7 @@
 	@test bfUnion.u == 0x0001
 	@test bfUnion.i == 1
 	
-	bfUnion = Cint16CalignCint16BitfieldsUnion()
+	bfUnion = Cint16CalignCint16BitfieldsUnion(zero)
 	@test bfUnion.i1 == 0
 	@test bfUnion.i2 == 0
 	bfUnion.i1 = -1

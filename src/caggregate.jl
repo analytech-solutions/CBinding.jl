@@ -31,7 +31,7 @@ function (::Type{CA})(init::Union{CA, Cconst{CA}, typeof(undef), typeof(zero)}; 
 end
 
 Base.zero(::Type{CA}) where {CA<:Caggregate} = CA(zero)
-Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(; nt...)
+Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(zero; nt...)
 Base.isequal(x::CA, y::CA) where {CA<:Caggregate} = getfield(x, :mem) == getfield(y, :mem)
 Base.:(==)(x::CA, y::CA) where {CA<:Caggregate} = isequal(x, y)
 

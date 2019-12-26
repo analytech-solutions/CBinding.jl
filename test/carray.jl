@@ -32,12 +32,12 @@
 		@test pa[i] != C_NULL
 	end
 	
-	pa = PtrArray()
+	pa = PtrArray(zero)
 	for ptr in pa
 		@test ptr == C_NULL
 	end
 	
-	ca = CStructArray()
+	ca = CStructArray(zero)
 	@test length(ca) == 2
 	@test eltype(ca) === CStruct
 	@test ca[2] isa CBinding.Caccessor{CStruct}
@@ -47,7 +47,7 @@
 	@test eltype(CarrayArray) === @carray Cint[4]
 	@test eltype(eltype(CarrayArray)) === Cint
 	
-	ca = CarrayArray()
+	ca = CarrayArray(zero)
 	@test length(ca) == 2
 	@test length(ca[1]) == 4
 	for i in eachindex(ca), j in eachindex(ca[i])
