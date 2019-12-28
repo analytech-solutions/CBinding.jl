@@ -53,15 +53,16 @@ There are a few syntax differences to note though:
 - in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{}, c::{}[4])::SomeType`) with the empty curly braces `{}` meaning "plug in type here"
 - Julia does not support forward declarations, so CBinding.jl uses some very dubious methods to simulate the capability which may cause grief and confusion for users when types don't appear as they should
 
-There are a couple of ways to construct an aggregate type provided by the package.
-Using the "default" constructor, or the `zero` function, will result in a zero-initialized object.
-The "undef" constructor is also defined and does nothing to initialize the memory region of the allocated object, so it is optimal to use in situations where an object will be fully initialized with particular values.
+The generic constructor provided by CBinding.jl allows you to create an aggregate with uninitialized values, zero-initialized values, or from existing an existing aggregate object.
+It is also possible to use keyword arguments to specify values for particular fields within the aggregate as well.
+Pass the `zero` function to the constructor to create a zero-initialized object (an alternative is to pass the aggregate type to the `zero` function).
+The "undef" constructor is also defined and does nothing to initialize the memory region of the allocated object, so it is optimal to use in situations where an object will be fully initialized with particular values provided as keyword arguments.
 
 ```jl
 julia> garbage = MySecondCStruct(undef)    # struct MySecondCStruct garbage;
 MySecondCStruct(i=-340722048, j=32586, w=UInt8[0x00, 0x00, 0x00, 0x00], x=0, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0x00), (c=0x00)], z=MyFirstCStruct[(i=0)], m=MyFirstCStruct(i=0))
 
-julia> zeroed = MySecondCStruct()    # struct MySecondCStruct zeroed; memset(&zeroed, 0, sizeof(zeroed));
+julia> zeroed = MySecondCStruct(zero)    # struct MySecondCStruct zeroed; memset(&zeroed, 0, sizeof(zeroed));
 MySecondCStruct(i=0, j=0, w=UInt8[0x00, 0x00, 0x00, 0x00], x=0, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0x00), (c=0x00)], z=MyFirstCStruct[(i=0)], m=MyFirstCStruct(i=0))
 ```
 
@@ -103,13 +104,13 @@ julia> sizeof(zeroed.m[])
 julia> zeroed.m
 MyFirstCStruct(i=0)
 
-julia> zeroed.m = MyFirstCStruct(i = 42)
+julia> zeroed.m = MyFirstCStruct(zero, i = 42)
 MyFirstCStruct(i=42)
 
 julia> zeroed.m
 MyFirstCStruct(i=42)
 
-julia> zeroed.m[] = MyFirstCStruct(i = 0)
+julia> zeroed.m[] = MyFirstCStruct(zero, i = 0)
 MyFirstCStruct(i=0)
 
 julia> zeroed.m
@@ -179,7 +180,7 @@ julia> @cstruct ConstStruct {    # struct ConstStruct {
        }                         # };
 ConstStruct
 
-julia> s = ConstStruct(i = 1, j = 2)
+julia> s = ConstStruct(zero, i = 1, j = 2)
 ConstStruct(i=1, j=2)
 
 julia> s.i = 3
@@ -249,7 +250,7 @@ julia> @cstruct EnumStruct {    # struct EnumStruct {
        }                        # };
 EnumStruct
 
-julia> e = EnumStruct()
+julia> e = EnumStruct(zero)
 EnumStruct(e=<anonymous-enum>(0x00000000))
 
 julia> e.e = X|Y|Z
@@ -289,7 +290,7 @@ julia> @cstruct BitfieldStruct {    # struct BitfieldStruct {
        }                            # };
 BitfieldStruct
 
-julia> bf = BitfieldStruct()
+julia> bf = BitfieldStruct(zero)
 BitfieldStruct(i=0, j=0x00000000)
 
 julia> sizeof(bf)

@@ -58,19 +58,27 @@ cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 
 
 (f::Ptr{Cfunction{RetT, ArgsT}})(args...) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT, default_convention(ArgsT)}(reinterpret(Ptr{Cvoid}, f))(args...)
-(f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = invoke(reinterpret(Ptr{Cfunction{concrete(RetT), ArgsT, ConvT}}, f), args...)
-@generated function invoke(f::Ptr{Cfunction{RetT, ArgsT, ConvT}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
-	error = nothing
-	_tuplize(::Type{Tuple{}}) = ()
-	_tuplize(::Type{Tuple{}}, argT, argsT...) = (error = :(throw(MethodError(f, args))) ; ())
-	_tuplize(::Type{Tuple{Vararg}}) = (:(Ptr{Cvoid}...),)  # HACK: extra `Ptr{Cvoid}...` is being added to trigger vararg ccall behavior rather than regular behavior (if there is a difference in the backend)
-	_tuplize(::Type{Tuple{Vararg}}, argT, argsT...) = (cconvert_vararg(ConvT, cconvert_default(argT)), _tuplize(Tuple{Vararg}, argsT...)...,)
-	_tuplize(::Type{T}) where {T<:Tuple} = (error = :(throw(MethodError(f, args))) ; ())
-	_tuplize(::Type{T}, argT, argsT...) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T), argsT...)...,)
+function (f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
+	# functions to manufacture a precisely typed function pointer to invoke
+	_extend(::Type{Tuple{}}) = Tuple{}
+	_extend(::Type{Tuple{}}, argT, argsT...) = throw(MethodError(f, args))
+	_extend(::Type{Tuple{Vararg}}) = Tuple{Vararg}  # NOTE: leave the extra `Vararg` to preserve the variadic function call semantics
+	_extend(::Type{Tuple{Vararg}}, argT, argsT...) = Base.tuple_type_cons(concrete(cconvert_vararg(ConvT, cconvert_default(argT))), _extend(Tuple{Vararg}, argsT...))
+	_extend(::Type{T}) where {T<:Tuple} = throw(MethodError(f, args))
+	_extend(::Type{T}, argT, argsT...) where {T<:Tuple} = Base.tuple_type_cons(concrete(Base.tuple_type_head(T)), _extend(Base.tuple_type_tail(T), argsT...))
 	
-	types = _tuplize(ArgsT, args...)
-	return !isnothing(error) ? error : quote
-		$(Expr(:meta, :inline))
-		ccall(reinterpret(Ptr{Cvoid}, f), $(convention(ConvT)), RetT, ($(types...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
+	preciseRetT = concrete(RetT)
+	preciseArgsT = _extend(ArgsT, map(typeof, args)...)
+	return _invoke(reinterpret(Ptr{Cfunction{preciseRetT, preciseArgsT, ConvT}}, f), args...)
+end
+
+
+@generated function _invoke(f::Ptr{Cfunction{RetT, ArgsT, ConvT}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
+	_tuplize(::Type{Tuple{}}) = ()
+	_tuplize(::Type{Tuple{Vararg}}) = (:(Ptr{Cvoid}...),)  # NOTE: extra `Ptr{Cvoid}...` is being added to trigger vararg ccall behavior rather than regular behavior (if there is a difference in the backend)
+	_tuplize(::Type{T}) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T))...,)
+	
+	return quote
+		ccall(reinterpret(Ptr{Cvoid}, f), $(convention(ConvT)), RetT, ($(_tuplize(ArgsT)...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
 	end
 end

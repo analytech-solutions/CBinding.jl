@@ -12,12 +12,12 @@ function checkJL(expr, val)
 		@ctypedef X $(Meta.parse(def))
 	end
 	
-	x = Base.invokelatest(X.X)
+	x = Base.invokelatest(X.X, zero)
 	result = []
 	push!(result, "$(string(sizeof(x))): $(bytes2hex(UInt8[getfield(x, :mem)...,]))")
 	types = Base.invokelatest(CBinding.propertytypes, x)
 	for (ind, prop) in enumerate(Base.invokelatest(propertynames, x))
-		x = Base.invokelatest(X.X)
+		x = Base.invokelatest(X.X, zero)
 		v1 = sizeof(types[ind]) < sizeof(val) ? Core.Intrinsics.trunc_int(types[ind], val) : reinterpret(types[ind], val)
 		Base.invokelatest(setproperty!, x, prop, v1)
 		v2 = Base.invokelatest(getproperty, x, prop)

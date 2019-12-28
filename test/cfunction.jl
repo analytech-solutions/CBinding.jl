@@ -62,7 +62,7 @@
 		time = Cfunction{time_t, Tuple{Ptr{time_t}}}(lib, :time)
 		localtime = Cfunction{Ptr{tm}, Tuple{Ptr{time_t}}}(lib, :localtime)
 		
-		t = Ref(time_t())
+		t = Ref(time_t(zero))
 		@test t[].val == 0
 		time(t)
 		@test t[].val != 0

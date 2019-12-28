@@ -24,6 +24,14 @@ module CBinding
 	abstract type Cenum <: Integer end
 	
 	const Copaques = Union{Caggregate, Cenum}
+	Base.show(io::IO, ::Type{CO}) where {CO<:Copaques} = Base.show_datatype(io, isabstracttype(CO) ? CO : supertype(CO))
+	
+	
+	struct Cconst{T, S}
+		mem::NTuple{S, UInt8}
+		
+		Cconst{T}(x::NTuple{X, UInt8}) where {T, X} = new{T, sizeof(T)}(x)
+	end
 	
 	
 	# alignment strategies

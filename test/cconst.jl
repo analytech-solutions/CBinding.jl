@@ -57,7 +57,7 @@
 	}
 	@test sizeof(CconstStruct) == sizeof(Cint)*18
 	
-	x = CconstStruct()
+	x = CconstStruct(zero)
 	@test typeof(x.i) === Cint
 	@test typeof(x.ci) === Cint
 	@test typeof(x.s) <: Caccessor{<:Cstruct}
@@ -112,10 +112,10 @@
 	@test_throws ErrorException x.ci = 1
 	@test x.ci == 0
 	
-	@test x.s[] == typeof(x.s[])()
+	@test x.s[] == typeof(x.s[])(zero)
 	@test x.s.i == 0
 	@test x.s.ci == 0
-	x.s = typeof(x.s[])(i = 2, ci = 3)
+	x.s = typeof(x.s[])(zero, i = 2, ci = 3)
 	
 	@test x.s.i == 2
 	x.s.i = 22
@@ -129,10 +129,10 @@
 	@test_throws ErrorException x.s[].ci = 333
 	@test x.s.ci == 3
 	
-	@test x.cs[] == typeof(x.cs[])()
+	@test x.cs[] == typeof(x.cs[])(zero)
 	@test x.cs.i == 0
 	@test x.cs.ci == 0
-	@test_throws ErrorException x.cs = typeof(x.cs[])(i = 4, ci = 5)
+	@test_throws ErrorException x.cs = typeof(x.cs[])(zero, i = 4, ci = 5)
 	
 	@test x.cs.i == 0
 	@test_throws ErrorException x.cs.i = 44
@@ -146,10 +146,10 @@
 	@test_throws ErrorException x.cs[].ci = 555
 	@test x.cs.ci == 0
 	
-	@test x.u[] == typeof(x.u[])()
+	@test x.u[] == typeof(x.u[])(zero)
 	
 	@test x.u.i == 0
-	x.u = typeof(x.u[])(i = 6)
+	x.u = typeof(x.u[])(zero, i = 6)
 	@test x.u.i == 6
 	x.u.i = 66
 	@test x.u.i == 66
@@ -157,17 +157,17 @@
 	@test x.u.i == 66
 	
 	@test x.u.ci == 66
-	x.u = typeof(x.u[])(ci = 7)
+	x.u = typeof(x.u[])(zero, ci = 7)
 	@test x.u.ci == 7
 	@test_throws ErrorException x.u.ci = 77
 	@test x.u.ci == 7
 	@test_throws ErrorException x.u[].ci = 777
 	@test x.u.ci == 7
 	
-	@test x.cu[] == typeof(x.cu[])()
+	@test x.cu[] == typeof(x.cu[])(zero)
 	
 	@test x.cu.i == 0
-	@test_throws ErrorException x.cu = typeof(x.cu[])(i = 8)
+	@test_throws ErrorException x.cu = typeof(x.cu[])(zero, i = 8)
 	@test x.cu.i == 0
 	@test_throws ErrorException x.cu.i = 88
 	@test x.cu.i == 0
@@ -175,7 +175,7 @@
 	@test x.cu.i == 0
 	
 	@test x.cu.ci == 0
-	@test_throws ErrorException x.cu = typeof(x.cu[])(ci = 9)
+	@test_throws ErrorException x.cu = typeof(x.cu[])(zero, ci = 9)
 	@test x.cu.ci == 0
 	@test_throws ErrorException x.cu.ci = 99
 	@test x.cu.ci == 0
@@ -217,7 +217,7 @@
 	@test f(x) == 51
 	
 	
-	x = Cconst(CconstStruct())
+	x = Cconst(CconstStruct(zero))
 	@test typeof(x.i) === Cint
 	@test typeof(x.ci) === Cint
 	@test typeof(x.s) <: Caccessor{<:Cconst{<:Cstruct}}
