@@ -71,6 +71,35 @@ end
 
 
 
+macro ccallback(expr...) return _ccallback(__module__, expr...) end
+
+function _ccallback(mod::Module, expr::Expr)
+	((Base.is_expr(expr, :function, 2) || Base.is_expr(expr, :(=), 2)) && Base.is_expr(expr.args[2], :block)) || error("Expectd @ccallback to receive a function expression, but found `$(expr)`")
+	sig = expr.args[1]
+	
+	Base.is_expr(sig, :(::), 2) || error("Expected @ccallback function signature to have a return type specified `func(arg::ArgType)::RetType = ...`")
+	rettype = sig.args[2]
+	
+	(Base.is_expr(sig.args[1], :call) && length(sig.args[1].args) >= 1) || error("Expected @ccallback to receive a function signature, but found `$(sig.args[1])`")
+	name = sig.args[1].args[1]
+	args = sig.args[1].args[2:end]
+	
+	argtypes = []
+	for arg in args
+		Base.is_expr(arg, :(::), 2) || error("Expected @ccallback function signature to have argument types specified `func(arg::ArgType)::RetType = ...`")
+		push!(argtypes, arg.args[2])
+	end
+	
+	sym = gensym(Symbol(:C, name))
+	return quote
+		$(esc(expr))
+		($(esc(sym)), $(esc(gensym(name)))) = Cfunction{$(esc(rettype)), Tuple{$(map(esc, argtypes)...)}}($(esc(name)))
+		$(esc(sym))
+	end
+end
+
+
+
 @generated function _cfunction(::Type{RetT}, ::Type{ArgsT}, func::Function) where {RetT, ArgsT<:Tuple}
 	_tuplize(::Type{Tuple{}}) where {T<:Tuple} = ()
 	_tuplize(::Type{T}) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T))...,)
