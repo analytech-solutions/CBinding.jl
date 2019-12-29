@@ -18,16 +18,13 @@ Cfunction{RetT, ArgsT}(sym::Symbol, lib::Clibrary, libs::Clibrary...) where {Ret
 
 # NOTE:  this returns a tuple (since the user must retain a reference to func for the function pointer to remain usable)
 Cfunction{RetT, ArgsT}(func::Base.CFunction) where {RetT, ArgsT<:Tuple} = (Cfunction{RetT, ArgsT, default_convention(ArgsT)}(Base.unsafe_convert(Ptr{Cvoid}, func)), func)
-
-@generated function Cfunction{RetT, ArgsT}(func::Function) where {RetT, ArgsT<:Tuple}
-	_tuplize(::Type{Tuple{}}) where {T<:Tuple} = ()
-	_tuplize(::Type{T}) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T))...,)
+function Cfunction{RetT, ArgsT}(func::Function) where {RetT, ArgsT<:Tuple}
+	_concrete(::Type{Tuple{}}) = Tuple{}
+	_concrete(::Type{T}) where {T<:Tuple} = Base.tuple_type_cons(concrete(Base.tuple_type_head(T)), _concrete(Base.tuple_type_tail(T)))
 	
-	types = _tuplize(ArgsT)
-	return quote
-		$(Expr(:meta, :inline))
-		return Cfunction{RetT, ArgsT}(Base.@cfunction($(Expr(:$, :func)), RetT, ($(types...),)))
-	end
+	preciseRetT = concrete(RetT)
+	preciseArgsT = _concrete(ArgsT)
+	return Cfunction{RetT, ArgsT}(_cfunction(preciseRetT, preciseArgsT, func))
 end
 
 convention(::Type{Cfunction{RetT, ArgsT, ConvT}}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = convention(ConvT)
@@ -73,12 +70,23 @@ function (f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tu
 end
 
 
+
+@generated function _cfunction(::Type{RetT}, ::Type{ArgsT}, func::Function) where {RetT, ArgsT<:Tuple}
+	_tuplize(::Type{Tuple{}}) where {T<:Tuple} = ()
+	_tuplize(::Type{T}) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T))...,)
+	
+	return quote
+		return Base.@cfunction($(Expr(:$, :func)), RetT, ($(_tuplize(ArgsT)...),))
+	end
+end
+
+
 @generated function _invoke(f::Ptr{Cfunction{RetT, ArgsT, ConvT}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
 	_tuplize(::Type{Tuple{}}) = ()
 	_tuplize(::Type{Tuple{Vararg}}) = (:(Ptr{Cvoid}...),)  # NOTE: extra `Ptr{Cvoid}...` is being added to trigger vararg ccall behavior rather than regular behavior (if there is a difference in the backend)
 	_tuplize(::Type{T}) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T))...,)
 	
 	return quote
-		ccall(reinterpret(Ptr{Cvoid}, f), $(convention(ConvT)), RetT, ($(_tuplize(ArgsT)...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
+		return ccall(reinterpret(Ptr{Cvoid}, f), $(convention(ConvT)), RetT, ($(_tuplize(ArgsT)...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
 	end
 end
