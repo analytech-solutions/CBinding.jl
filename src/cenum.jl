@@ -27,6 +27,8 @@ function Base.show(io::IO, ce::CE) where {CE<:Cenum}
 	end
 end
 
+Base.string(ce::CE) where {CE<:Cenum} = Base.print_to_string(ce)
+
 Base.promote_rule(::Type{T}, ::Type{CE}) where {T<:Integer, CE<:Cenum} = promote_type(T, eltype(CE))
 
 Base.convert(::Type{CE}, x::T) where {CE<:Cenum, T<:Integer} = reinterpret(concrete(CE), convert(eltype(CE), x))

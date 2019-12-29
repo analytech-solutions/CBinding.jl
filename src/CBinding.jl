@@ -24,8 +24,12 @@ module CBinding
 	abstract type Cenum <: Integer end
 	
 	const Copaques = Union{Caggregate, Cenum}
-	Base.show(io::IO, ::Type{CO}) where {CO<:Copaques} = Base.show_datatype(io, isabstracttype(CO) ? CO : supertype(CO))
-	
+	function Base.show(io::IO, ::Type{CO}) where {CO<:Copaques}
+		if CO isa DataType
+			return Base.show_datatype(io, isabstracttype(CO) ? CO : supertype(CO))
+		end
+		return invoke(show, Tuple{IO, Type}, io, CO)
+	end
 	
 	struct Cconst{T, S}
 		mem::NTuple{S, UInt8}
