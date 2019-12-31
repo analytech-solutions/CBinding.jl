@@ -27,6 +27,15 @@ function Cfunction{RetT, ArgsT}(func::Function) where {RetT, ArgsT<:Tuple}
 	return Cfunction{RetT, ArgsT}(_cfunction(preciseRetT, preciseArgsT, func))
 end
 
+rettype(::Type{Ptr{CF}}) where {CF<:Cfunction} = rettype(CF)
+rettype(::Type{Cfunction{RetT, ArgsT}}) where {RetT, ArgsT<:Tuple} = RetT
+rettype(::Type{Cfunction{RetT, ArgsT, ConvT}}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = RetT
+
+argstype(::Type{Ptr{CF}}) where {CF<:Cfunction} = argstype(CF)
+argstype(::Type{Cfunction{RetT, ArgsT}}) where {RetT, ArgsT<:Tuple} = ArgsT
+argstype(::Type{Cfunction{RetT, ArgsT, ConvT}}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = ArgsT
+
+convention(::Type{Ptr{CF}}) where {CF<:Cfunction} = convention(CF)
 convention(::Type{Cfunction{RetT, ArgsT, ConvT}}) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = convention(ConvT)
 convention(::Type{Cconvention{SymT}}) where {SymT} = SymT
 convention(conv::Cconvention) = convention(typeof(conv))
