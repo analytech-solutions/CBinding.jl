@@ -104,10 +104,12 @@ function _ccallback(mod::Module, expr::Expr)
 		push!(argtypes, arg.args[2])
 	end
 	
-	sym = gensym(Symbol(:C, name))
+	sym = gensym(name)
+	ref = gensym(name)
 	return quote
 		$(esc(expr))
-		($(esc(sym)), $(esc(gensym(name)))) = Cfunction{$(esc(rettype)), Tuple{$(map(esc, argtypes)...)}}($(esc(name)))
+		($(esc(sym)), $(esc(ref))) = Cfunction{$(esc(rettype)), Tuple{$(map(esc, argtypes)...)}}($(esc(name)))
+		$(esc(Expr(:gc_preserve_begin, ref)))  # TODO: is this even legit?
 		$(esc(sym))
 	end
 end

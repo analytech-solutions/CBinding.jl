@@ -12,7 +12,6 @@ nonconst(::Type{T}) where {T} = T
 nonconst(::Type{CA}) where {T<:Cconst, N, CA<:Carray{T, N}} = Carray(nonconst(T), Val(N))
 nonconst(::Type{CC}) where {T, CC<:Cconst{T}} = T
 
-Base.convert(::Type{T}, cc::Cconst{T}) where {T} = reinterpret(T, getfield(cc, :mem)[1])
 Base.convert(::Type{T}, cc::Cconst{T}) where {T<:Caggregate} = T(cc)
 Base.sizeof(::Type{CC}) where {T, CC<:Cconst{T}} = sizeof(T)
 

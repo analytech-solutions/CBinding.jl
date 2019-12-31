@@ -441,6 +441,7 @@ julia> jl_gc_total_bytes()
 It is also possible to create type-safe function pointers to Julia functions for use in C code.
 A closure is automatically created for the wrapped function and returned along with the C function pointer, so a reference to the closure (`Base.CFunction`) must be kept to keep the function pointer valid.
 One important thing to note is that the Julia function used is not (yet) guarded, so the argument and return types of the Julia function must match that of the Cfunction signature.
+The new `@ccallback` macro is now the recommended method of creating function pointers from Julia functions.
 
 ```jl
 julia> (Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do x::Cint, y::Cint
@@ -453,6 +454,10 @@ julia> Cadd(2, 3)  # ccall the C function pointer, arguments are Base.cconvert-e
 
 julia> add.f(Cint(2), Cint(3))  # directly call the Julia function
 5
+
+julia> Cadd = @ccallback function add(x::Cint, y::Cint)::Cint
+           return x + y
+       end
 ```
 
 ## C Variadic Functions
