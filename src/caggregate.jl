@@ -6,11 +6,9 @@ isanonymous(::Type) = false
 
 abstract type Cstruct_anonymous <: Cstruct end
 isanonymous(::Type{<:Cstruct_anonymous}) = true
-Base.show(io::IO, ::Type{CS}) where {CS<:Cstruct_anonymous} = print(io, "<anonymous-struct>")
 
 abstract type Cunion_anonymous <: Cunion end
 isanonymous(::Type{<:Cunion_anonymous}) = true
-Base.show(io::IO, ::Type{CU}) where {CU<:Cunion_anonymous}  = print(io, "<anonymous-union>")
 
 
 # <:Caggregate functions
@@ -73,22 +71,23 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 	return _caggregate(mod, deps, kind, nothing, body, strategy)
 end
 
-function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing})
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Expr, Nothing}, body::Union{Expr, Nothing})
 	return _caggregate(mod, deps, kind, name, body, nothing)
 end
 
 todo"need to handle unknown-length aggregates with last field like `char c[]`"
-function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Expr, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
 	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 	isnothing(body) && !isnothing(strategy) && error("Expected @$(kind) to have a body if alignment strategy is to be specified")
 	isnothing(strategy) || (startswith(String(strategy), "__") && endswith(String(strategy), "__") && length(String(strategy)) > 4) || error("Expected @$(kind) to have packing specified as `__STRATEGY__`, such as `__packed__` or `__native__`")
+	isnothing(name) || name isa Symbol || (Base.is_expr(name, :tuple, 1) && name.args[1] isa Symbol) || error("Expected @$(kind) to have a valid name")
 	
 	strategy = isnothing(strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	isanon = isnothing(name)
+	isanon = isnothing(name) || name isa Expr
 	super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
-	name = isanon ? gensym("anonymous-$(kind)") : name
+	name = isnothing(name) ? gensym("anonymous-$(kind)") : name isa Expr ? Symbol("($(name.args[1]))") : name
 	escName = esc(name)
-	concreteName = esc(Symbol(name, "\u200B"))  # this is so incredibly evil: appending a 0-width space to the type name
+	concreteName = esc(gensym(name))
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
@@ -103,7 +102,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			if Base.is_expr(arg, :align, 1)
 				align = arg.args[1]
 				push!(fields, :(Calignment{$(align)}))
-			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous")
+			elseif Base.is_expr(arg, :escape, 1) #&& !startswith(String(arg.args[1]), "##anonymous")
 				# this is just a type definition, not a field
 			else
 				Base.is_expr(arg, :(::)) && length(arg.args) != 2 && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
