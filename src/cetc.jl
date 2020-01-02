@@ -68,9 +68,14 @@ macro ctypedef(exprs...) return _ctypedef(__module__, nothing, exprs...) end
 function _ctypedef(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Symbol, expr::Union{Symbol, Expr})
 	escName = esc(name)
 	
-	# propagate typedef name into anonymous types
-	if Base.is_expr(expr, :macrocall) && length(expr.args) >= 3 && expr.args[1] in (_structExprs..., _unionExprs..., _enumExprs...) && (Base.is_expr(expr.args[3], :braces) || Base.is_expr(expr.args[3], :bracescat))
-		insert!(expr.args, 3, Expr(:tuple, name))
+	if Base.is_expr(expr, :macrocall) && length(expr.args) >= 3 && expr.args[1] in (_structExprs..., _unionExprs..., _enumExprs...)
+		# ignore the typedef if the typedef name is identical to the struct/union/enum name
+		name === expr.args[3] && return esc(expr)
+		
+		# propagate typedef name into anonymous types
+		if Base.is_expr(expr.args[3], :braces) || Base.is_expr(expr.args[3], :bracescat)
+			insert!(expr.args, 3, Expr(:tuple, name))
+		end
 	end
 	
 	isOuter = isnothing(deps)
