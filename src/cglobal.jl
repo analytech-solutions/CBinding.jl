@@ -17,8 +17,9 @@ end
 (g::DeferredCglobal{FieldType, Val{name}, Val{lib}})() where {FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}, name, lib} = Caccessor{FieldType}(_cglobal(DeferredCglobal{nonconst(FieldType), Val{name}, Val{lib}}()))
 
 @generated function _cglobal(::DeferredCglobal{T, Val{name}, Val{lib}}) where {T, name, lib}
+	g = isempty(String(lib)) ? QuoteNode(name) : :(($(QuoteNode(name)), $(String(lib))))
 	return quote
-		return cglobal(($(QuoteNode(name)), $(String(lib))), T)
+		return cglobal($(g), T)
 	end
 end
 
