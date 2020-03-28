@@ -1,6 +1,5 @@
 module CBinding
 	import Libdl
-	using Todo: @todo_str
 	
 	
 	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Calignment, Cconst, Caccessor

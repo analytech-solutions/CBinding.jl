@@ -1,4 +1,4 @@
-todo"add ability to show a Cfunction's signature, so perhaps storing arg names is needed"
+# TODO:  add ability to show a Cfunction's signature, so perhaps storing arg names is needed
 
 
 struct Cfunction{RetT, ArgsT<:Tuple, ConvT<:Cconvention}
@@ -40,9 +40,9 @@ convention(::Type{Cfunction{RetT, ArgsT, ConvT}}) where {RetT, ArgsT<:Tuple, Con
 convention(::Type{Cconvention{SymT}}) where {SymT} = SymT
 convention(conv::Cconvention) = convention(typeof(conv))
 
-todo"determine the correct default conventions for each platform"
-todo"some compilers use different calling convention for variadic functions"
-todo"identify what is Julia's calling convention"
+# TODO:  determine the correct default conventions for each platform
+# TODO:  some compilers use different calling convention for variadic functions
+# TODO:  identify what is Julia's calling convention
 default_convention(::Type{ArgsT}) where {ArgsT<:Tuple} = ifelse(Sys.iswindows(), STDCALL, CDECL)
 
 
