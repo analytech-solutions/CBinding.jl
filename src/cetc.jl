@@ -13,6 +13,17 @@ Base.unsafe_store!(p::Ptr{CO}, x, i::Integer = 1) where {CO<:Copaques} = Base.po
 
 
 
+function _dlsym(sym::Symbol, libs::Clibrary...)
+	for (ind, lib) in enumerate(libs)
+		isLast = ind == length(libs)
+		handle = Libdl.dlsym(lib.handle, sym, throw_error = isLast)
+		isnothing(handle) || return handle
+	end
+	error("Libdl.dlsym returned a C_NULL handle and did not throw an error")
+end
+
+
+
 const _alignExprs = (Symbol("@calign"),)
 const _enumExprs = (Symbol("@cenum"),)
 const _arrayExprs = (Symbol("@carray"),)
@@ -21,7 +32,7 @@ const _unionExprs = (Symbol("@cunion"),)
 const _externExprs = (Symbol("@cextern"),)
 
 # macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
-_expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = escape ? esc(x) : x
+_expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = x isa Symbol && x !== :_ && escape ? esc(x) : x
 function _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, e::Expr, escape::Bool = true)
 	if Base.is_expr(e, :macrocall)
 		if length(e.args) > 1 && e.args[1] in (_alignExprs..., _enumExprs..., _arrayExprs..., _structExprs..., _unionExprs...)
@@ -37,15 +48,44 @@ function _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, e::Expr, escape:
 				return _caggregate(mod, deps, :cunion, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
 			end
 		else
-			return _expand(mod, deps, macroexpand(mod, e, recursive = false))
+			return _expand(mod, deps, macroexpand(mod, e, recursive = false), escape)
 		end
-	elseif Base.is_expr(e, :ref, 2)
+	elseif Base.is_expr(e, :ref)
 		return _carray(mod, deps, e)
+	elseif Base.is_expr(e, :escape)
+		return e
 	else
 		for i in eachindex(e.args)
 			e.args[i] = _expand(mod, deps, e.args[i], escape)
 		end
 		return e
+	end
+end
+
+
+
+function _augment(aug, augType)
+	_recurse(args, ind) = args[ind] === :_ ? (args[ind] = deepcopy(augType)) : _augment(args[ind], augType)
+	
+	if aug isa Symbol
+	elseif aug isa Number
+	elseif aug isa LineNumberNode
+	elseif Base.is_expr(aug, :macrocall)
+		foreach(i -> _recurse(aug.args, i), 2:length(aug.args))
+	elseif Base.is_expr(aug, :call)
+		foreach(i -> _recurse(aug.args, i), 2:length(aug.args))
+	elseif Base.is_expr(aug, :escape, 1)
+		_recurse(aug.args, 1)
+	elseif Base.is_expr(aug, :ref) && length(aug.args) >= 1
+		foreach(i -> _recurse(aug.args, i), 1:length(aug.args))
+	elseif Base.is_expr(aug, :..., 1)
+		_recurse(aug.args, 1)
+	elseif Base.is_expr(aug, :(::), 2)
+		_recurse(aug.args, 2)
+	elseif Base.is_expr(aug, :curly) && length(aug.args) >= 2
+		foreach(i -> _recurse(aug.args, i), 2:length(aug.args))
+	else
+		error("Expected augmented expression to have a `varName`, `varName::_`, `varName::Ptr{_}`, `varName::_[N]`, or `funcName(arg::ArgType)::Ptr{_}` expression or some combination of them, but found `$(aug)`")
 	end
 end
 
@@ -67,6 +107,16 @@ macro ctypedef(exprs...) return _ctypedef(__module__, nothing, exprs...) end
 
 function _ctypedef(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Symbol, expr::Union{Symbol, Expr})
 	escName = esc(name)
+	
+	if Base.is_expr(expr, :macrocall) && length(expr.args) >= 3 && expr.args[1] in (_structExprs..., _unionExprs..., _enumExprs...)
+		# ignore the typedef if the typedef name is identical to the struct/union/enum name
+		name === expr.args[3] && return esc(expr)
+		
+		# propagate typedef name into anonymous types
+		if Base.is_expr(expr.args[3], :braces) || Base.is_expr(expr.args[3], :bracescat)
+			insert!(expr.args, 3, Expr(:tuple, name))
+		end
+	end
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps

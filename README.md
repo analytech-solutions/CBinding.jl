@@ -36,7 +36,7 @@ julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MyS
            @cunion {                                        #     union {
                w::Cuchar[sizeof(Cint)÷sizeof(Cuchar)]       #         unsigned char w[sizeof(int)/sizeof(unsigned char)];
                x::Cint                                      #         int x;
-               (y::{}[4])::@cstruct {                       #         struct {
+               (y::_[4])::@cstruct {                        #         struct {
                    c::Cuchar                                #             unsigned char c;
                }                                            #         } y[4];
                z::MyFirstCStruct[1]                         #         struct MyFirstCStruct z[1];
@@ -50,7 +50,7 @@ There are a few syntax differences to note though:
 
 - a `@ctypedef` is specified with the type name before the definition rather than after (as is done in C)  
 - likewise, an aggregate field is specified in the Julia `fieldName::FieldType` syntax rather than the C style of `FieldType fieldName`
-- in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{}, c::{}[4])::SomeType`) with the empty curly braces `{}` meaning "plug in type here"
+- in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{_}, c::_[4])::SomeType`) with the use of an underscore `_` to mean "plug in type here"
 - Julia does not support forward declarations, so CBinding.jl uses some very dubious methods to simulate the capability which may cause grief and confusion for users when types don't appear as they should
 
 The generic constructor provided by CBinding.jl allows you to create an aggregate with uninitialized values, zero-initialized values, or from existing an existing aggregate object.
@@ -407,40 +407,10 @@ julia> unsafe_load(p)   # dereference p
 tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
 ```
 
-The new `@cextern` macro is the recommended method of binding C functions with Julia.
-Its intended use is for creating optimized function bindings that will simply be called from Julia without being used as function pointers.
-It provides a more concise Julian representation that closely mirrors the C syntax.
-This macro also includes the ability to use anonymous types in the definition of function.
-
-```jl
-julia> @cextern time(ptr::Ptr{Clong})::Clong    lib
-time (generic function with 1 method)
-
-julia> @cextern localtime(ptr::Ptr{Clong})::Ptr{tm}    lib
-localtime (generic function with 1 method)
-
-julia> time(t)
-1560708359
-
-julia> unsafe_load(localtime(t))
-tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
-
-```
-
-
-Even interfacing the C functions of the Julia API is simple!
-
-```jl
-julia> @cextern jl_gc_total_bytes()::Clong    lib    # long (*jl_gc_total_bytes)() = dlsym(lib, "jl_gc_total_bytes");
-jl_gc_total_bytes (generic function with 1 method)
-
-julia> jl_gc_total_bytes()
-160117962
-```
-
 It is also possible to create type-safe function pointers to Julia functions for use in C code.
 A closure is automatically created for the wrapped function and returned along with the C function pointer, so a reference to the closure (`Base.CFunction`) must be kept to keep the function pointer valid.
 One important thing to note is that the Julia function used is not (yet) guarded, so the argument and return types of the Julia function must match that of the Cfunction signature.
+The new `@ccallback` macro is now the recommended method of creating function pointers from Julia functions.
 
 ```jl
 julia> (Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do x::Cint, y::Cint
@@ -453,6 +423,10 @@ julia> Cadd(2, 3)  # ccall the C function pointer, arguments are Base.cconvert-e
 
 julia> add.f(Cint(2), Cint(3))  # directly call the Julia function
 5
+
+julia> Cadd = @ccallback function add(x::Cint, y::Cint)::Cint
+           return x + y
+       end
 ```
 
 ## C Variadic Functions
@@ -468,60 +442,62 @@ Ptr{Cfunction{Int32,Tuple{Cstring,Vararg{Any,N} where N},ConvT} where ConvT<:Cco
 julia> func("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
 this is 1 great demo of CBinding.jl v0.1!
 42
+```
 
-julia> @cextern printf(format::Cstring, vals...)::Cint    lib
+## Binding Julia with a C library
+
+The new `@cbindings` and `@cextern` macros provide the recommended method of binding C functions with Julia.
+Its intended use is for creating optimized function bindings rather than loading function pointers.
+It provides a more concise Julian representation that closely mirrors the C syntax.
+The `@cextern` macro also includes the ability to use anonymous types in the definition of function.
+
+```jl
+julia> @cextern time(ptr::Ptr{Clong})::Clong
+time (generic function with 1 method)
+
+julia> @cextern localtime(ptr::Ptr{Clong})::Ptr{tm}
+localtime (generic function with 1 method)
+
+julia> @cextern printf(format::Cstring, vals...)::Cint
 printf (generic function with 1 method)
+
+julia> time(t)
+1560708359
+
+julia> unsafe_load(localtime(t))
+tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
 
 julia> printf("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
 this is 1 great demo of CBinding.jl v0.1!
 42
 ```
 
-## Binding Julia with a C library
-
-When creating modules for binding Julia with a C library the use of the `__init__()` function is necessary.
-Performing the bindings in the global scope causes pointer addresses to be baked in due to the precompilation capabilities of Julia.
-That usually causes Julia to crash because at run-time the baked-in function pointer is invalid when it is actually being used.
-Placing the bindings in a module's `__init__()` function means the bindings are not made when the module is compiled and are made at run-time when it is loaded.
-
-Therefore, we have added the `@cbindings` macro to help users streamline their creation of Julia bindings with C libraries.
-The macro automatically provides the list of libraries to the `@cextern` macros to eliminate redundancy and remove noise from the code.
-It also generates the bindings at the module scope, so technically any `@ctypedef`, `@cstruct`, etc. macro usage can be placed within a `@cbindings` macro as well.
-Lastly, it can be used from within functions, most importantly, the `__init__()` function.
+The `@cbindings` macro can be used to cleanly group and target bindings to a particular library.
+Any `@ctypedef`, `@cstruct`, `@cextern`, etc. macro usage can be placed within a `@cbindings` macro as well.
 
 ```jl
 module CJulia
   using CBinding
   
-  function __init__()
-    lib = Clibrary()
-    @cbindings lib begin
-      @ctypedef jl_nullable_float64_t @cstruct {
-        hasvalue::UInt8
-        value::Cdouble
-      }
-      
-      @ctypedef jl_value_t @cstruct _jl_value_t
-      
-      @cextern jl_gc_enable(on::Cint)::Cint
-      @cextern jl_gc_is_enabled()::Cint
-      
-      @cextern jl_gc_alloc_0w()::Ptr{jl_value_t}
-      @cextern jl_gc_alloc_1w()::Ptr{jl_value_t}
-      @cextern jl_gc_alloc_2w()::Ptr{jl_value_t}
-      @cextern jl_gc_alloc_3w()::Ptr{jl_value_t}
-      @cextern jl_gc_allocobj(sz::Csize_t)::Ptr{jl_value_t}
-      
-      @cextern jl_base_module::Ptr{@cstruct jl_module_t}
-    end
+  @cbindings "./path/to/libjulia.so" begin
+    @ctypedef jl_nullable_float64_t @cstruct {
+      hasvalue::UInt8
+      value::Cdouble
+    }
+    
+    @ctypedef jl_value_t @cstruct _jl_value_t
+    
+    @cextern jl_gc_enable(on::Cint)::Cint
+    @cextern jl_gc_is_enabled()::Cint
+    
+    @cextern jl_gc_alloc_0w()::Ptr{jl_value_t}
+    @cextern jl_gc_alloc_1w()::Ptr{jl_value_t}
+    @cextern jl_gc_alloc_2w()::Ptr{jl_value_t}
+    @cextern jl_gc_alloc_3w()::Ptr{jl_value_t}
+    @cextern jl_gc_allocobj(sz::Csize_t)::Ptr{jl_value_t}
+    
+    @cextern jl_base_module::Ptr{@cstruct jl_module_t}
   end
 end
 ```
-
-The last argument to the macro should be a begin-end block of `@cextern`, `@ctypedef`, `@cstruct`, etc. expressions.
-Arbitrary code can be placed in the code block, but beware, it will be evaluated at module scope.
-All expressions before the begin-end block will be used as `Clibrary` arguments for loading the bindings from.
-
-Occasionally a C library will contain a type, variable, or function with a name that is a reserved word in Julia, like `global` or `end`.
-They are not yet supported by CBinding.jl [#18](https://github.com/analytech-solutions/CBinding.jl/issues/18), but future package development will address this feature.
 

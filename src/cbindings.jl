@@ -1,81 +1,54 @@
 
 
-function _dlsym(sym::Symbol, libs::Clibrary...)
-	for (ind, lib) in enumerate(libs)
-		isLast = ind == length(libs)
-		handle = Libdl.dlsym(lib.handle, sym, throw_error = isLast)
-		isnothing(handle) || return handle
-	end
-	error("Libdl.dlsym returned a C_NULL handle and did not throw an error")
-end
-
-
-
 macro cbindings(exprs...) return _cbindings(__module__, exprs...) end
 
-function _cbindings(mod::Module, exprs...)
-	length(exprs) >= 1 || error("Expected @cbindings to have (optional) library expressions followed by a block of @cextern statements")
-	
-	syms = []
-	libs = map(enumerate(exprs[1:end-1])) do (ind, expr)
-		sym = gensym("lib")
-		push!(syms, Expr(:$, sym))
-		return quote
-			$(sym) = $(esc(expr))
-		end
-	end
-	
-	function addlibs(e)
+function _cbindings(mod::Module, block::Expr)
+	return _cbindings(mod, "", block)
+end
+
+function _cbindings(mod::Module, lib::String, block::Expr)
+	function _addlibs(e)
 		if Base.is_expr(e, :macrocall) && length(e.args) >= 1 && e.args[1] in _externExprs
-			append!(e.args, syms)
+			push!(e.args, lib)
 		elseif e isa Expr
 			for expr in e.args
-				addlibs(expr)
+				_addlibs(expr)
 			end
 		end
 	end
-	block = Base.is_expr(exprs[end], :block) ? exprs[end] : Expr(:block, exprs[end])
-	addlibs(block)
+	_addlibs(block)
 	
-	return quote
-		let
-			$(libs...)
-			@eval $(block)
-			nothing
-		end
-	end
+	return esc(block)
 end
-
 
 
 macro cextern(exprs...) return _cextern(__module__, exprs...) end
 
-function _cextern(mod::Module, expr::Expr, libs::Union{Symbol, Expr, Clibrary}...)
-	return _cextern(mod, nothing, expr, libs)
-end
-
-function _cextern(mod::Module, conv::Union{Symbol, Nothing}, expr::Expr, libs::Union{NTuple{N, Clibrary}, NTuple{N, Union{Symbol, Expr}}} where {N})
-	isempty(libs) && error("Usage of @cextern requires at least 1 library to be provided")
+function _cextern(mod::Module, expr::Expr, lib::String = "")
+	Base.is_expr(expr, :(::), 2) || error("Expected @cextern to have a `fieldName::FieldType` expression, but found `$(expr)`")
+	(externs, externType) = expr.args
 	
-	# allow for exposing alternative binding names in Julia with `const exposed = ...`
-	destName = nothing
-	if Base.is_expr(expr, :const, 1) && Base.is_expr(expr.args[1], :(=), 2) && expr.args[1].args[1] isa Symbol
-		destName = expr.args[1].args[1]
-		expr = expr.args[1].args[2]
+	deps = Pair{Symbol, Expr}[]
+	externType = _expand(mod, deps, externType)
+	externs = map(Base.is_expr(externs, :tuple) ? externs.args : (externs,)) do e
+		_augment(e, externType)
+		
+		(e, etype) = Base.is_expr(e, :(::), 2) ? e.args : (e, externType)
+		return (Base.is_expr(e, :call) && length(e.args) >= 1 && e.args[1] !== :(:) ? _cextern_function : _cextern_variable)(mod, deps, e, externType, lib)
 	end
 	
-	Base.is_expr(expr, :(::), 2) || error("Expected @cextern to have a function signature, `func(arg1::Arg1Type, ..., argN::ArgNType)::ReturnType`, or a global variable, `variable::VarType`, expression, but found `$(sig)`")
-	(externName, externType) = expr.args
-	return (externName isa Symbol ? _cextern_variable : _cextern_function)(mod, conv, destName, externName, externType, eltype(libs) <: Clibrary ? libs : map(esc, libs))
+	return quote
+		$(map(last, deps)...)
+		$(externs...)
+		nothing
+	end
 end
 
-function _cextern_function(mod::Module, conv::Union{Symbol, Nothing}, destName::Union{Symbol, Nothing}, func::Expr, retType::Union{Symbol, Expr}, libs::Union{NTuple{N, Clibrary}, NTuple{N, Expr}} where {N})
-	isnothing(conv) || (startswith(String(conv), "__") && endswith(String(conv), "__") && length(String(conv)) > 4) || error("Expected @cextern to have a calling convention specified as `__CONVENTION__`, such as `__cdecl__` or `__stdcall__`, but got `$(conv)`")
-	conv = isnothing(conv) ? conv : Symbol(String(conv)[3:end-2])
-	
+
+function _cextern_function(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, func::Expr, retType::Union{Symbol, Expr}, lib::String)
 	(Base.is_expr(func, :call) && length(func.args) >= 1) || error("Expected @cextern to have a function `func(...)` in the function signature, but got `$(func)`")
-	func.args[1] isa Symbol || error("Expected @cextern to have a Symbol for a function name, but got `$(func)`")
 	name = func.args[1]
+	name isa Symbol || error("Expected @cextern function to have a valid function name")
 	
 	argNames = []
 	argTypes = map(func.args[2:end]) do arg
@@ -86,35 +59,38 @@ function _cextern_function(mod::Module, conv::Union{Symbol, Nothing}, destName::
 			(argName, argType) = (arg, :Vararg)
 		end
 		push!(argNames, argName)
-		return argType
+		return _expand(mod, deps, argType)
 	end
 	
 	sig = (
 		retType,
-		:(Tuple{$(argTypes...)}),
-		(isnothing(conv) ? () : (:(Cconvention{$(QuoteNode(conv))}),))...,
+		:($(@__MODULE__).Tuple{$(argTypes...)}),
+		# TODO: support calling conventions
+		# (isnothing(conv) ? () : (:($(@__MODULE__).Cconvention{$(QuoteNode(conv))}),))...,
 	)
 	
-	destName = isnothing(destName) ? name : destName
 	
-	# NOTE: about quote block:
-	#   1. inner @eval the function type in module scope in case it defines new types
-	#   2. outer @eval bind the function pointer and "bake" it into the function
 	return quote
-		@eval $(destName)($(argNames...)) = $(Expr(:$, :(
-			(@eval $(@__MODULE__).Cfunction{$(sig...)})($(QuoteNode(name)), $(libs...))
+		$(@__MODULE__).@eval $(name)($(argNames...)) = $(Expr(:$, :(
+			$(@__MODULE__).DeferredPtr{
+				$(@__MODULE__).Cfunction{$(sig...)},
+				$(@__MODULE__).Val{$(QuoteNode(name))},
+				$(@__MODULE__).Val{$(QuoteNode(Symbol(lib)))}
+			}()
 		)))($(argNames...))
 	end
 end
 
-function _cextern_variable(mod::Module, unused::Nothing, destName::Union{Symbol, Nothing}, varName::Symbol, varType::Union{Symbol, Expr}, libs::Union{NTuple{N, Clibrary}, NTuple{N, Expr}} where {N})
-	destName = isnothing(destName) ? varName : destName
-	
-	# NOTE: @eval the variable type in module scope in case it defines new types and so it can be const
+
+function _cextern_variable(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, var::Symbol, varType::Union{Symbol, Expr}, lib::String)
 	return quote
-		@eval const $(destName) = $(Expr(:$, :(
-			(@eval $(@__MODULE__).Cglobal{$(varType)})($(QuoteNode(varName)), $(libs...))
-		)))
+		$(@__MODULE__).@eval $(var)() = $(Expr(:$, :(
+			$(@__MODULE__).DeferredCglobal{
+				$(varType),
+				$(@__MODULE__).Val{$(QuoteNode(var))},
+				$(@__MODULE__).Val{$(QuoteNode(Symbol(lib)))}
+			}()
+		)))()
 	end
 end
 

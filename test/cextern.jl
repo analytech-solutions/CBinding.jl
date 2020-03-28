@@ -1,20 +1,18 @@
 
 
 @testset "@cextern + @cbindings" begin
-	lib = Clibrary()
+	@eval function jl_ver_major end
+	@test length(methods(jl_ver_major)) == 0
+	@cextern jl_ver_major()::Cint
+	@test length(methods(jl_ver_major)) == 1
 	
-	@eval function jl_gc_total_bytes end
-	@test length(methods(jl_gc_total_bytes)) == 0
-	@cextern jl_gc_total_bytes()::Int64 lib
-	@test length(methods(jl_gc_total_bytes)) == 1
+	@cextern jl_main_module::Ptr{@cstruct jl_module_t}
+	@cextern jl_core_module::Ptr{@cstruct jl_module_t}
+	@test jl_main_module()[] != C_NULL
+	@test jl_core_module()[] != C_NULL
+	@test jl_main_module()[] != jl_core_module()[]
 	
-	@cextern jl_main_module::Ptr{@cstruct jl_module_t} lib
-	@cextern jl_core_module::Ptr{@cstruct jl_module_t} lib
-	@test jl_main_module[] != C_NULL
-	@test jl_core_module[] != C_NULL
-	@test jl_main_module[] != jl_core_module[]
-	
-	@cbindings Clibrary() begin
+	@eval @cbindings begin
 		@ctypedef jl_value_t @cstruct _jl_value_t
 		
 		@cextern jl_gc_enable(on::Cint)::Cint
@@ -80,11 +78,11 @@
 	@test length(methods(jl_gc_alloc_2w)) == 1
 	@test length(methods(jl_gc_alloc_3w)) == 1
 	@test length(methods(jl_gc_allocobj)) == 1
-	@test jl_base_module[] != C_NULL
+	@test jl_base_module()[] != C_NULL
 	
 	opts = Base.JLOptions()
-	@test unsafe_string(opts.julia_bin) == unsafe_string(jl_options[].julia_bin)
-	@test opts.opt_level == jl_options[].opt_level
-	@test opts.debug_level == jl_options[].debug_level
+	@test unsafe_string(opts.julia_bin) == unsafe_string(jl_options().julia_bin)
+	@test opts.opt_level == jl_options().opt_level
+	@test opts.debug_level == jl_options().debug_level
 end
 

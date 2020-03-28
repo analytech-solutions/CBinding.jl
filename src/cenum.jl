@@ -2,7 +2,6 @@
 
 abstract type Cenum_anonymous <: Cenum end
 isanonymous(::Type{<:Cenum_anonymous}) = true
-Base.show(io::IO, ::Type{CE}) where {CE<:Cenum_anonymous} = print(io, "<anonymous-enum>")
 
 
 function Base.show(io::IO, ce::CE) where {CE<:Cenum}
@@ -27,6 +26,8 @@ function Base.show(io::IO, ce::CE) where {CE<:Cenum}
 	end
 end
 
+Base.string(ce::CE) where {CE<:Cenum} = Base.print_to_string(ce)
+
 Base.promote_rule(::Type{T}, ::Type{CE}) where {T<:Integer, CE<:Cenum} = promote_type(T, eltype(CE))
 
 Base.convert(::Type{CE}, x::T) where {CE<:Cenum, T<:Integer} = reinterpret(concrete(CE), convert(eltype(CE), x))
@@ -43,6 +44,9 @@ Base.eltype(::Type{CE}) where {CE<:Cenum} = Cenumlayout(CE).type
 Base.typemin(::Type{CE}) where {CE<:Cenum} = Cenumlayout(CE).min
 Base.typemax(::Type{CE}) where {CE<:Cenum} = Cenumlayout(CE).max
 
+Base.:-(ce::Cenum) = -convert(eltype(ce), ce)
+Base.trailing_ones(ce::Cenum) = trailing_ones(convert(eltype(ce), ce))
+Base.trailing_zeros(ce::Cenum) = trailing_zeros(convert(eltype(ce), ce))
 
 
 macro cenum(exprs...) return _cenum(__module__, nothing, exprs...) end
@@ -59,19 +63,20 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, b
 	return _cenum(mod, deps, nothing, body, strategy)
 end
 
-function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Symbol, body::Expr)
+function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Union{Symbol, Expr, Nothing}, body::Expr)
 	return _cenum(mod, deps, name, body, nothing)
 end
 
-function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
+function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Union{Symbol, Expr, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
 	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @cenum to have a `{ ... }` expression for the body of the type, but found `$(body)`")
+	isnothing(name) || name isa Symbol || (Base.is_expr(name, :tuple, 1) && name.args[1] isa Symbol) || error("Expected @enum to have a valid name")
 	
 	strategy = isnothing(strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	isanon = isnothing(name)
+	isanon = isnothing(name) || name isa Expr
 	super = isanon ? :(Cenum_anonymous) : :(Cenum)
-	name = isanon ? gensym("anonymous-cenum") : name
+	name = isnothing(name) ? gensym("anonymous-cenum") : name isa Expr ? Symbol("($(name.args[1]))") : name
 	escName = esc(name)
-	concreteName = esc(Symbol(name, "\u200B"))  # this is so incredibly evil: appending a 0-width space to the type name
+	concreteName = esc(gensym(name))
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps

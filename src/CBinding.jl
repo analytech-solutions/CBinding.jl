@@ -1,11 +1,10 @@
 module CBinding
 	import Libdl
-	using Todo: @todo_str
 	
 	
 	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Calignment, Cconst, Caccessor
 	export STDCALL, CDECL, FASTCALL, THISCALL
-	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings
+	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings, @ccallback
 	export propertytypes
 	
 	
@@ -24,8 +23,12 @@ module CBinding
 	abstract type Cenum <: Integer end
 	
 	const Copaques = Union{Caggregate, Cenum}
-	Base.show(io::IO, ::Type{CO}) where {CO<:Copaques} = Base.show_datatype(io, isabstracttype(CO) ? CO : supertype(CO))
-	
+	function Base.show(io::IO, ::Type{CO}) where {CO<:Copaques}
+		if CO isa DataType
+			return Base.show_datatype(io, isabstracttype(CO) ? CO : supertype(CO))
+		end
+		return invoke(show, Tuple{IO, Type}, io, CO)
+	end
 	
 	struct Cconst{T, S}
 		mem::NTuple{S, UInt8}
@@ -59,9 +62,9 @@ module CBinding
 	include("carray.jl")
 	include("cconst.jl")
 	include("caggregate.jl")
-	include("cglobal.jl")
 	include("cfunction.jl")
 	include("cetc.jl")
 	include("ctypelayout.jl")
 	include("caccessor.jl")
+	include("cglobal.jl")
 end

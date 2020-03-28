@@ -10,6 +10,8 @@ struct Caccessor{FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}, BaseType<
 	Caccessor{FieldType}(b::BaseType, ::Val{Offset} = Val(0)) where {FieldType, BaseType, Offset} = new{FieldType, BaseType, Val{Offset}}(b)
 end
 
+Base.unsafe_wrap(::Type{FieldType}, ptr::Ptr) where {FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}} = Caccessor{FieldType}(reinterpret(Ptr{FieldType}, ptr))
+
 Base.convert(::Type{T}, ca::Caccessor{T}) where {T} = ca[]
 Base.show(io::IO, ca::Caccessor) = show(io, ca[])
 
@@ -97,7 +99,7 @@ end
 	sym = gensym("bitfield")
 	result = [:($(sym) = uint(0))]
 	for i in 1:sizeof(uint)
-		todo"verify correctness on big endian machine"  #$((ENDIAN_BOM != 0x04030201 ? (sizeof(uint)-i) : (i-1))*8)
+		# TODO:  verify correctness on big endian machine  (ENDIAN_BOM != 0x04030201 ? (sizeof(uint)-i) : (i-1))*8
 		offbits <= i*8 && (i-1)*8 < offbits+numbits && push!(result, :($(sym) |= uint($(_readbyte(base, :base, offset+i))) << uint($((i-1)*8))))
 	end
 	return quote let ; $(result...) ; $(sym) end end
@@ -106,7 +108,7 @@ end
 @generated function _unsafe_store!(base::Ptr, ::Val{offset}, ::Type{uint}, ::Val{offbits}, ::Val{numbits}, val::uint) where {offset, uint, offbits, numbits}
 	result = []
 	for i in 1:sizeof(uint)
-		todo"verify correctness on big endian machine"  #$((ENDIAN_BOM != 0x04030201 ? (sizeof(uint)-i) : (i-1))*8)
+		# TODO:  verify correctness on big endian machine  (ENDIAN_BOM != 0x04030201 ? (sizeof(uint)-i) : (i-1))*8
 		offbits <= i*8 && (i-1)*8 < offbits+numbits && push!(result, _writebyte(base, :base, offset+i, :(UInt8((val >> $((i-1)*8)) & 0xff))))
 	end
 	return quote $(result...) end

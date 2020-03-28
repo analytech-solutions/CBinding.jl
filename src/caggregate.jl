@@ -6,11 +6,9 @@ isanonymous(::Type) = false
 
 abstract type Cstruct_anonymous <: Cstruct end
 isanonymous(::Type{<:Cstruct_anonymous}) = true
-Base.show(io::IO, ::Type{CS}) where {CS<:Cstruct_anonymous} = print(io, "<anonymous-struct>")
 
 abstract type Cunion_anonymous <: Cunion end
 isanonymous(::Type{<:Cunion_anonymous}) = true
-Base.show(io::IO, ::Type{CU}) where {CU<:Cunion_anonymous}  = print(io, "<anonymous-union>")
 
 
 # <:Caggregate functions
@@ -27,6 +25,12 @@ function (::Type{CA})(init::Union{CA, Cconst{CA}, typeof(undef), typeof(zero)}; 
 	T <: Cunion && length(kwargs) > 1 && error("Expected only a single keyword argument when constructing Cunion's")
 	foreach(kwarg -> _initproperty!(result, kwarg...), kwargs)
 	
+	return result
+end
+
+function Base.read(io::IO, ::Type{CA}) where {CA<:Caggregate}
+	result = CA(undef)
+	setfield!(result, :mem, map(m -> read(io, typeof(m)), getfield(result, :mem)))
 	return result
 end
 
@@ -73,22 +77,23 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 	return _caggregate(mod, deps, kind, nothing, body, strategy)
 end
 
-function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing})
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Expr, Nothing}, body::Union{Expr, Nothing})
 	return _caggregate(mod, deps, kind, name, body, nothing)
 end
 
-todo"need to handle unknown-length aggregates with last field like `char c[]`"
-function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
+# TODO:  need to handle unknown-length aggregates with last field like `char c[]`
+function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Expr, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
 	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
 	isnothing(body) && !isnothing(strategy) && error("Expected @$(kind) to have a body if alignment strategy is to be specified")
 	isnothing(strategy) || (startswith(String(strategy), "__") && endswith(String(strategy), "__") && length(String(strategy)) > 4) || error("Expected @$(kind) to have packing specified as `__STRATEGY__`, such as `__packed__` or `__native__`")
+	isnothing(name) || name isa Symbol || (Base.is_expr(name, :tuple, 1) && name.args[1] isa Symbol) || error("Expected @$(kind) to have a valid name")
 	
 	strategy = isnothing(strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	isanon = isnothing(name)
+	isanon = isnothing(name) || name isa Expr
 	super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
-	name = isanon ? gensym("anonymous-$(kind)") : name
+	name = isnothing(name) ? gensym("anonymous-$(kind)") : name isa Expr ? Symbol("($(name.args[1]))") : name
 	escName = esc(name)
-	concreteName = esc(Symbol(name, "\u200B"))  # this is so incredibly evil: appending a 0-width space to the type name
+	concreteName = esc(gensym(name))
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
@@ -103,61 +108,23 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			if Base.is_expr(arg, :align, 1)
 				align = arg.args[1]
 				push!(fields, :(Calignment{$(align)}))
-			elseif Base.is_expr(arg, :escape, 1) && !startswith(String(arg.args[1]), "##anonymous")
-				# this is just a type definition, not a field
 			else
 				Base.is_expr(arg, :(::)) && length(arg.args) != 2 && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
 				
+				arg = deepcopy(arg)
 				argType = Base.is_expr(arg, :(::)) ? arg.args[end] : arg
 				args = !Base.is_expr(arg, :(::)) ? nothing : arg.args[1]
 				args = Base.is_expr(args, :tuple) ? args.args : (args,)
 				for arg in args
-					if isnothing(arg)
+					if isnothing(Base.is_expr(arg, :escape, 1) ? arg.args[1] : arg)
 						push!(fields, :(Ctypespec($(argType))))
-					elseif arg isa Symbol
-						push!(fields, :(Pair{$(QuoteNode(arg)), Ctypespec($(argType))}))
-					elseif Base.is_expr(arg, :escape, 1) && isnothing(arg.args[1])
-						push!(fields, :(Ctypespec($(argType))))
-					elseif Base.is_expr(arg, :escape, 1) && arg.args[1] isa Symbol
-						push!(fields, :(Pair{$(QuoteNode(arg.args[1])), Ctypespec($(argType))}))
-					elseif Base.is_expr(arg, :call, 3) && arg.args[1] === :(:) && arg.args[3] isa Integer
-						push!(fields, :(Pair{$(QuoteNode(arg.args[2])), Ctypespec($(argType), Val($(arg.args[3])))}))
-					elseif Base.is_expr(arg, :call, 3) && Base.is_expr(arg.args[1], :escape, 1) && arg.args[1].args[1] === :(:) && Base.is_expr(arg.args[3], :escape, 1) && arg.args[3].args[1] isa Integer
-						push!(fields, :(Pair{$(QuoteNode(arg.args[2].args[1])), Ctypespec($(argType), Val($(arg.args[3].args[1])))}))
+					elseif Base.is_expr(arg, :call, 3) && (Base.is_expr(arg.args[1], :escape, 1) ? arg.args[1].args[1] : arg.args[1]) === :(:) && arg.args[3] isa Integer
+						push!(fields, :(Pair{$(QuoteNode(Base.is_expr(arg.args[2], :escape, 1) ? arg.args[2].args[1] : arg.args[2])), Ctypespec($(argType), Val($(arg.args[3])))}))
 					else
-						function _parseAugmentedField(a)
-							a = deepcopy(a)
-							if Base.is_expr(a, :(::), 2)
-								(aname, atype) = _parseAugmentedField(a.args[2])
-								isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
-								return (Base.is_expr(a.args[1], :escape, 1) && a.args[1].args[1] isa Symbol ? a.args[1].args[1] : a.args[1], atype)
-							elseif Base.is_expr(a, :curly) && length(a.args) >= 3 && a.args[1] in (:Carray, esc(:Carray), :(Carray), Expr(:., esc(:CBinding), esc(QuoteNode(:Carray))))
-								(aname, atype) = _parseAugmentedField(a.args[2])
-								isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
-								a.args[2] = atype
-								if length(a.args) == 4 && Base.is_expr(a.args[4], :call, 2) && a.args[4].args[1] === :sizeof
-									(aname, atype) = _parseAugmentedField(a.args[4].args[2])
-									isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
-									a.args[4].args[2] = atype
-								end
-								return (nothing, a)
-							elseif Base.is_expr(a, :curly) && length(a.args) >= 1 && a.args[1] in (:Ptr, esc(:Ptr), :(Base.Ptr), Expr(:., esc(:Base), esc(QuoteNode(:Ptr))))
-								if length(a.args) == 1
-									push!(a.args, argType)
-								else
-									(aname, atype) = _parseAugmentedField(a.args[end])
-									isnothing(aname) || error("Unable to parse @$(kind) field, unexpected expression `$(a)`")
-									a.args[end] = atype
-								end
-								return (nothing, a)
-							elseif Base.is_expr(a, :braces, 0)
-								return (nothing, argType)
-							else
-								error("Expected @$(kind) to have a `fieldName`, `fieldName::Ptr{}`, or `fieldName::{}[N]` field name expression or some combination of them, but found `$(a)` within `$(arg)`")
-							end
-						end
+						_augment(arg, argType)
 						
-						(aname, atype) = _parseAugmentedField(arg)
+						(aname, atype) = Base.is_expr(arg, :(::), 2) ? arg.args : (arg, argType)
+						aname = Base.is_expr(aname, :escape, 1) ? aname.args[1] : aname
 						push!(fields, :(Pair{$(QuoteNode(aname)), Ctypespec($(atype))}))
 					end
 				end
