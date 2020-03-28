@@ -66,27 +66,34 @@ cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Ptr{E}
 struct DeferredPtr{CF<:Cfunction, name<:Val, lib<:Val}
 end
 
-# functions to manufacture a precisely typed function pointer to invoke with ccall
-_extend(::Type{Tuple{}}) = Tuple{}
-_extend(::Type{Tuple{}}, argT, argsT...) = throw(MethodError(f, args))
-_extend(::Type{Tuple{Vararg}}) = Tuple{Vararg}  # NOTE: leave the extra `Vararg` to preserve the variadic function call semantics
-_extend(::Type{Tuple{Vararg}}, argT, argsT...) = Base.tuple_type_cons(concrete(cconvert_vararg(ConvT, cconvert_default(argT))), _extend(Tuple{Vararg}, argsT...))
-_extend(::Type{T}) where {T<:Tuple} = throw(MethodError(f, args))
-_extend(::Type{T}, argT, argsT...) where {T<:Tuple} = Base.tuple_type_cons(concrete(Base.tuple_type_head(T)), _extend(Base.tuple_type_tail(T), argsT...))
-_extend(::Type{Cfunction{RetT, ArgsT, ConvT}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = Cfunction{concrete(RetT), _extend(ArgsT, map(typeof, args)...), ConvT}
 
-(f::DeferredPtr{Cfunction{RetT, ArgsT}, Val{name}, Val{lib}})(args...) where {RetT, ArgsT<:Tuple, name, lib} = reinterpret(DeferredPtr{Cfunction{RetT, ArgsT, default_convention(ArgsT)}, Val{name}, Val{lib}}, f)(args...)
-(f::DeferredPtr{Cfunction{RetT, ArgsT, ConvT}, Val{name}, Val{lib}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention, name, lib} = _ccall(reinterpret(DeferredPtr{_extend(Cfunction{RetT, ArgsT, ConvT}, args...), Val{name}, Val{lib}}, f), args...)
+(f::DeferredPtr{Cfunction{RetT, ArgsT}, Val{name}, Val{lib}})(args...) where {RetT, ArgsT<:Tuple, name, lib} = DeferredPtr{Cfunction{RetT, ArgsT, default_convention(ArgsT)}, Val{name}, Val{lib}}()(args...)
+(f::DeferredPtr{Cfunction{RetT, ArgsT, ConvT}, Val{name}, Val{lib}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention, name, lib} = _ccall(DeferredPtr{_signature(f, args...), Val{name}, Val{lib}}(), args...)
 
 (f::Ptr{Cfunction{RetT, ArgsT}})(args...) where {RetT, ArgsT<:Tuple} = Cfunction{RetT, ArgsT, default_convention(ArgsT)}(reinterpret(Ptr{Cvoid}, f))(args...)
-(f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = _ccall(reinterpret(Ptr{_extend(Cfunction{RetT, ArgsT, ConvT}, args...)}, f), args...)
+(f::Ptr{Cfunction{RetT, ArgsT, ConvT}})(args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention} = _ccall(_signature(f, args...)(reinterpret(Ptr{Cvoid}, f)), args...)
+
+
+# manufacture a precisely typed function signature to invoke with _ccall
+@generated function _signature(f::Union{Ptr{Cfunction{RetT, ArgsT, ConvT}}, DeferredPtr{Cfunction{RetT, ArgsT, ConvT}}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
+	_sig(::Type{Tuple{}}) = Tuple{}
+	_sig(::Type{Tuple{}}, argT, argsT...) = nothing
+	_sig(::Type{Tuple{Vararg}}) = Tuple{Vararg}  # NOTE: leave the extra `Vararg` to preserve the variadic function call semantics
+	_sig(::Type{Tuple{Vararg}}, argT, argsT...) = (sigT = _sig(Tuple{Vararg}, argsT...) ; isnothing(sigT) ? nothing : Base.tuple_type_cons(concrete(cconvert_vararg(ConvT, cconvert_default(argT))), sigT))
+	_sig(::Type{T}) where {T<:Tuple} = nothing
+	_sig(::Type{T}, argT, argsT...) where {T<:Tuple} = (sigT = _sig(Base.tuple_type_tail(T), argsT...) ; isnothing(sigT) ? nothing : Base.tuple_type_cons(concrete(Base.tuple_type_head(T)), sigT))
+	
+	sigT = _sig(ArgsT, args...)
+	return isnothing(sigT) ? :(throw(MethodError(f, args))) : :(Cfunction{concrete(RetT), $(sigT), ConvT})
+end
+
 
 @generated function _ccall(f::Union{Ptr{Cfunction{RetT, ArgsT, ConvT}}, DeferredPtr{Cfunction{RetT, ArgsT, ConvT}, Val{name}, Val{lib}}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention, name, lib}
 	_tuplize(::Type{Tuple{}}) = ()
 	_tuplize(::Type{Tuple{Vararg}}) = (:(Ptr{Cvoid}...),)  # NOTE: `Ptr{Cvoid}...` is being added to trigger vararg ccall behavior rather than regular behavior (if there is a difference in the backend)
 	_tuplize(::Type{T}) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T))...,)
 	
-	f = f isa Ptr ? :(reinterpret(Ptr{Cvoid}, f)) : :(($(QuoteNode(name)), $(String(lib))))
+	f = f <: Ptr ? :(reinterpret(Ptr{Cvoid}, f)) : :(($(QuoteNode(name)), $(String(lib))))
 	return quote
 		return ccall($(f), $(convention(ConvT)), RetT, ($(_tuplize(ArgsT)...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
 	end
