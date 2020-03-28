@@ -63,9 +63,9 @@ module CBinding
 	include("carray.jl")
 	include("cconst.jl")
 	include("caggregate.jl")
-	include("cglobal.jl")
 	include("cfunction.jl")
 	include("cetc.jl")
 	include("ctypelayout.jl")
 	include("caccessor.jl")
+	include("cglobal.jl")
 end
