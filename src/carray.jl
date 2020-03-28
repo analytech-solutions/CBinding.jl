@@ -38,12 +38,16 @@ end
 macro carray(exprs...) _carray(__module__, nothing, exprs...) end
 
 function _carray(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Expr)
-	Base.is_expr(expr, :ref, 2) || error("Expected C array definition to be of the form `ElementType[N]`")
+	Base.is_expr(expr, :ref, 1) || Base.is_expr(expr, :ref, 2) || error("Expected C array definition to be of the form `ElementType[N]`")
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	expr.args[1] = _expand(mod, deps, expr.args[1])
-	expr.args[2] = _expand(mod, deps, expr.args[2])
+	if length(expr.args) == 1
+		push!(expr.args, 0)
+	else
+		expr.args[2] = _expand(mod, deps, expr.args[2])
+	end
 	def = :(Carray{$(expr.args[1]), $(expr.args[2]), sizeof(Carray{$(expr.args[1]), $(expr.args[2])})})
 	
 	return isOuter ? quote $(map(last, deps)...) ; $(def) end : def

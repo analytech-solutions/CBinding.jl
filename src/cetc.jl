@@ -37,10 +37,12 @@ function _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, e::Expr, escape:
 				return _caggregate(mod, deps, :cunion, filter(x -> !(x isa LineNumberNode), e.args[2:end])...)
 			end
 		else
-			return _expand(mod, deps, macroexpand(mod, e, recursive = false))
+			return _expand(mod, deps, macroexpand(mod, e, recursive = false), escape)
 		end
-	elseif Base.is_expr(e, :ref, 2)
+	elseif Base.is_expr(e, :ref)
 		return _carray(mod, deps, e)
+	elseif Base.is_expr(e, :escape)
+		return e
 	else
 		for i in eachindex(e.args)
 			e.args[i] = _expand(mod, deps, e.args[i], escape)
