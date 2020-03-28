@@ -93,7 +93,7 @@ end
 	_tuplize(::Type{Tuple{Vararg}}) = (:(Ptr{Cvoid}...),)  # NOTE: `Ptr{Cvoid}...` is being added to trigger vararg ccall behavior rather than regular behavior (if there is a difference in the backend)
 	_tuplize(::Type{T}) where {T<:Tuple} = (Base.tuple_type_head(T), _tuplize(Base.tuple_type_tail(T))...,)
 	
-	f = f <: Ptr ? :(reinterpret(Ptr{Cvoid}, f)) : :(($(QuoteNode(name)), $(String(lib))))
+	f = f <: Ptr ? :(reinterpret(Ptr{Cvoid}, f)) : isempty(String(lib)) ? :(QuoteNode(name)) : :(($(QuoteNode(name)), $(String(lib))))
 	return quote
 		return ccall($(f), $(convention(ConvT)), RetT, ($(_tuplize(ArgsT)...),), $(map(i -> :(args[$(i)]), eachindex(args))...),)
 	end
