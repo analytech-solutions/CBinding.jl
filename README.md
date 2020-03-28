@@ -36,7 +36,7 @@ julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MyS
            @cunion {                                        #     union {
                w::Cuchar[sizeof(Cint)÷sizeof(Cuchar)]       #         unsigned char w[sizeof(int)/sizeof(unsigned char)];
                x::Cint                                      #         int x;
-               (y::{}[4])::@cstruct {                       #         struct {
+               (y::_[4])::@cstruct {                        #         struct {
                    c::Cuchar                                #             unsigned char c;
                }                                            #         } y[4];
                z::MyFirstCStruct[1]                         #         struct MyFirstCStruct z[1];
@@ -50,7 +50,7 @@ There are a few syntax differences to note though:
 
 - a `@ctypedef` is specified with the type name before the definition rather than after (as is done in C)  
 - likewise, an aggregate field is specified in the Julia `fieldName::FieldType` syntax rather than the C style of `FieldType fieldName`
-- in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{}, c::{}[4])::SomeType`) with the empty curly braces `{}` meaning "plug in type here"
+- in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{_}, c::_[4])::SomeType`) with the use of an underscore `_` to mean "plug in type here"
 - Julia does not support forward declarations, so CBinding.jl uses some very dubious methods to simulate the capability which may cause grief and confusion for users when types don't appear as they should
 
 The generic constructor provided by CBinding.jl allows you to create an aggregate with uninitialized values, zero-initialized values, or from existing an existing aggregate object.

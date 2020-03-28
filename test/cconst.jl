@@ -25,12 +25,12 @@
 			ci::Cconst{Cint}
 		}}
 		
-		(as::{}[1])::@cstruct {
+		(as::_[1])::@cstruct {
 			i::Cint
 			ci::Cconst{Cint}
 		}
 		
-		(acs::{}[1])::Cconst{@cstruct {
+		(acs::_[1])::Cconst{@cstruct {
 			i::Cint
 			ci::Cconst{Cint}
 		}}
