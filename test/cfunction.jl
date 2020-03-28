@@ -16,11 +16,19 @@
 		@test before < after
 	end
 	
-	f2 = Cfunction{Clong, Tuple{}}(lib, :jl_gc_total_bytes)
-	@test eltype(f2) <: Cfunction{Clong, Tuple{}}
-	@test typeof(f2()) === Clong
-	@test f2() isa Clong
-	@test_throws MethodError f2("no arguments, please!")
+	f2a = Cfunction{Cint, Tuple{}}(lib, :jl_ver_major)
+	@test eltype(f2a) <: Cfunction{Cint, Tuple{}}
+	@test typeof(f2a()) === Cint
+	@test f2a() isa Cint
+	@test f2a() == Base.VERSION.major
+	@test_throws MethodError f2a("no arguments, please!")
+	
+	f2b = Cfunction{Cint, Tuple{}}(lib, :jl_ver_minor)
+	@test eltype(f2b) <: Cfunction{Cint, Tuple{}}
+	@test typeof(f2b()) === Cint
+	@test f2b() isa Cint
+	@test f2b() == Base.VERSION.minor
+	@test_throws MethodError f2b("no arguments, please!")
 	
 	if !Sys.iswindows()
 		f3 = Cfunction{Cint, Tuple{Ptr{Cchar}, Cstring, Vararg}}(lib, :sprintf)
