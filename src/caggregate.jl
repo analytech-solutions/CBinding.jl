@@ -28,6 +28,12 @@ function (::Type{CA})(init::Union{CA, Cconst{CA}, typeof(undef), typeof(zero)}; 
 	return result
 end
 
+function Base.read(io::IO, ::Type{CA}) where {CA<:Caggregate}
+	result = CA(undef)
+	setfield!(result, :mem, map(m -> read(io, typeof(m)), getfield(result, :mem)))
+	return result
+end
+
 Base.zero(::Type{CA}) where {CA<:Caggregate} = CA(zero)
 Base.convert(::Type{CA}, nt::NamedTuple) where {CA<:Caggregate} = CA(zero; nt...)
 Base.isequal(x::CA, y::CA) where {CA<:Caggregate} = getfield(x, :mem) == getfield(y, :mem)
