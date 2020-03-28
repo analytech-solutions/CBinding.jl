@@ -76,15 +76,15 @@ end
 
 # manufacture a precisely typed function signature to invoke with _ccall
 @generated function _signature(f::Union{Ptr{Cfunction{RetT, ArgsT, ConvT}}, DeferredPtr{Cfunction{RetT, ArgsT, ConvT}}}, args...) where {RetT, ArgsT<:Tuple, ConvT<:Cconvention}
-	_sig(::Type{Tuple{}}) = Tuple{}
+	_sig(::Type{Tuple{}}) = ()
 	_sig(::Type{Tuple{}}, argT, argsT...) = nothing
-	_sig(::Type{Tuple{Vararg}}) = Tuple{Vararg}  # NOTE: leave the extra `Vararg` to preserve the variadic function call semantics
-	_sig(::Type{Tuple{Vararg}}, argT, argsT...) = (sigT = _sig(Tuple{Vararg}, argsT...) ; isnothing(sigT) ? nothing : Base.tuple_type_cons(concrete(cconvert_vararg(ConvT, cconvert_default(argT))), sigT))
+	_sig(::Type{Tuple{Vararg}}) = (Vararg,)  # NOTE: leave the extra `Vararg` to preserve the variadic function call semantics
+	_sig(::Type{Tuple{Vararg}}, argT, argsT...) = (sigT = _sig(Tuple{Vararg}, argsT...) ; isnothing(sigT) ? nothing : (:(concrete(cconvert_vararg(ConvT, cconvert_default($(argT))))), sigT...,))
 	_sig(::Type{T}) where {T<:Tuple} = nothing
-	_sig(::Type{T}, argT, argsT...) where {T<:Tuple} = (sigT = _sig(Base.tuple_type_tail(T), argsT...) ; isnothing(sigT) ? nothing : Base.tuple_type_cons(concrete(Base.tuple_type_head(T)), sigT))
+	_sig(::Type{T}, argT, argsT...) where {T<:Tuple} = (sigT = _sig(Base.tuple_type_tail(T), argsT...) ; isnothing(sigT) ? nothing : (:(concrete($(Base.tuple_type_head(T)))), sigT...,))
 	
 	sigT = _sig(ArgsT, args...)
-	return isnothing(sigT) ? :(throw(MethodError(f, args))) : :(Cfunction{concrete(RetT), $(sigT), ConvT})
+	return isnothing(sigT) ? :(throw(MethodError(f, args))) : :(Cfunction{concrete(RetT), Tuple{$(sigT...)}, ConvT})
 end
 
 
