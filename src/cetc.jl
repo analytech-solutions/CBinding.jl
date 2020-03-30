@@ -67,9 +67,7 @@ end
 function _augment(aug, augType)
 	_recurse(args, ind) = args[ind] === :_ ? (args[ind] = deepcopy(augType)) : _augment(args[ind], augType)
 	
-	if aug isa Symbol
-	elseif aug isa Number
-	elseif aug isa LineNumberNode
+	if !(aug isa Expr) || Base.is_expr(aug, :block) || Base.is_expr(aug, :bracescat) || Base.is_expr(aug, :braces)
 	elseif Base.is_expr(aug, :macrocall)
 		foreach(i -> _recurse(aug.args, i), 2:length(aug.args))
 	elseif Base.is_expr(aug, :call)
@@ -82,8 +80,8 @@ function _augment(aug, augType)
 		_recurse(aug.args, 1)
 	elseif Base.is_expr(aug, :(::), 2)
 		_recurse(aug.args, 2)
-	elseif Base.is_expr(aug, :curly) && length(aug.args) >= 2
-		foreach(i -> _recurse(aug.args, i), 2:length(aug.args))
+	elseif Base.is_expr(aug, :curly) && length(aug.args) >= 1
+		foreach(i -> _recurse(aug.args, i), 1:length(aug.args))
 	else
 		error("Expected augmented expression to have a `varName`, `varName::_`, `varName::Ptr{_}`, `varName::_[N]`, or `funcName(arg::ArgType)::Ptr{_}` expression or some combination of them, but found `$(aug)`")
 	end
