@@ -2,14 +2,31 @@ module CBinding
 	import Libdl
 	
 	
+	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings, @ccallback
 	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Calignment, Cconst, Caccessor
 	export STDCALL, CDECL, FASTCALL, THISCALL
-	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings, @ccallback
 	export propertytypes
 	
 	
-	# in auto-generated bindings, macros can be used to avoid naming conflicts between Julia and C, so `@CBinding().include(...)` will not conflict with `include(...)`
+	# @macros should be used in a baremodule to keep a clean namespace which avoids naming conflicts with auto-generated C bindings
+	macro macros() return quote
+		$(map(sym -> :(using CBinding: $(sym)), filter(sym -> startswith(String(sym), '@'), names(@__MODULE__, all = true)))...)
+		using CBinding: @doc, @raw_str
+	end end
 	macro CBinding() return @__MODULE__ end
+	macro include(expr) return quote Base.include($(__module__), $(esc(expr))) end end
+	
+	for sym in (
+		:Cvoid, :Cbool, :Csize_t,
+		:Cchar, :Cshort, :Cint, :Clong, :Clonglong,
+		:Cuchar, :Cushort, :Cuint, :Culong, :Culonglong,
+		:Cfloat, :Cdouble, :Clongdouble,
+		:Cfunction, :Cconst,
+		:STDCALL, :CDECL, :FASTCALL, :THISCALL,
+		:Complex, :Ptr, :Tuple, :Vararg, :VecElement,
+	)
+		@eval macro $(sym)() return quote $($(sym)) end end
+	end
 	
 	
 	# provide a temporary placeholder for 128-bit floating point primitive
