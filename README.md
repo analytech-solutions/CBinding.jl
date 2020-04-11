@@ -346,7 +346,7 @@ It is a more concise Julian representation that closely mirrors the C syntax.
 This macro also includes the ability to use anonymous types in the definition of global variables.
 
 ```jl
-julia> @cextern jl_base_module::Ptr{@cstruct jl_module_t}    lib    # extern struct _jl_module_t *jl_base_module;
+julia> @cextern jl_base_module::Ptr{@cstruct jl_module_t}    # extern struct _jl_module_t *jl_base_module;
 Cglobal{Ptr{jl_module_t}}(Ptr{Ptr{jl_module_t}} @0x00007f84ce375230)
 ```
 

@@ -24,12 +24,12 @@ end
 
 
 
-const _alignExprs = (Symbol("@calign"),)
-const _enumExprs = (Symbol("@cenum"),)
-const _arrayExprs = (Symbol("@carray"),)
-const _structExprs = (Symbol("@cstruct"),)
-const _unionExprs = (Symbol("@cunion"),)
-const _externExprs = (Symbol("@cextern"),)
+const _alignExprs = (Symbol("@calign"), Expr(:., Symbol("𝐣𝐥"), QuoteNode(Symbol("@calign"))))
+const _enumExprs = (Symbol("@cenum"), Expr(:., Symbol("𝐣𝐥"), QuoteNode(Symbol("@cenum"))))
+const _arrayExprs = (Symbol("@carray"), Expr(:., Symbol("𝐣𝐥"), QuoteNode(Symbol("@carray"))))
+const _structExprs = (Symbol("@cstruct"), Expr(:., Symbol("𝐣𝐥"), QuoteNode(Symbol("@cstruct"))))
+const _unionExprs = (Symbol("@cunion"), Expr(:., Symbol("𝐣𝐥"), QuoteNode(Symbol("@cunion"))))
+const _externExprs = (Symbol("@cextern"), Expr(:., Symbol("𝐣𝐥"), QuoteNode(Symbol("@cextern"))))
 
 # macros need to accumulate definition of sub-structs/unions and define them above the expansion of the macro itself
 _expand(mod::Module, deps::Vector{Pair{Symbol, Expr}}, x, escape::Bool = true) = x isa Symbol && x !== :_ && escape ? esc(x) : x
@@ -67,7 +67,7 @@ end
 function _augment(aug, augType)
 	_recurse(args, ind) = args[ind] === :_ ? (args[ind] = deepcopy(augType)) : _augment(args[ind], augType)
 	
-	if !(aug isa Expr) || Base.is_expr(aug, :block) || Base.is_expr(aug, :bracescat) || Base.is_expr(aug, :braces)
+	if !(aug isa Expr) || Base.is_expr(aug, :.) || Base.is_expr(aug, :block) || Base.is_expr(aug, :bracescat) || Base.is_expr(aug, :braces)
 	elseif Base.is_expr(aug, :macrocall)
 		foreach(i -> _recurse(aug.args, i), 2:length(aug.args))
 	elseif Base.is_expr(aug, :call)
