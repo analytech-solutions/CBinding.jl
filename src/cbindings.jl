@@ -6,6 +6,11 @@ function _cbindings(mod::Module, block::Expr)
 	return _cbindings(mod, "", block)
 end
 
+function _cbindings(mod::Module, lib::Union{Expr, Symbol}, block::Expr)
+	lib::String = @eval mod $(lib)
+	return _cbindings(mod, lib, block)
+end
+
 function _cbindings(mod::Module, lib::String, block::Expr)
 	function _addlibs(e)
 		if Base.is_expr(e, :macrocall) && length(e.args) >= 1 && e.args[1] in _externExprs
