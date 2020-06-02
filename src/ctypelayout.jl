@@ -112,6 +112,8 @@ struct Ctypefield
 	type::DataType  # field type
 	size::Int  # in bits:  0 means use sizeof(type)*8, >0 means bit field size
 	offset::Int  # in bits
+	
+	Ctypefield(ind, type, size, offset) = new(ind, (type <: Cconst ? Cconst(type){sizeof(nonconst(type))} : type), size, offset)
 end
 
 mutable struct Ctypelayout
