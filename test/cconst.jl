@@ -274,5 +274,11 @@
 	
 	@test f(x) == 0
 	@test @allocated(f(x)) == 0
+	
+	
+	@cstruct SelfRef {
+		ptr::Ptr{Cconst(SelfRef)}
+	}
+	@test sizeof(SelfRef) == sizeof(Ptr)
 end
 

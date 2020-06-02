@@ -23,7 +23,7 @@ function _cbindings(mod::Module, lib::String, block::Expr)
 	end
 	_addlibs(block)
 	
-	return esc(block)
+	return esc(Base.is_expr(block, :block) ? quote $(map(x -> x isa LineNumberNode ? x : :($(@__MODULE__).@eval $(x)), block.args)...) end : block)
 end
 
 

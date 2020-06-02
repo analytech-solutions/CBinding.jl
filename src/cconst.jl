@@ -2,7 +2,7 @@
 
 Cconst{T, S}(args...; kwargs...) where {T, S} = Cconst{T}(args...; kwargs...)
 Cconst{T}(args...; kwargs...) where {T} = Cconst(T(args...; kwargs...))
-Cconst(::Type{T}) where {T} = Cconst{nonconst(T), sizeof(nonconst(T))}
+Cconst(::Type{T}) where {T} = Cconst{nonconst(T)}
 Cconst(::Type{CA}) where {T, N, CA<:Carray{T, N}} = Carray(Cconst(nonconst(T)), Val(N))
 Cconst(x) = x
 Cconst(cc::Cconst) = cc
