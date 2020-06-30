@@ -35,7 +35,7 @@ function checkC(expr, val)
 	global FILE_COUNT
 	FILE_COUNT += 1
 	file = string(FILE_COUNT, pad = 4)
-	expectedFile = joinpath(ifelse(Sys.iswindows(), "expected-windows", "expected"), "$(file).txt")
+	expectedFile = joinpath(ifelse(sizeof(Clong) == sizeof(Cint), "expected-windows", "expected"), "$(file).txt")
 	if !isfile(expectedFile) || get(ENV, "GENERATE_EXPECTED", nothing) == "1"
 		props = []
 		for line in split(expr, '\n')

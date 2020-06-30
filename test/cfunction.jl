@@ -52,7 +52,7 @@
 	@test typeof(Cadd(Cint(10), Cint(3))) === typeof(add.f(Cint(10), Cint(3)))
 	@test Cadd(Cint(10), Cint(3)) == add.f(Cint(10), Cint(3))
 	
-	if !Sys.iswindows()
+	if !Sys.iswindows() && sizeof(Clong) != sizeof(Cint)
 		@cstruct time_t {
 			val::Clong
 		}
@@ -68,7 +68,7 @@
 			isdst::Cint
 		}
 		time = Cfunction{time_t, Tuple{Ptr{time_t}}}(lib, :time)
-		localtime = Cfunction{Ptr{tm}, Tuple{Ptr{time_t}}}(lib, :localtime)
+		localtime = Cfunction{Ptr{tm}, Tuple{Ptr{Cconst(time_t)}}}(lib, :localtime)
 		
 		t = Ref(time_t(zero))
 		@test t[].val == 0

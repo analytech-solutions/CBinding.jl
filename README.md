@@ -1,6 +1,6 @@
 # CBinding.jl
 
-[![Linux](https://api.travis-ci.com/analytech-solutions/CBinding.jl.svg?branch=master)](https://travis-ci.com/analytech-solutions/CBinding.jl) [![Windows](https://ci.appveyor.com/api/projects/status/4ecxdyj51lfnk4df/branch/master?svg=true)](https://ci.appveyor.com/project/krrutkow/cbinding-jl/branch/master)
+[![Build Status](https://github.com/analytech-solutions/CBinding.jl/workflows/CI/badge.svg)](https://github.com/analytech-solutions/CBinding.jl/actions)
 
 This package provides improvements for specifying and using C bindings in Julia.
 CBinding.jl has the goal of making it easier to correctly connect Julia to your C API and libraries.

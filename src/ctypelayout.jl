@@ -79,7 +79,12 @@ function _addvalue(layout::Cenumlayout, ::Type{Pair{sym, val}}, ::Type{spec}) wh
 	haskey(layout.values, sym) && error("Encountered a duplicate value name `$(sym)` in enum specification")
 	layout.values[sym] = val
 	
-	(min, max) = extrema(values(layout.values))
+	(min, max) = (nothing, nothing)
+	for v in values(layout.values)
+		min = isnothing(min) || v < min ? v : min
+		max = isnothing(max) || v > max ? v : max
+	end
+	
 	for typ in enumtypes(strategy(spec))
 		if typemin(typ) <= min && max <= typemax(typ)
 			layout.type = typ

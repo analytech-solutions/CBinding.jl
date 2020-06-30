@@ -22,6 +22,8 @@ Base.unsafe_string(p::Ptr{CC}) where {CC<:Cconst} = unsafe_string(reinterpret(Pt
 Base.unsafe_string(p::Ptr{CC}, length::Integer) where {CC<:Cconst} = unsafe_string(reinterpret(Ptr{nonconst(CC)}, p), length)
 Base.unsafe_wrap(::Type{A}, p::Ptr{CC}, dims; own = false) where {A<:AbstractArray, CC<:Cconst} = unsafe_wrap(A, reinterpret(Ptr{nonconst(CC)}, p), dims, own = own)
 Base.unsafe_convert(::Type{Ptr{CC}}, str::AbstractString) where {CC<:Union{Cconst(Int8), Cconst(UInt8)}} = reinterpret(Ptr{CC}, Base.unsafe_convert(Ptr{nonconst(CC)}, str))
+Base.unsafe_convert(::Type{Ptr{Cconst{CA}}}, ref::Ref{CC}) where {CA<:Caggregate, CC<:Cconst{CA}} = reinterpret(Ptr{Cconst{CA}}, Base.unsafe_convert(Ptr{CC}, ref))
+Base.unsafe_convert(::Type{Ptr{Cconst{CA}}}, ref::Ref{CA}) where {CA<:Caggregate, CC<:Cconst{CA}} = reinterpret(Ptr{Cconst{CA}}, Base.unsafe_convert(Ptr{CA}, ref))
 
 function Ctypespec(::Type{CC}) where {CC<:Cconst}
 	_fix(::Type{Tuple{typ}}) where {typ} = Tuple{Cconst(typ)}
