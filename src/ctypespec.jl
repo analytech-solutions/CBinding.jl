@@ -16,6 +16,9 @@ strategy(::Type{Ctypespec{T, CO, S, TS}}) where {T, CO, S, TS} = S
 specification(::Type{Ctypespec{T, CO, S, TS}}) where {T, CO, S, TS} = TS
 
 concrete(::Type{T}) where {T} = T
+concrete(::Type{Ptr{T}}) where {T} = Ptr{concrete(T)}
+concrete(::Type{Cconst{T, S}}) where {T, S} = Cconst{concrete(T), S}
+concrete(::Type{Cconst{T}}) where {T} = Cconst{concrete(T)}
 concrete(::Type{CO}) where {CO<:Copaques} = error("Attempted to get type specification details of an opaque type `$(CO)`")
 strategy(::Type{CO}) where {CO<:Copaques} = strategy(concrete(CO))
 specification(::Type{CO}) where {CO<:Copaques} = specification(concrete(CO))
