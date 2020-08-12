@@ -11,9 +11,13 @@ struct Caccessor{FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}, BaseType<
 end
 
 Base.unsafe_wrap(::Type{FieldType}, ptr::Ptr) where {FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}} = Caccessor{FieldType}(reinterpret(Ptr{FieldType}, ptr))
+Base.unsafe_wrap(ptr::Ptr{FieldType}) where {FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}} = Caccessor{FieldType}(ptr)
 
 Base.convert(::Type{T}, ca::Caccessor{T}) where {T} = ca[]
 Base.show(io::IO, ca::Caccessor) = show(io, ca[])
+
+Base.String(ca::Caccessor{FieldType}) where {FieldType<:Carray{Cchar}} = String(ca[])
+Base.convert(::Type{String}, ca::Caccessor{FieldType}) where {FieldType<:Carray{Cchar}} = String(ca)
 
 Base.getindex(cc::Caccessor{CC}) where {CC<:Cconst{<:Cdeferrable}} = Cconst{nonconst(CC)}(_bytes(cc))
 Base.getindex(ca::Caccessor{CD}) where {CD<:Cdeferrable} = unsafe_load(_pointer(ca))
