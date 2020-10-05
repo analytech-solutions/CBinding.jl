@@ -91,13 +91,13 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 	strategy = isnothing(strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
 	isanon = isnothing(name) || name isa Expr
 	super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
-	name = isnothing(name) ? gensym("anonymous-$(kind)") : name isa Expr ? Symbol("($(name.args[1]))") : name
-	escName = esc(name)
-	concreteName = esc(gensym(name))
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	if isnothing(body)
+		isanon && error("Expected a @$(kind) with no body to at least have a name")
+		escName = esc(name)
+		
 		push!(deps, name => quote
 			abstract type $(escName) <: $(super) end
 		end)
@@ -130,6 +130,11 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 				end
 			end
 		end
+		
+		# TODO: need to convert everything to nice clean strings
+		name = isnothing(name) ? Symbol("$(super)|$(strategy)|Tuple{$(fields...)}") : name isa Expr ? Symbol("($(name.args[1]))") : name
+		escName = esc(name)
+		concreteName = esc(Symbol("(", name, ")"))
 		
 		push!(deps, name => quote
 			abstract type $(escName) <: $(super) end
