@@ -41,8 +41,10 @@ function _gensym(super, strategy, spec...)
 		Base.is_expr(x, :curly, 4) && x.args[1] === :Carray ? _string(x.args[2])*"["*_string(x.args[3])*"]" :  # fieldType[N]
 		Base.is_expr(x, :curly, 2) ? _string(x.args[1])*"{"*_string(x.args[2])*'}' :  # Ptr{Cvoid}
 		Base.is_expr(x, :call, 2) && x.args[1] === :Ctypespec ? "("*_string(x.args[2])*")" :  # struct/union field type
-		Base.is_expr(x, :call, 2) ? _string(x.args[1])*"("*_string(x.args[2])*")" :  # Cconst(fieldType)
-		error("Unhandled gensym expression: $(x)")
+		Base.is_expr(x, :call, 3) && x.args[1] === :Ctypespec ? "("*_string(x.args[2])*":"*_string(x.args[3])*")" :  # bit field
+		Base.is_expr(x, :call, 2) && x.args[1] === :Val ? _string(x.args[2]) :  # # bits of bitfield
+		Base.is_expr(x, :call) ? _string(x.args[1])*"("*join(map(_string, x.args[2:end]), ',')*")" :  # Cconst(fieldType) or @align sizeof(x)*2
+		string(x)  # error("Unhandled gensym expression: $(x)")
 	
 	strategy =
 		strategy === :ALIGN_NATIVE ? string(:native) :
