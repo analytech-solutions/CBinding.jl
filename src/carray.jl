@@ -24,6 +24,8 @@ Base.zero(::Type{CA}) where {CA<:Carray} = CA(zero)
 Base.sizeof(::Type{CA}) where {T, N, CA<:Carray{T, N}} = sizeof(T)*N
 Base.isequal(x::Carray, y::Carray) = length(x) == length(y) && all(i -> x[i] == y[i], eachindex(x))
 Base.:(==)(x::Carray, y::Carray) = isequal(x, y)
+Base.String(x::Carray{Cchar}) = String(rstrip(String([x.mem...]), '\0'))
+Base.convert(::Type{String}, x::Carray{Cchar}) = String(x)
 
 
 function Ctypespec(::Type{CA}) where {T, N, CA<:Carray{T, N}}

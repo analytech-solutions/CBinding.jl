@@ -74,13 +74,13 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 	strategy = isnothing(strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
 	isanon = isnothing(name) || name isa Expr
 	super = isanon ? :(Cenum_anonymous) : :(Cenum)
-	name = isnothing(name) ? gensym("anonymous-cenum") : name isa Expr ? Symbol("($(name.args[1]))") : name
-	escName = esc(name)
-	concreteName = esc(gensym(name))
 	
 	isOuter = isnothing(deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	if isnothing(body)
+		isanon && error("Expected a @cenum with no body to at least have a name")
+		escName = esc(name)
+		
 		push!(deps, name => quote
 			abstract type $(escName) <: $(super) end
 		end)
@@ -109,6 +109,10 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 		end
 		
 		isempty(values) && error("Expected @cenum to have at least 1 value")
+		
+		name = isnothing(name) ? _gensym(super, strategy, values...) : name isa Expr ? name.args[1] : name
+		escName = esc(name)
+		concreteName = esc(Symbol("(", name, ")"))
 		
 		push!(deps, name => quote
 			$(fields...)
