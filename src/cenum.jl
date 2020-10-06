@@ -110,8 +110,7 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 		
 		isempty(values) && error("Expected @cenum to have at least 1 value")
 		
-		# TODO: need to convert everything to nice clean strings
-		name = isnothing(name) ? Symbol("$(super)|$(strategy)|Tuple{$(values...)}") : name isa Expr ? Symbol("($(name.args[1]))") : name
+		name = isnothing(name) ? _gensym(super, strategy, values...) : name isa Expr ? name.args[1] : name
 		escName = esc(name)
 		concreteName = esc(Symbol("(", name, ")"))
 		

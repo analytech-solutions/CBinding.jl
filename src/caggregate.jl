@@ -131,8 +131,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			end
 		end
 		
-		# TODO: need to convert everything to nice clean strings
-		name = isnothing(name) ? Symbol("$(super)|$(strategy)|Tuple{$(fields...)}") : name isa Expr ? Symbol("($(name.args[1]))") : name
+		name = isnothing(name) ? _gensym(super, strategy, fields...) : name isa Expr ? name.args[1] : name
 		escName = esc(name)
 		concreteName = esc(Symbol("(", name, ")"))
 		
