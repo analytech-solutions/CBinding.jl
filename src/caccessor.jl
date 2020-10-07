@@ -13,6 +13,13 @@ end
 Base.unsafe_wrap(::Type{FieldType}, ptr::Ptr) where {FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}} = Caccessor{FieldType}(reinterpret(Ptr{FieldType}, ptr))
 Base.unsafe_wrap(ptr::Ptr{FieldType}) where {FieldType<:Union{Cdeferrable, Cconst{<:Cdeferrable}}} = Caccessor{FieldType}(ptr)
 
+Base.propertynames(ptr::Ptr{CA}; kwargs...) where {CA<:Union{Caggregate, Cconst{<:Caggregate}}} = propertynames(CA; kwargs...)
+propertytypes(ptr::Ptr{CA}; kwargs...) where {CA<:Union{Caggregate, Cconst{<:Caggregate}}} = propertytypes(CA; kwargs...)
+Base.fieldnames(ptr::Ptr{CA}; kwargs...) where {CA<:Union{Caggregate, Cconst{<:Caggregate}}} = fieldnames(CA; kwargs...)
+
+Base.getproperty(ptr::Ptr{CA}, sym::Symbol) where {CA<:Union{Caggregate, Cconst{<:Caggregate}}} = getproperty(unsafe_wrap(ptr), sym)
+Base.setproperty!(ptr::Ptr{CA}, sym::Symbol, val) where {CA<:Caggregate} = setproperty!(unsafe_wrap(ptr), sym, val)
+
 Base.convert(::Type{T}, ca::Caccessor{T}) where {T} = ca[]
 Base.show(io::IO, ca::Caccessor) = show(io, ca[])
 

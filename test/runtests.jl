@@ -157,5 +157,32 @@ include("layout-tests.jl")
 	include("cglobal.jl")
 	include("cfunction.jl")
 	include("cextern.jl")
+	
+	
+	@testset "Caccessor" begin
+		@cstruct AccessorInner {
+			i::Cint
+		}
+		
+		@cstruct AccessorOuter {
+			i::Cint
+			inner::AccessorInner
+			ptr::Ptr{AccessorInner}
+		}
+		
+		x = AccessorOuter(zero)
+		@test x.i == 0
+		@test x.inner.i == 0
+		@test x.ptr == C_NULL
+		
+		x.ptr = reinterpret(Ptr{AccessorInner}, pointer_from_objref(x))
+		@test x.ptr != C_NULL
+		@test x.ptr.i == 0
+		
+		x.i = 1234
+		@test x.i == 1234
+		@test x.inner.i == 0
+		@test x.ptr.i == 1234
+	end
 end
 
