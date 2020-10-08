@@ -112,22 +112,27 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 		
 		name = isnothing(name) ? _gensym(super, strategy, values...) : name isa Expr ? name.args[1] : name
 		escName = esc(name)
-		concreteName = esc(Symbol("(", name, ")"))
+		concName = Symbol("(", name, ")")
+		escConcName = esc(concName)
+		
 		
 		push!(deps, name => quote
-			$(fields...)
 			abstract type $(escName) <: $(super) end
-			primitive type $(concreteName) <: $(escName) sizeof(Cenumlayout(Ctypespec($(super), $(strategy), Tuple{$(values...)})).type)*8 end
-			#=
-				EnumSpec = Tuple{
-					Pair{:name, value}  # each enum constant's name and value
-				}
-			=#
-			CBinding.concrete(::Type{$(escName)}) = $(concreteName)
-			CBinding.concrete(::Type{$(concreteName)}) = $(concreteName)
-			CBinding.strategy(::Type{$(concreteName)}) = $(strategy)
-			CBinding.specification(::Type{$(concreteName)})  = Tuple{$(values...)}
-			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding.concrete($(concreteName)))
+			
+			($(isanon) && isdefined($(mod), $(QuoteNode(concName)))) || begin
+				$(fields...)
+				primitive type $(escConcName) <: $(escName) sizeof(Cenumlayout(Ctypespec($(super), $(strategy), Tuple{$(values...)})).type)*8 end
+				#=
+					EnumSpec = Tuple{
+						Pair{:name, value}  # each enum constant's name and value
+					}
+				=#
+				CBinding.concrete(::Type{$(escName)}) = $(escConcName)
+				CBinding.concrete(::Type{$(escConcName)}) = $(escConcName)
+				CBinding.strategy(::Type{$(escConcName)}) = $(strategy)
+				CBinding.specification(::Type{$(escConcName)})  = Tuple{$(values...)}
+				Base.sizeof(::Type{$(escName)}) = sizeof(CBinding.concrete($(escConcName)))
+			end
 		end)
 	end
 	

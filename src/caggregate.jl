@@ -133,29 +133,33 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 		
 		name = isnothing(name) ? _gensym(super, strategy, fields...) : name isa Expr ? name.args[1] : name
 		escName = esc(name)
-		concreteName = esc(Symbol("(", name, ")"))
+		concName = Symbol("(", name, ")")
+		escConcName = esc(concName)
 		
 		push!(deps, name => quote
 			abstract type $(escName) <: $(super) end
-			mutable struct $(concreteName) <: $(escName)
-				mem::NTuple{Ctypelayout(Ctypespec($(super), $(strategy), Tuple{$(fields...)})).size÷8, UInt8}
-				
-				$(concreteName)(::UndefInitializer) = new()
+			
+			($(isanon) && isdefined($(mod), $(QuoteNode(concName)))) || begin
+				mutable struct $(escConcName) <: $(escName)
+					mem::NTuple{Ctypelayout(Ctypespec($(super), $(strategy), Tuple{$(fields...)})).size÷8, UInt8}
+					
+					$(escConcName)(::UndefInitializer) = new()
+				end
+				#=
+					TypeSpec = Tuple{
+						Pair{:sym1, Tuple{PrimType}},  # primitive field `sym1`
+						Pair{:sym2, Tuple{PrimType, NBits}},  # bit field `sym2`
+						Pair{:sym3, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # nested aggregate `sym3`
+						Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}},  # anonymous nested aggregate
+						Calignment{align}  # alignment "field"
+					}
+				=#
+				CBinding.concrete(::Type{$(escName)}) = $(escConcName)
+				CBinding.concrete(::Type{$(escConcName)}) = $(escConcName)
+				CBinding.strategy(::Type{$(escConcName)}) = $(strategy)
+				CBinding.specification(::Type{$(escConcName)})  = Tuple{$(fields...)}
+				Base.sizeof(::Type{$(escName)}) = sizeof(CBinding.concrete($(escConcName)))
 			end
-			#=
-				TypeSpec = Tuple{
-					Pair{:sym1, Tuple{PrimType}},  # primitive field `sym1`
-					Pair{:sym2, Tuple{PrimType, NBits}},  # bit field `sym2`
-					Pair{:sym3, Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}}},  # nested aggregate `sym3`
-					Ctypespec{FieldType, AggType, AggStrategy, AggTypeSpec}},  # anonymous nested aggregate
-					Calignment{align}  # alignment "field"
-				}
-			=#
-			CBinding.concrete(::Type{$(escName)}) = $(concreteName)
-			CBinding.concrete(::Type{$(concreteName)}) = $(concreteName)
-			CBinding.strategy(::Type{$(concreteName)}) = $(strategy)
-			CBinding.specification(::Type{$(concreteName)})  = Tuple{$(fields...)}
-			Base.sizeof(::Type{$(escName)}) = sizeof(CBinding.concrete($(concreteName)))
 		end)
 	end
 	

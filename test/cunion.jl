@@ -22,11 +22,11 @@
 	@test sizeof(CintUnion) == sizeof(Cint)
 	@test :i in propertynames(CintUnion)
 	
-	@cunion CunionUnion {
+	@cunion CunionCintUnion {
 		i::CintUnion
 	} __packed__
-	@test sizeof(CunionUnion) == sizeof(CintUnion)
-	@test :i in propertynames(CunionUnion)
+	@test sizeof(CunionCintUnion) == sizeof(CintUnion)
+	@test :i in propertynames(CunionCintUnion)
 	
 	@cunion CintCcharUnion {
 		i::CintUnion
