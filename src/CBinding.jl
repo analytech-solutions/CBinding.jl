@@ -3,7 +3,7 @@ module CBinding
 	
 	
 	export @ctypedef, @cstruct, @cunion, @carray, @calign, @cenum, @cextern, @cbindings, @ccallback
-	export Clongdouble, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Calignment, Cconst, Caccessor
+	export Clongdouble, Cbool, Caggregate, Cstruct, Cunion, Carray, Cenum, Clibrary, Cglobal, Cglobalconst, Cfunction, Cconvention, Calignment, Cconst, Caccessor
 	export STDCALL, CDECL, FASTCALL, THISCALL
 	export propertytypes
 	
@@ -14,6 +14,8 @@ module CBinding
 	
 	# provide a temporary placeholder for 128-bit floating point primitive
 	primitive type Clongdouble <: AbstractFloat sizeof(Cdouble)*2*8 end
+	
+	const Cbool = Cuchar
 	
 	
 	abstract type Cstruct end
