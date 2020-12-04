@@ -1,6 +1,17 @@
 
 
 @testset "@cextern + @cbindings" begin
+	@cextern free(str::Ptr{Cchar})::Cvoid
+	@cextern asprintf(str::Ptr{Ptr{Cchar}}, fmt::Cstring, args...)::Cint
+	str = Ref(Ptr{Cchar}(C_NULL))
+	len = asprintf(str, "%s i%c %d great test of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
+	expect = "This is 1 great test of CBinding.jl v0.1!\n"
+	@test len == length(expect)
+	@test unsafe_string(str[]) == expect
+	free(str[])
+	@test_throws MethodError asprintf(1234)
+	@test_throws MethodError asprintf(1234, "still wrong")
+	
 	@eval function jl_ver_major end
 	@test length(methods(jl_ver_major)) == 0
 	@cextern jl_ver_major()::Cint

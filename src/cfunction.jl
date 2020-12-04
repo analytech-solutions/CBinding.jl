@@ -43,7 +43,7 @@ convention(conv::Cconvention) = convention(typeof(conv))
 # TODO:  determine the correct default conventions for each platform
 # TODO:  some compilers use different calling convention for variadic functions
 # TODO:  identify what is Julia's calling convention
-default_convention(::Type{ArgsT}) where {ArgsT<:Tuple} = ifelse(Sys.iswindows(), STDCALL, CDECL)
+default_convention(::Type{ArgsT}) where {ArgsT<:Tuple} = CDECL
 
 
 # https://www.gnu.org/software/libc/manual/html_node/How-Variadic.html
