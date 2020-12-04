@@ -50,19 +50,35 @@ function _cextern(mod::Module, expr::Expr, lib::String = "")
 end
 
 
+function _cextern_details(mod::Module, expr::Union{Expr, Symbol}, lib::String)
+	expr isa Symbol && return (lib, expr, expr)
+	
+	name = nothing
+	if Base.is_expr(expr, :call, 3) && expr.args[1] == :(=>) && expr.args[3] isa Symbol
+		(expr, name) = expr.args[2:end]
+	end
+	
+	if Base.is_expr(expr, :(.), 2) && expr.args[1] isa Union{Expr, String} && expr.args[2] isa QuoteNode && expr.args[2].value isa Symbol
+		lib::String = @eval mod $(expr.args[1])
+		expr = expr.args[2].value
+	elseif !(expr isa Symbol)
+		error("Expected @cextern function to have a valid function name")
+	end
+	
+	name = isnothing(name) ? expr : name
+	return (lib, expr, name)
+end
+
+
 function _cextern_function(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, func::Expr, retType::Union{Symbol, Expr}, lib::String)
 	(Base.is_expr(func, :call) && length(func.args) >= 1) || error("Expected @cextern to have a function `func(...)` in the function signature, but got `$(func)`")
-	name = func.args[1]
-	name isa Symbol || error("Expected @cextern function to have a valid function name")
+	(lib, sym, name) = _cextern_details(mod, func.args[1], lib)
 	
 	argNames = []
 	argTypes = map(func.args[2:end]) do arg
 		Base.is_expr(arg, :(::), 2) || Base.is_expr(arg, :(...), 1) || error("Expected @cextern to have function arguments specified as `argName::ArgType` or `argName...`, but got `$(arg)`")
-		if Base.is_expr(arg, :(::), 2)
-			(argName, argType) = arg.args
-		else
-			(argName, argType) = (arg, :Vararg)
-		end
+		
+		(argName, argType) = Base.is_expr(arg, :(::), 2) ? arg.args : (arg, :Vararg)
 		push!(argNames, argName)
 		return _expand(mod, deps, argType)
 	end
@@ -74,12 +90,11 @@ function _cextern_function(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, 
 		# (isnothing(conv) ? () : (:($(@__MODULE__).Cconvention{$(QuoteNode(conv))}),))...,
 	)
 	
-	
 	return quote
 		$(@__MODULE__).@eval $(name)($(argNames...)) = $(Expr(:$, :(
 			$(@__MODULE__).DeferredPtr{
 				$(@__MODULE__).Cfunction{$(sig...)},
-				$(@__MODULE__).Val{$(QuoteNode(name))},
+				$(@__MODULE__).Val{$(QuoteNode(sym))},
 				$(@__MODULE__).Val{$(QuoteNode(Symbol(lib)))}
 			}()
 		)))($(argNames...))
@@ -87,12 +102,13 @@ function _cextern_function(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, 
 end
 
 
-function _cextern_variable(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, var::Symbol, varType::Union{Symbol, Expr}, lib::String)
+function _cextern_variable(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, var::Union{Symbol, Expr}, varType::Union{Symbol, Expr}, lib::String)
+	(lib, sym, name) = _cextern_details(mod, var, lib)
 	return quote
 		$(@__MODULE__).@eval $(var)() = $(Expr(:$, :(
 			$(@__MODULE__).DeferredCglobal{
 				$(varType),
-				$(@__MODULE__).Val{$(QuoteNode(var))},
+				$(@__MODULE__).Val{$(QuoteNode(sym))},
 				$(@__MODULE__).Val{$(QuoteNode(Symbol(lib)))}
 			}()
 		)))()
