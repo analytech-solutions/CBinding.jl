@@ -31,14 +31,13 @@
 	@test_throws MethodError f2b("no arguments, please!")
 	
 	f3 = Cfunction{Cint, Tuple{Ptr{Ptr{Cchar}}, Cstring, Vararg}}(lib, :asprintf)
-	f4 = Cfunction{Cvoid, Tuple{Ptr{Cchar}}}(lib, :free)
 	@test eltype(f3) <: Cfunction{Cint, Tuple{Ptr{Ptr{Cchar}}, Cstring, Vararg}}
 	str = Ref(Ptr{Cchar}(C_NULL))
-	len = f3(str, "%s i%c %ld great test of CBinding.jl v%3.1lf%c\n", "This", 's', 1, 0.1, '!')
+	len = f3(str, "%s i%c %d great test of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
 	expect = "This is 1 great test of CBinding.jl v0.1!\n"
 	@test len == length(expect)
 	@test unsafe_string(str[]) == expect
-	f4(str[])
+	Libc.free(str[])
 	@test_throws MethodError f3(1234)
 	@test_throws MethodError f3(1234, "still wrong")
 	
