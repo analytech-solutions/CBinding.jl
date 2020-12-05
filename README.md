@@ -439,7 +439,7 @@ This enables Julia the ability to perform real-world variadic function usage as 
 julia> func = Cfunction{Cint, Tuple{Cstring, Vararg}}(lib, :printf)    # int (*func)(char *, ...) = dlsym(lib, "printf");
 Ptr{Cfunction{Int32,Tuple{Cstring,Vararg{Any,N} where N},ConvT} where ConvT<:Cconvention} @0x000061eefc388930
 
-julia> func("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
+julia> func("%s i%c %d great demo of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
 this is 1 great demo of CBinding.jl v0.1!
 42
 ```
@@ -467,7 +467,7 @@ julia> time(t)
 julia> unsafe_load(localtime(t))
 tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
 
-julia> printf("%s i%c %ld great demo of CBinding.jl v%3.1lf%c\n", "this", 's', 1, 0.1, '!')
+julia> printf("%s i%c %d great demo of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
 this is 1 great demo of CBinding.jl v0.1!
 42
 ```
