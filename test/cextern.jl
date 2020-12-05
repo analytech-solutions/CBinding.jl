@@ -17,11 +17,13 @@
 	@cextern jl_ver_major()::Cint
 	@test length(methods(jl_ver_major)) == 1
 	
-	@cextern jl_main_module::Ptr{@cstruct jl_module_t}
-	@cextern jl_core_module::Ptr{@cstruct jl_module_t}
-	@test jl_main_module()[] != C_NULL
-	@test jl_core_module()[] != C_NULL
-	@test jl_main_module()[] != jl_core_module()[]
+	if !Sys.iswindows() || !(VERSION >= v"1.6-")
+		@cextern jl_main_module::Ptr{@cstruct jl_module_t}
+		@cextern jl_core_module::Ptr{@cstruct jl_module_t}
+		@test jl_main_module()[] != C_NULL
+		@test jl_core_module()[] != C_NULL
+		@test jl_main_module()[] != jl_core_module()[]
+	end
 	
 	@eval @cbindings begin
 		@ctypedef jl_value_t @cstruct _jl_value_t
