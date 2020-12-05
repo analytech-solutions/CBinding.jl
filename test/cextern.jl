@@ -38,7 +38,9 @@
 			@cextern jl_gc_allocobj(sz::Csize_t)::Ptr{jl_value_t}
 		end
 		
-		@cextern jl_base_module::Ptr{@cstruct jl_module_t}
+		if !Sys.iswindows() || !(VERSION >= v"1.6-")
+			@cextern jl_base_module::Ptr{@cstruct jl_module_t}
+		end
 		
 		@cextern jl_options::@cstruct {
 			quiet::Int8
@@ -90,7 +92,9 @@
 	@test length(methods(jl_gc_alloc_2w)) == 1
 	@test length(methods(jl_gc_alloc_3w)) == 1
 	@test length(methods(jl_gc_allocobj)) == 1
-	@test jl_base_module()[] != C_NULL
+	if !Sys.iswindows() || !(VERSION >= v"1.6-")
+		@test jl_base_module()[] != C_NULL
+	end
 	
 	opts = Base.JLOptions()
 	@test unsafe_string(opts.julia_bin) == unsafe_string(jl_options().julia_bin)
