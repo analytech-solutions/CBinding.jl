@@ -43,7 +43,7 @@ convention(conv::Cconvention) = convention(typeof(conv))
 # TODO:  determine the correct default conventions for each platform
 # TODO:  some compilers use different calling convention for variadic functions
 # TODO:  identify what is Julia's calling convention
-default_convention(::Type{ArgsT}) where {ArgsT<:Tuple} = ifelse(Sys.iswindows(), STDCALL, CDECL)
+default_convention(::Type{ArgsT}) where {ArgsT<:Tuple} = CDECL
 
 
 # https://www.gnu.org/software/libc/manual/html_node/How-Variadic.html
@@ -79,12 +79,12 @@ end
 	_sig(::Type{Tuple{}}) = ()
 	_sig(::Type{Tuple{}}, argT, argsT...) = nothing
 	_sig(::Type{Tuple{Vararg}}) = (Vararg,)  # NOTE: leave the extra `Vararg` to preserve the variadic function call semantics
-	_sig(::Type{Tuple{Vararg}}, argT, argsT...) = (sigT = _sig(Tuple{Vararg}, argsT...) ; isnothing(sigT) ? nothing : (:(concrete(cconvert_vararg(ConvT, cconvert_default($(argT))))), sigT...,))
+	_sig(::Type{Tuple{Vararg}}, argT, argsT...) = (sigT = _sig(Tuple{Vararg}, argsT...) ; (nothing === sigT) ? nothing : (:(concrete(cconvert_vararg(ConvT, cconvert_default($(argT))))), sigT...,))
 	_sig(::Type{T}) where {T<:Tuple} = nothing
-	_sig(::Type{T}, argT, argsT...) where {T<:Tuple} = (sigT = _sig(Base.tuple_type_tail(T), argsT...) ; isnothing(sigT) ? nothing : (:(concrete($(Base.tuple_type_head(T)))), sigT...,))
+	_sig(::Type{T}, argT, argsT...) where {T<:Tuple} = (sigT = _sig(Base.tuple_type_tail(T), argsT...) ; (nothing === sigT) ? nothing : (:(concrete($(Base.tuple_type_head(T)))), sigT...,))
 	
 	sigT = _sig(ArgsT, args...)
-	return isnothing(sigT) ? :(throw(MethodError(f, args))) : :(Cfunction{concrete(RetT), Tuple{$(sigT...)}, ConvT})
+	return (nothing === sigT) ? :(throw(MethodError(f, args))) : :(Cfunction{concrete(RetT), Tuple{$(sigT...)}, ConvT})
 end
 
 

@@ -83,18 +83,18 @@ end
 
 # TODO:  need to handle unknown-length aggregates with last field like `char c[]`
 function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, kind::Symbol, name::Union{Symbol, Expr, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
-	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
-	isnothing(body) && !isnothing(strategy) && error("Expected @$(kind) to have a body if alignment strategy is to be specified")
-	isnothing(strategy) || (startswith(String(strategy), "__") && endswith(String(strategy), "__") && length(String(strategy)) > 4) || error("Expected @$(kind) to have packing specified as `__STRATEGY__`, such as `__packed__` or `__native__`")
-	isnothing(name) || name isa Symbol || (Base.is_expr(name, :tuple, 1) && name.args[1] isa Symbol) || error("Expected @$(kind) to have a valid name")
+	(nothing === body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @$(kind) to have a `{ ... }` expression for the body of the type, but found `$(body)`")
+	(nothing === body) && !(nothing === strategy) && error("Expected @$(kind) to have a body if alignment strategy is to be specified")
+	(nothing === strategy) || (startswith(String(strategy), "__") && endswith(String(strategy), "__") && length(String(strategy)) > 4) || error("Expected @$(kind) to have packing specified as `__STRATEGY__`, such as `__packed__` or `__native__`")
+	(nothing === name) || name isa Symbol || (Base.is_expr(name, :tuple, 1) && name.args[1] isa Symbol) || error("Expected @$(kind) to have a valid name")
 	
-	strategy = isnothing(strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	isanon = isnothing(name) || name isa Expr
+	strategy = (nothing === strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
+	isanon = (nothing === name) || name isa Expr
 	super = kind === :cunion ? (isanon ? :(Cunion_anonymous) : :(Cunion)) : (isanon ? :(Cstruct_anonymous) : :(Cstruct))
 	
-	isOuter = isnothing(deps)
+	isOuter = (nothing === deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	if isnothing(body)
+	if (nothing === body)
 		isanon && error("Expected a @$(kind) with no body to at least have a name")
 		escName = esc(name)
 		
@@ -116,7 +116,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 				args = !Base.is_expr(arg, :(::)) ? nothing : arg.args[1]
 				args = Base.is_expr(args, :tuple) ? args.args : (args,)
 				for arg in args
-					if isnothing(Base.is_expr(arg, :escape, 1) ? arg.args[1] : arg)
+					if (nothing === (Base.is_expr(arg, :escape, 1) ? arg.args[1] : arg))
 						push!(fields, :(Ctypespec($(argType))))
 					elseif Base.is_expr(arg, :call, 3) && (Base.is_expr(arg.args[1], :escape, 1) ? arg.args[1].args[1] : arg.args[1]) === :(:) && arg.args[3] isa Integer
 						push!(fields, :(Pair{$(QuoteNode(Base.is_expr(arg.args[2], :escape, 1) ? arg.args[2].args[1] : arg.args[2])), Ctypespec($(argType), Val($(arg.args[3])))}))
@@ -131,7 +131,7 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 			end
 		end
 		
-		name = isnothing(name) ? _gensym(super, strategy, fields...) : name isa Expr ? name.args[1] : name
+		name = (nothing === name) ? _gensym(super, strategy, fields...) : name isa Expr ? name.args[1] : name
 		escName = esc(name)
 		concName = Symbol("(", name, ")")
 		escConcName = esc(concName)

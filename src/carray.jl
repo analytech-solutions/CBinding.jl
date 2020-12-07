@@ -42,7 +42,7 @@ macro carray(exprs...) _carray(__module__, nothing, exprs...) end
 function _carray(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Expr)
 	Base.is_expr(expr, :ref, 1) || Base.is_expr(expr, :ref, 2) || error("Expected C array definition to be of the form `ElementType[N]`")
 	
-	isOuter = isnothing(deps)
+	isOuter = (nothing === deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	expr.args[1] = _expand(mod, deps, expr.args[1])
 	if length(expr.args) == 1

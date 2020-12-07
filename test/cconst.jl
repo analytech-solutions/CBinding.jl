@@ -1,7 +1,7 @@
 
 
 @testset "Caccessor + Cconst" begin
-	@cstruct CconstStruct {
+	@eval @cstruct CconstStruct {
 		i::Cint
 		ci::Cconst{Cint}
 		
@@ -276,7 +276,7 @@
 	@test @allocated(f(x)) == 0
 	
 	
-	@cstruct SelfRef {
+	@eval @cstruct SelfRef {
 		ptr::Ptr{Cconst(SelfRef)}
 	}
 	@test sizeof(SelfRef) == sizeof(Ptr)

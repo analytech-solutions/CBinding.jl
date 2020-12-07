@@ -16,8 +16,13 @@ Base.unsafe_store!(p::Ptr{CO}, x, i::Integer = 1) where {CO<:Copaques} = Base.po
 function _dlsym(sym::Symbol, libs::Clibrary...)
 	for (ind, lib) in enumerate(libs)
 		isLast = ind == length(libs)
-		handle = Libdl.dlsym(lib.handle, sym, throw_error = isLast)
-		isnothing(handle) || return handle
+		if VERSION >= v"1.1-"
+			handle = Libdl.dlsym(lib.handle, sym, throw_error = isLast)
+			(nothing === handle) || return handle
+		else
+			handle = (isLast ? Libdl.dlsym : Libdl.dlsym_e)(lib.handle, sym)
+			(C_NULL == handle) || return handle
+		end
 	end
 	error("Libdl.dlsym returned a C_NULL handle and did not throw an error")
 end
@@ -92,7 +97,7 @@ end
 macro calign(exprs...) return _calign(__module__, nothing, exprs...) end
 
 function _calign(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, expr::Union{Integer, Expr})
-	isOuter = isnothing(deps)
+	isOuter = (nothing === deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	def = Expr(:align, _expand(mod, deps, expr))
 	
@@ -116,7 +121,7 @@ function _ctypedef(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}
 		end
 	end
 	
-	isOuter = isnothing(deps)
+	isOuter = (nothing === deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
 	expr = _expand(mod, deps, expr)
 	push!(deps, name => quote

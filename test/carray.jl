@@ -4,18 +4,18 @@
 	CcharArray = @carray Cchar[2]
 	@test sizeof(CcharArray) == sizeof(Cchar)*2
 	
-	CstructArray = @carray (@cstruct {
+	CstructArray = @carray (@eval @cstruct {
 		i::Cint
 	} __packed__)[10]
 	@test sizeof(CstructArray) == sizeof(Cint)*10
 	
-	@cstruct CStruct {
+	@eval @cstruct CStruct {
 		i::Cint
 	} __packed__
 	CStructArray = @carray CStruct[2]
 	@test sizeof(CStructArray) == sizeof(Cint)*2
 	
-	@cstruct Opaque
+	@eval @cstruct Opaque
 	PtrArray = @carray Ptr{Opaque}[3]
 	@test sizeof(PtrArray) == sizeof(Ptr)*3
 	
