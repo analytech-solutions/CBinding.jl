@@ -51,10 +51,10 @@
 	@test Cadd(Cint(10), Cint(3)) == add.f(Cint(10), Cint(3))
 	
 	if !Sys.iswindows() && sizeof(Clong) != sizeof(Cint)
-		@cstruct time_t {
+		@eval @cstruct time_t {
 			val::Clong
 		}
-		@cstruct tm {
+		@eval @cstruct tm {
 			sec::Cint
 			min::Cint
 			hour::Cint

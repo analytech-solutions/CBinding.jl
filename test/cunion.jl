@@ -1,34 +1,34 @@
 
 
 @testset "@cunion" begin
-	@cunion OpaqueUnion
-	@cunion OpaqueUnion
+	@eval @cunion OpaqueUnion
+	@eval @cunion OpaqueUnion
 	@test_throws ErrorException sizeof(OpaqueUnion)
 	@test sizeof(Ptr{OpaqueUnion}) == sizeof(Ptr{Cvoid})
 	
-	@cunion EmptyUnion {
+	@eval @cunion EmptyUnion {
 	} __packed__
 	@test sizeof(EmptyUnion) == 0
 	
-	@cunion CcharUnion {
+	@eval @cunion CcharUnion {
 		c::Cchar
 	} __packed__
 	@test sizeof(CcharUnion) == sizeof(Cchar)
 	@test :c in propertynames(CcharUnion)
 	
-	@cunion CintUnion {
+	@eval @cunion CintUnion {
 		i::Cint
 	} __packed__
 	@test sizeof(CintUnion) == sizeof(Cint)
 	@test :i in propertynames(CintUnion)
 	
-	@cunion CunionCintUnion {
+	@eval @cunion CunionCintUnion {
 		i::CintUnion
 	} __packed__
 	@test sizeof(CunionCintUnion) == sizeof(CintUnion)
 	@test :i in propertynames(CunionCintUnion)
 	
-	@cunion CintCcharUnion {
+	@eval @cunion CintCcharUnion {
 		i::CintUnion
 		c::CcharUnion
 	} __packed__
@@ -36,7 +36,7 @@
 	@test :i in propertynames(CintCcharUnion)
 	@test :c in propertynames(CintCcharUnion)
 	
-	@cunion CcharCintPackedUnion {
+	@eval @cunion CcharCintPackedUnion {
 		c::CcharUnion
 		i::CintUnion
 	} __packed__
@@ -44,7 +44,7 @@
 	@test :c in propertynames(CcharCintPackedUnion)
 	@test :i in propertynames(CcharCintPackedUnion)
 	
-	@cunion CcharCintAlignedUnion {
+	@eval @cunion CcharCintAlignedUnion {
 		c::CcharUnion
 		@calign sizeof(CintUnion)
 		i::CintUnion
@@ -53,7 +53,7 @@
 	@test :c in propertynames(CcharCintAlignedUnion)
 	@test :i in propertynames(CcharCintAlignedUnion)
 	
-	@cunion CunionUnion {
+	@eval @cunion CunionUnion {
 		@cunion {
 			c::Cuchar[4]
 			s::Cushort[2]
@@ -64,11 +64,11 @@
 	@test :s in propertynames(CunionUnion)
 	@test :i in propertynames(CunionUnion)
 	
-	@cunion PtrToUnionUnion
-	@cunion PtrToPtrToUnionUnion {
+	@eval @cunion PtrToUnionUnion
+	@eval @cunion PtrToPtrToUnionUnion {
 		p::Ptr{PtrToUnionUnion}
 	} __packed__
-	@cunion PtrToUnionUnion {
+	@eval @cunion PtrToUnionUnion {
 		p::Ptr{PtrToUnionUnion}
 	} __packed__
 	@test sizeof(PtrToPtrToUnionUnion) == sizeof(Ptr)
@@ -90,31 +90,31 @@
 	@test cuu.s[2] != 0
 	
 	
-	@cunion Cint32BitfieldUnion {
+	@eval @cunion Cint32BitfieldUnion {
 		(i:32)::Cint
 	} __packed__
 	@test sizeof(Cint32BitfieldUnion) == sizeof(Cint)
 	@test :i in propertynames(Cint32BitfieldUnion)
 	
-	@cunion Cuint32BitfieldUnion {
+	@eval @cunion Cuint32BitfieldUnion {
 		(u:32)::Cuint
 	} __packed__
 	@test sizeof(Cuint32BitfieldUnion) == sizeof(Cuint)
 	@test :u in propertynames(Cuint32BitfieldUnion)
 	
-	@cunion Cint2BitfieldUnion {
+	@eval @cunion Cint2BitfieldUnion {
 		(i:2)::Cint
 	} __packed__
 	@test sizeof(Cint2BitfieldUnion) == 1
 	@test :i in propertynames(Cint2BitfieldUnion)
 	
-	@cunion Cuint2BitfieldUnion {
+	@eval @cunion Cuint2BitfieldUnion {
 		(u:2)::Cuint
 	} __packed__
 	@test sizeof(Cuint2BitfieldUnion) == 1
 	@test :u in propertynames(Cuint2BitfieldUnion)
 	
-	@cunion Cuint32Cint32BitfieldsUnion {
+	@eval @cunion Cuint32Cint32BitfieldsUnion {
 		(u:32)::Cuint
 		(i:32)::Cint
 	} __packed__
@@ -122,7 +122,7 @@
 	@test :u in propertynames(Cuint32Cint32BitfieldsUnion)
 	@test :i in propertynames(Cuint32Cint32BitfieldsUnion)
 	
-	@cunion Cuint16Cint16BitfieldsUnion {
+	@eval @cunion Cuint16Cint16BitfieldsUnion {
 		(u:16)::Cuint
 		(i:16)::Cint
 	} __packed__
@@ -130,20 +130,20 @@
 	@test :u in propertynames(Cuint16Cint16BitfieldsUnion)
 	@test :i in propertynames(Cuint16Cint16BitfieldsUnion)
 	
-	@cunion Cint16Cint16BitfieldsUnion {
+	@eval @cunion Cint16Cint16BitfieldsUnion {
 		(i1:16)::Cint
 		(i2:16)::Cint
 	} __packed__
 	@test sizeof(Cint16Cint16BitfieldsUnion) == 2
 	
-	@cunion Cint16CalignCint16BitfieldsUnion {
+	@eval @cunion Cint16CalignCint16BitfieldsUnion {
 		(i1:16)::Cint
 		@calign sizeof(Cint)
 		(i2:16)::Cint
 	} __packed__
 	@test sizeof(Cint16CalignCint16BitfieldsUnion) == sizeof(Cint)
 	
-	@cunion Cint16CintBitfieldsUnion {
+	@eval @cunion Cint16CintBitfieldsUnion {
 		(bf:16)::Cint
 		i::Cint
 	} __packed__

@@ -81,8 +81,8 @@ function _addvalue(layout::Cenumlayout, ::Type{Pair{sym, val}}, ::Type{spec}) wh
 	
 	(min, max) = (nothing, nothing)
 	for v in values(layout.values)
-		min = isnothing(min) || v < min ? v : min
-		max = isnothing(max) || v > max ? v : max
+		min = (nothing === min) || v < min ? v : min
+		max = (nothing === max) || v > max ? v : max
 	end
 	
 	for typ in enumtypes(strategy(spec))

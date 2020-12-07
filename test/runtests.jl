@@ -164,11 +164,11 @@ include("layout-tests.jl")
 	
 	
 	@testset "Caccessor" begin
-		@cstruct AccessorInner {
+		@eval @cstruct AccessorInner {
 			i::Cint
 		}
 		
-		@cstruct AccessorOuter {
+		@eval @cstruct AccessorOuter {
 			i::Cint
 			inner::AccessorInner
 			ptr::Ptr{AccessorInner}

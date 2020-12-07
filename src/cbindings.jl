@@ -65,7 +65,7 @@ function _cextern_details(mod::Module, expr::Union{Expr, Symbol}, lib::String)
 		error("Expected @cextern function to have a valid function name")
 	end
 	
-	name = isnothing(name) ? expr : name
+	name = (nothing === name) ? expr : name
 	return (lib, expr, name)
 end
 
@@ -87,7 +87,7 @@ function _cextern_function(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, 
 		retType,
 		:($(@__MODULE__).Tuple{$(argTypes...)}),
 		# TODO: support calling conventions
-		# (isnothing(conv) ? () : (:($(@__MODULE__).Cconvention{$(QuoteNode(conv))}),))...,
+		# ((nothing === conv) ? () : (:($(@__MODULE__).Cconvention{$(QuoteNode(conv))}),))...,
 	)
 	
 	return quote

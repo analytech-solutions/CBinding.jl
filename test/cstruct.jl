@@ -1,33 +1,33 @@
 
 @testset "@cstruct" begin
-	@cstruct OpaqueStruct
-	@cstruct OpaqueStruct
+	@eval @cstruct OpaqueStruct
+	@eval @cstruct OpaqueStruct
 	@test_throws ErrorException sizeof(OpaqueStruct)
 	@test sizeof(Ptr{OpaqueStruct}) == sizeof(Ptr{Cvoid})
 	
-	@cstruct EmptyStruct {
+	@eval @cstruct EmptyStruct {
 	} __packed__
 	@test sizeof(EmptyStruct) == 0
 	
-	@cstruct CcharStruct {
+	@eval @cstruct CcharStruct {
 		c::Cchar
 	} __packed__
 	@test sizeof(CcharStruct) == sizeof(Cchar)
 	@test :c in propertynames(CcharStruct)
 	
-	@cstruct CintStruct {
+	@eval @cstruct CintStruct {
 		i::Cint
 	} __packed__
 	@test sizeof(CintStruct) == sizeof(Cint)
 	@test :i in propertynames(CintStruct)
 	
-	@cstruct CstructStruct {
+	@eval @cstruct CstructStruct {
 		i::CintStruct
 	} __packed__
 	@test sizeof(CstructStruct) == sizeof(CintStruct)
 	@test :i in propertynames(CstructStruct)
 	
-	@cstruct CintCcharStruct {
+	@eval @cstruct CintCcharStruct {
 		i::CintStruct
 		c::CcharStruct
 	} __packed__
@@ -35,7 +35,7 @@
 	@test :i in propertynames(CintCcharStruct)
 	@test :c in propertynames(CintCcharStruct)
 	
-	@cstruct CcharCintPackedStruct {
+	@eval @cstruct CcharCintPackedStruct {
 		c::CcharStruct
 		i::CintStruct
 	} __packed__
@@ -43,7 +43,7 @@
 	@test :c in propertynames(CcharCintPackedStruct)
 	@test :i in propertynames(CcharCintPackedStruct)
 	
-	@cstruct CcharCintAlignedStruct {
+	@eval @cstruct CcharCintAlignedStruct {
 		c::CcharStruct
 		@calign sizeof(CintStruct)
 		i::CintStruct
@@ -52,7 +52,7 @@
 	@test :c in propertynames(CcharCintAlignedStruct)
 	@test :i in propertynames(CcharCintAlignedStruct)
 	
-	@cstruct CunionStruct {
+	@eval @cstruct CunionStruct {
 		@cunion {
 			c::Cuchar[4]
 			s::Cushort[2]
@@ -63,11 +63,11 @@
 	@test :s in propertynames(CunionStruct)
 	@test :i in propertynames(CunionStruct)
 	
-	@cstruct PtrToStructStruct
-	@cstruct PtrToPtrToStructStruct {
+	@eval @cstruct PtrToStructStruct
+	@eval @cstruct PtrToPtrToStructStruct {
 		p::Ptr{PtrToStructStruct}
 	} __packed__
-	@cstruct PtrToStructStruct {
+	@eval @cstruct PtrToStructStruct {
 		p::Ptr{PtrToStructStruct}
 	} __packed__
 	@test sizeof(PtrToPtrToStructStruct) == sizeof(Ptr)
@@ -89,31 +89,31 @@
 	@test cus.s[2] != 0
 	
 	
-	@cstruct Cint32Bitfield {
+	@eval @cstruct Cint32Bitfield {
 		(i:32)::Cint
 	} __packed__
 	@test sizeof(Cint32Bitfield) == sizeof(Cint)
 	@test :i in propertynames(Cint32Bitfield)
 	
-	@cstruct Cuint32Bitfield {
+	@eval @cstruct Cuint32Bitfield {
 		(u:32)::Cuint
 	} __packed__
 	@test sizeof(Cuint32Bitfield) == sizeof(Cuint)
 	@test :u in propertynames(Cuint32Bitfield)
 	
-	@cstruct Cint2Bitfield {
+	@eval @cstruct Cint2Bitfield {
 		(i:2)::Cint
 	} __packed__
 	@test sizeof(Cint2Bitfield) == sizeof(Cchar)
 	@test :i in propertynames(Cint2Bitfield)
 	
-	@cstruct Cuint2Bitfield {
+	@eval @cstruct Cuint2Bitfield {
 		(u:2)::Cuint
 	} __packed__
 	@test sizeof(Cuint2Bitfield) == sizeof(Cchar)
 	@test :u in propertynames(Cuint2Bitfield)
 	
-	@cstruct Cuint32Cint32Bitfields {
+	@eval @cstruct Cuint32Cint32Bitfields {
 		(u:32)::Cuint
 		(i:32)::Cint
 	} __packed__
@@ -121,7 +121,7 @@
 	@test :u in propertynames(Cuint32Cint32Bitfields)
 	@test :i in propertynames(Cuint32Cint32Bitfields)
 	
-	@cstruct Cuint16Cint16Bitfields {
+	@eval @cstruct Cuint16Cint16Bitfields {
 		(u:16)::Cuint
 		(i:16)::Cint
 	} __packed__
@@ -129,20 +129,20 @@
 	@test :u in propertynames(Cuint16Cint16Bitfields)
 	@test :i in propertynames(Cuint16Cint16Bitfields)
 	
-	@cstruct Cint16Cint16Bitfields {
+	@eval @cstruct Cint16Cint16Bitfields {
 		(i1:16)::Cint
 		(i2:16)::Cint
 	} __packed__
 	@test sizeof(Cint16Cint16Bitfields) == sizeof(Cuint)
 	
-	@cstruct Cint16CalignCint16Bitfields {
+	@eval @cstruct Cint16CalignCint16Bitfields {
 		(i1:16)::Cint
 		@calign sizeof(Cint)
 		(i2:16)::Cint
 	} __packed__
 	@test sizeof(Cint16CalignCint16Bitfields) == sizeof(Cint)*2
 	
-	@cstruct Cint16CintBitfields {
+	@eval @cstruct Cint16CintBitfields {
 		(u:16)::Cuint
 		i::Cint
 	} __packed__
@@ -174,7 +174,7 @@
 	@test bf.i2 < 0
 	
 	# https://github.com/analytech-solutions/CBinding.jl/issues/6
-	@cstruct AnonymousAggregateField {
+	@eval @cstruct AnonymousAggregateField {
 		u::@cunion {
 			x::Cint
 			y::Cchar
@@ -185,7 +185,7 @@
 	aaf.u = (x = 0,)
 	@test aaf.u.x == 0
 	
-	@cstruct NestedAnonymousAggregateField {
+	@eval @cstruct NestedAnonymousAggregateField {
 		u::@cunion {
 			x::@cunion {
 				z::Cint
@@ -199,7 +199,7 @@
 	@test aaf.u.x.z == 0
 	
 	# https://github.com/analytech-solutions/CBinding.jl/issues/8
-	@cstruct BrokenLayout {
+	@eval @cstruct BrokenLayout {
 		x::@cstruct {
 			y::Cint
 			z::Cint
@@ -210,7 +210,7 @@
 	bl.x.z = 123
 	@test bl.x.y == 0 && bl.x.z == 123
 	
-	@cstruct ArrayOfStruct {
+	@eval @cstruct ArrayOfStruct {
 		x::BrokenLayout[2]
 	}
 	@test sizeof(ArrayOfStruct) == 2*2*sizeof(Cint)

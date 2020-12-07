@@ -68,16 +68,16 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 end
 
 function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, name::Union{Symbol, Expr, Nothing}, body::Union{Expr, Nothing}, strategy::Union{Symbol, Nothing})
-	isnothing(body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @cenum to have a `{ ... }` expression for the body of the type, but found `$(body)`")
-	isnothing(name) || name isa Symbol || (Base.is_expr(name, :tuple, 1) && name.args[1] isa Symbol) || error("Expected @enum to have a valid name")
+	(nothing === body) || Base.is_expr(body, :braces) || Base.is_expr(body, :bracescat) || error("Expected @cenum to have a `{ ... }` expression for the body of the type, but found `$(body)`")
+	(nothing === name) || name isa Symbol || (Base.is_expr(name, :tuple, 1) && name.args[1] isa Symbol) || error("Expected @enum to have a valid name")
 	
-	strategy = isnothing(strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
-	isanon = isnothing(name) || name isa Expr
+	strategy = (nothing === strategy) ? :(ALIGN_NATIVE) : :(Calignment{$(QuoteNode(Symbol(String(strategy)[3:end-2])))})
+	isanon = (nothing === name) || name isa Expr
 	super = isanon ? :(Cenum_anonymous) : :(Cenum)
 	
-	isOuter = isnothing(deps)
+	isOuter = (nothing === deps)
 	deps = isOuter ? Pair{Symbol, Expr}[] : deps
-	if isnothing(body)
+	if (nothing === body)
 		isanon && error("Expected a @cenum with no body to at least have a name")
 		escName = esc(name)
 		
@@ -110,7 +110,7 @@ function _cenum(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothing}, n
 		
 		isempty(values) && error("Expected @cenum to have at least 1 value")
 		
-		name = isnothing(name) ? _gensym(super, strategy, values...) : name isa Expr ? name.args[1] : name
+		name = (nothing === name) ? _gensym(super, strategy, values...) : name isa Expr ? name.args[1] : name
 		escName = esc(name)
 		concName = Symbol("(", name, ")")
 		escConcName = esc(concName)
