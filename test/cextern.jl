@@ -11,6 +11,25 @@
 	@test_throws MethodError asprintf(1234)
 	@test_throws MethodError asprintf(1234, "still wrong")
 	
+	@cextern (asprintf => my_asprintf)(str::Ptr{Ptr{Cchar}}, fmt::Cstring, args...)::Cint
+	len = my_asprintf(str, "%s i%c %d great test of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
+	@test len == length(expect)
+	@test unsafe_string(str[]) == expect
+	Libc.free(str[])
+	
+	@cextern ("".asprintf => my_asprintf)(str::Ptr{Ptr{Cchar}}, fmt::Cstring, args...)::Cint
+	len = my_asprintf(str, "%s i%c %d great test of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
+	@test len == length(expect)
+	@test unsafe_string(str[]) == expect
+	Libc.free(str[])
+	
+	@cextern "".asprintf(str::Ptr{Ptr{Cchar}}, fmt::Cstring, args...)::Cint
+	len = asprintf(str, "%s i%c %d great test of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
+	@test len == length(expect)
+	@test unsafe_string(str[]) == expect
+	Libc.free(str[])
+	
+	
 	@eval function jl_ver_major end
 	@test length(methods(jl_ver_major)) == 0
 	@cextern jl_ver_major()::Cint
