@@ -125,9 +125,11 @@ mutable struct Ctypelayout
 	align::Int  # in bytes
 	size::Int  # in bits
 	offset::Int  # in bits
-	fields::Dict{Symbol, Ctypefield}  # symbol => Ctypefield
+	fields::Vector{Ctypefield}
+	name2ind::Dict{Symbol, Int}  # symbol => field index
+	ind2name::Dict{Int, Symbol}  # field index => symbol
 	
-	Ctypelayout() = new(1, 0, 0, Dict{Symbol, Ctypefield}())
+	Ctypelayout() = new(1, 0, 0, Ctypefield[], Dict{Symbol, Int}(), Dict{Int, Symbol}())
 end
 Ctypelayout(::Type{CC}) where {CC<:Cconst} = Ctypelayout(nonconst(CC))
 Ctypelayout(::Type{CA}) where {CA<:Caggregate} = Ctypelayout(Ctypespec(CA))
@@ -149,15 +151,21 @@ _field(::Type{TS}) where {TS<:Ctypespec} = (nothing, TS, 0)
 
 
 function _addfield(layout::Ctypelayout, sym::Symbol, field::Ctypefield)
-	haskey(layout.fields, sym) && error("Encountered a duplicate field name `$(sym)` in type specification")
-	layout.fields[sym] = field
+	push!(layout.fields, field)
+	if sym !== Symbol()
+		haskey(layout.name2ind, sym) && error("Encountered a duplicate field name `$(sym)` in type specification")
+		layout.name2ind[sym] = length(layout.fields)
+		layout.ind2name[length(layout.fields)] = sym
+	end
 end
 
 
 _addfield(layout::Ctypelayout, ::Nothing, typ) = error("Encountered an unnamed field of type `$(typ)` in type specification")
 
 function _addfield(layout::Ctypelayout, ::Nothing, ::Type{spec}, bits) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}}
-	for (sym, field) in Ctypelayout(spec).fields
+	nested = Ctypelayout(spec)
+	for (ind, field) in enumerate(nested.fields)
+		sym = get(nested.ind2name, ind, Symbol())
 		_addfield(layout, sym, Ctypefield(length(layout.fields), (type(spec) <: Cconst ? Cconst(field.type) : field.type), field.size, layout.offset+field.offset))
 	end
 	return sizeof(type(spec))*8

@@ -33,10 +33,24 @@ Base.setindex!(ca::Caccessor{CD}, val::CD) where {CD<:Cdeferrable} = unsafe_stor
 # Caggregate interface
 const Caggregates = Union{CA, Cconst{CA}, Caccessor{CA}, Caccessor{<:Cconst{CA}}} where {CA<:Caggregate}
 Base.propertynames(ca::CA; kwargs...) where {CA<:Caggregates} = propertynames(typeof(ca); kwargs...)
-Base.propertynames(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, fld),) -> sym, (sort(collect(Ctypelayout(_fieldtype(CA)).fields), by = ((sym, fld),) -> fld.ind)...,))
+function Base.propertynames(::Type{CA}; kwargs...) where {CA<:Caggregates}
+	layout = Ctypelayout(_fieldtype(CA))
+	result = ()
+	for ind in eachindex(layout.fields)
+		result = haskey(layout.ind2name, ind) ? (result..., layout.ind2name[ind]) : result
+	end
+	return result
+end
 
 propertytypes(ca::CA; kwargs...) where {CA<:Caggregates} = propertytypes(typeof(ca); kwargs...)
-propertytypes(::Type{CA}; kwargs...) where {CA<:Caggregates} = map(((sym, fld),) -> fld.type, (sort(collect(Ctypelayout(_fieldtype(CA)).fields), by = ((sym, fld),) -> fld.ind)...,))
+function propertytypes(::Type{CA}; kwargs...) where {CA<:Caggregates}
+	layout = Ctypelayout(_fieldtype(CA))
+	result = ()
+	for ind in eachindex(layout.fields)
+		result = haskey(layout.ind2name, ind) ? (result..., layout.fields[ind].type) : result
+	end
+	return result
+end
 
 Base.fieldnames(ca::CA; kwargs...) where {CA<:Caggregates} = fieldnames(typeof(ca); kwargs...)
 Base.fieldnames(::Type{CA}; kwargs...) where {CA<:Caggregates} = propertynames(_fieldtype(CA); kwargs...)
@@ -130,11 +144,11 @@ end
 @generated function _getproperty(::Type{<:Any}, base::Union{CA, Cconst{CA}, Ptr{CA}}, ::Val{offset}, ::Type{spec}, ::Val{name}) where {CA<:Caggregate, offset, spec<:Ctypespec, name}
 	mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
 	
-	fields = Ctypelayout(spec).fields
-	if haskey(fields, name)
-		typ = fields[name].type
-		bits = fields[name].size
-		off = fields[name].offset + offset*8
+	layout = Ctypelayout(spec)
+	if haskey(layout.name2ind, name)
+		typ = layout.fields[layout.name2ind[name]].type
+		bits = layout.fields[layout.name2ind[name]].size
+		off = layout.fields[layout.name2ind[name]].offset + offset*8
 		
 		if typ <: Union{Cdeferrable, Cconst{<:Cdeferrable}}
 			return :(Caccessor{$(base <: Cconst || type(spec) <: Cconst ? Cconst(typ) : typ)}(base, Val($(off÷8))))
@@ -165,11 +179,11 @@ _initproperty!(cx::CX, sym::Symbol, val) where {CA<:Caggregate, CX<:Union{CA, Ca
 	(X <: Cconst || base <: Cconst) && return :(error("Unable to change the value of a Cconst field"))
 	mem = base <: CA ? :(pointer_from_objref(base)) : :(base)
 	
-	fields = Ctypelayout(spec).fields
-	if haskey(fields, name)
-		typ = fields[name].type
-		bits = fields[name].size
-		off = fields[name].offset + offset*8
+	layout = Ctypelayout(spec)
+	if haskey(layout.name2ind, name)
+		typ = layout.fields[layout.name2ind[name]].type
+		bits = layout.fields[layout.name2ind[name]].size
+		off = layout.fields[layout.name2ind[name]].offset + offset*8
 		
 		typ = force ? nonconst(typ) : typ
 		typ <: Cconst && return :(error("Unable to change the value of a Cconst field"))
