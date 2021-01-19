@@ -109,6 +109,10 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 				align = arg.args[1]
 				push!(fields, :(Calignment{$(align)}))
 			else
+				if Base.is_expr(arg, :(::)) && length(arg.args) == 1
+					arg = :($(Symbol())::$(arg.args[1]))
+				end
+				
 				Base.is_expr(arg, :(::)) && length(arg.args) != 2 && error("Expected @$(kind) to have a `fieldName::FieldType` expression in the body of the type, but found `$(arg)`")
 				
 				arg = deepcopy(arg)
@@ -116,6 +120,10 @@ function _caggregate(mod::Module, deps::Union{Vector{Pair{Symbol, Expr}}, Nothin
 				args = !Base.is_expr(arg, :(::)) ? nothing : arg.args[1]
 				args = Base.is_expr(args, :tuple) ? args.args : (args,)
 				for arg in args
+					if (Base.is_expr(arg, :escape, 1) ? arg.args[1] : arg) isa QuoteNode && (Base.is_expr(arg, :escape, 1) ? arg.args[1] : arg).value isa Integer
+						arg = :($(Symbol()):$((Base.is_expr(arg, :escape, 1) ? arg.args[1] : arg).value))
+					end
+					
 					if (nothing === (Base.is_expr(arg, :escape, 1) ? arg.args[1] : arg))
 						push!(fields, :(Ctypespec($(argType))))
 					elseif Base.is_expr(arg, :call, 3) && (Base.is_expr(arg.args[1], :escape, 1) ? arg.args[1].args[1] : arg.args[1]) === :(:) && arg.args[3] isa Integer
