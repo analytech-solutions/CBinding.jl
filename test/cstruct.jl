@@ -221,5 +221,22 @@
 	@test typeof(aos.x[2][]) <: BrokenLayout
 	@test typeof(aos.x[2].x) <: CBinding.Caccessor
 	@test typeof(aos.x[2].x.y) <: Cint
+	
+	@eval @cenum SmallEnum {
+		SMALL_1 = 1,
+		SMALL_2 = 2,
+		SMALL_3 = 4,
+	}
+	@eval @cstruct SmallEnumBitfield {
+		(a:8)::@cenum SmallEnum
+		(b:8)::@cenum SmallEnum
+	}
+	@test sizeof(SmallEnumBitfield) == sizeof(SmallEnum)
+	x = SmallEnumBitfield(zero)
+	@test getfield(x, :mem) == (0x00, 0x00, 0x00, 0x00)
+	x.a = SMALL_1
+	@test getfield(x, :mem) == (UInt8(SMALL_1), 0x00, 0x00, 0x00)
+	x.b = SMALL_3
+	@test getfield(x, :mem) == (UInt8(SMALL_1), UInt8(SMALL_3), 0x00, 0x00)
 end
 
