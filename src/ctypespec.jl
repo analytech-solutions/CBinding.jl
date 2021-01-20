@@ -5,6 +5,7 @@ end
 
 Ctypespec(::Type{T}) where {T} = Tuple{T}
 Ctypespec(::Type{T}, ::Val{bits}) where {T, bits} = Tuple{T, bits}
+Ctypespec(::Type{CE}, ::Val{bits}) where {CE<:Cenum, bits} = Tuple{Ctypespec{concrete(CE), concrete(CE), strategy(CE), specification(CE)}, bits}
 Ctypespec(::Type{CO}) where {CO<:Copaques} = Ctypespec{concrete(CO), concrete(CO), strategy(CO), specification(CO)}
 
 Ctypespec(::Type{CO}, ::Type{S}, ::Type{TS}) where {CO<:Copaques, S, TS} = Ctypespec{CO, CO, S, TS}

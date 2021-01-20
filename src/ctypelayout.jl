@@ -176,14 +176,20 @@ function _addfield(layout::Ctypelayout, sym::Symbol, ::Type{spec}, bits) where {
 	return sizeof(type(spec))*8
 end
 
-function _addfield(layout::Ctypelayout, sym::Symbol, typ, bits)
-	_addfield(layout, sym, Ctypefield(length(layout.fields), typ, bits, layout.offset))
-	return iszero(bits) ? sizeof(typ)*8 : bits
+function _addfield(layout::Ctypelayout, sym::Symbol, ::Type{spec}, bits) where {spec<:Ctypespec{<:Any, <:Cenum, <:Calignment, <:Tuple}}
+	_addfield(layout, sym, Ctypefield(length(layout.fields), spec <: Ctypespec ? type(spec) : spec, bits, layout.offset))
+	return iszero(bits) ? sizeof(spec <: Ctypespec ? type(spec) : spec)*8 : bits
+end
+
+function _addfield(layout::Ctypelayout, sym::Symbol, ::Type{T}, bits) where {T}
+	_addfield(layout, sym, Ctypefield(length(layout.fields), T, bits, layout.offset))
+	return iszero(bits) ? sizeof(T)*8 : bits
 end
 
 
 function _addfield(layout::Ctypelayout, ::Type{T}, ::Type{spec}) where {spec<:Ctypespec{<:Any, <:Caggregate, <:Calignment, <:Tuple}, T}
 	(sym, typ, bits) = _field(T)
+	
 	pad = padding(strategy(spec), layout.offset, bits, typ)
 	align = checked_alignof(strategy(spec), typ)
 	layout.offset = _size(spec, layout.offset, pad)
