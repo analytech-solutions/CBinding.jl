@@ -10,17 +10,50 @@ end)"
     const var"c\"time_t\"" = Nothing
     const var"c\"size_t\"" = UInt64
     begin
+        CBinding.include_dependency("$(incdir)/clang-c/Documentation.h")
+        CBinding.include_dependency("$(incdir)/clang-c/Index.h")
+        CBinding.include_dependency("$(incdir)/clang-c/Platform.h")
+        CBinding.include_dependency("$(incdir)/clang-c/CXErrorCode.h")
+        CBinding.include_dependency("$(incdir)/clang-c/CXString.h")
+        CBinding.include_dependency("$(incdir)/clang-c/BuildSystem.h")
         begin
-            CBinding.include_dependency("$(incdir)/clang-c/CXString.h")
+            abstract type var"c\"enum CXErrorCode\"" <: Cenum end
+            const CXErrorCode = var"c\"enum CXErrorCode\""
+            export var"c\"enum CXErrorCode\""
+            export CXErrorCode
+            var"c\"enum CXErrorCode\""
         end
         begin
-            CBinding.include_dependency("$(incdir)/clang-c/CXErrorCode.h")
-        end
-        begin
-            CBinding.include_dependency("$(incdir)/clang-c/Documentation.h")
-        end
-        begin
-            CBinding.include_dependency("$(incdir)/clang-c/Index.h")
+            primitive type var"(c\"enum CXErrorCode\")" <: var"c\"enum CXErrorCode\"" 32 end
+            (::(Type){var"(c\"enum CXErrorCode\")"})(val::CBinding.Integer = CBinding.zero(CBinding.Cuint)) = begin
+                    (CBinding.Core).Intrinsics.bitcast(var"(c\"enum CXErrorCode\")", CBinding.convert(CBinding.Cuint, val))
+                end
+            (CBinding.CBinding).values(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
+                    CBinding.Tuple{CBinding.Tuple{Symbol("c\"CXError_Success\""), 0x0000000000000000}, CBinding.Tuple{Symbol("c\"CXError_Failure\""), 0x0000000000000001}, CBinding.Tuple{Symbol("c\"CXError_Crashed\""), 0x0000000000000002}, CBinding.Tuple{Symbol("c\"CXError_InvalidArguments\""), 0x0000000000000003}, CBinding.Tuple{Symbol("c\"CXError_ASTReadError\""), 0x0000000000000004}}
+                end
+            (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
+                    CBinding.Cuint
+                end
+            (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
+                    var"(c\"enum CXErrorCode\")"
+                end
+            (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXErrorCode\""}) = begin
+                    var"(c\"enum CXErrorCode\")"
+                end
+            const var"c\"CXError_Success\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000000)
+            const var"c\"CXError_Failure\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000001)
+            const var"c\"CXError_Crashed\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000002)
+            const var"c\"CXError_InvalidArguments\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000003)
+            const var"c\"CXError_ASTReadError\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000004)
+            const CXErrorCode = var"c\"enum CXErrorCode\""
+            const CXError_Success = var"c\"CXError_Success\""
+            const CXError_Failure = var"c\"CXError_Failure\""
+            const CXError_Crashed = var"c\"CXError_Crashed\""
+            const CXError_InvalidArguments = var"c\"CXError_InvalidArguments\""
+            const CXError_ASTReadError = var"c\"CXError_ASTReadError\""
+            export var"c\"enum CXErrorCode\"", var"(c\"enum CXErrorCode\")", var"c\"CXError_Success\"", var"c\"CXError_Failure\"", var"c\"CXError_Crashed\"", var"c\"CXError_InvalidArguments\"", var"c\"CXError_ASTReadError\""
+            export CXErrorCode, CXError_Success, CXError_Failure, CXError_Crashed, CXError_InvalidArguments, CXError_ASTReadError
+            var"c\"enum CXErrorCode\""
         end
         begin
             abstract type var"c\"CXString\"" <: Cstruct end
@@ -113,43 +146,152 @@ end)"
             var"c\"clang_disposeStringSet\""
         end
         begin
-            abstract type var"c\"enum CXErrorCode\"" <: Cenum end
-            const CXErrorCode = var"c\"enum CXErrorCode\""
-            export var"c\"enum CXErrorCode\""
-            export CXErrorCode
-            var"c\"enum CXErrorCode\""
+            const var"c\"clang_getBuildSessionTimestamp\"" = CBinding.Cbinding{CBinding.Cfunction{CBinding.Culonglong, CBinding.Tuple{}, :cdecl}, libpath, :clang_getBuildSessionTimestamp}()
+            (func::CBinding.typeof(var"c\"clang_getBuildSessionTimestamp\""))() = begin
+                    CBinding.funccall(func)
+                end
+            const clang_getBuildSessionTimestamp = var"c\"clang_getBuildSessionTimestamp\""
+            export var"c\"clang_getBuildSessionTimestamp\""
+            export clang_getBuildSessionTimestamp
+            var"c\"clang_getBuildSessionTimestamp\""
         end
         begin
-            primitive type var"(c\"enum CXErrorCode\")" <: var"c\"enum CXErrorCode\"" 32 end
-            (::(Type){var"(c\"enum CXErrorCode\")"})(val::CBinding.Integer = CBinding.zero(CBinding.Cuint)) = begin
-                    (CBinding.Core).Intrinsics.bitcast(var"(c\"enum CXErrorCode\")", CBinding.convert(CBinding.Cuint, val))
+            abstract type var"c\"struct CXVirtualFileOverlayImpl\"" <: Cstruct end
+            const CXVirtualFileOverlayImpl = var"c\"struct CXVirtualFileOverlayImpl\""
+            export var"c\"struct CXVirtualFileOverlayImpl\""
+            export CXVirtualFileOverlayImpl
+            var"c\"struct CXVirtualFileOverlayImpl\""
+        end
+        begin
+            const var"c\"CXVirtualFileOverlay\"" = CBinding.Cptr{var"c\"struct CXVirtualFileOverlayImpl\""}
+            const CXVirtualFileOverlay = var"c\"CXVirtualFileOverlay\""
+            export var"c\"CXVirtualFileOverlay\""
+            export CXVirtualFileOverlay
+            var"c\"CXVirtualFileOverlay\""
+        end
+        begin
+            const var"c\"clang_VirtualFileOverlay_create\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"CXVirtualFileOverlay\"", CBinding.Tuple{CBinding.Cuint}, :cdecl}, libpath, :clang_VirtualFileOverlay_create}()
+            (func::CBinding.typeof(var"c\"clang_VirtualFileOverlay_create\""))(var"c\"options\"") = begin
+                    CBinding.funccall(func, var"c\"options\"")
                 end
-            (CBinding.CBinding).values(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
-                    CBinding.Tuple{CBinding.Tuple{Symbol("c\"CXError_Success\""), 0x0000000000000000}, CBinding.Tuple{Symbol("c\"CXError_Failure\""), 0x0000000000000001}, CBinding.Tuple{Symbol("c\"CXError_Crashed\""), 0x0000000000000002}, CBinding.Tuple{Symbol("c\"CXError_InvalidArguments\""), 0x0000000000000003}, CBinding.Tuple{Symbol("c\"CXError_ASTReadError\""), 0x0000000000000004}}
+            const clang_VirtualFileOverlay_create = var"c\"clang_VirtualFileOverlay_create\""
+            export var"c\"clang_VirtualFileOverlay_create\""
+            export clang_VirtualFileOverlay_create
+            var"c\"clang_VirtualFileOverlay_create\""
+        end
+        begin
+            const var"c\"clang_VirtualFileOverlay_addFileMapping\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"enum CXErrorCode\"", CBinding.Tuple{var"c\"CXVirtualFileOverlay\"", CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}, CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}}, :cdecl}, libpath, :clang_VirtualFileOverlay_addFileMapping}()
+            (func::CBinding.typeof(var"c\"clang_VirtualFileOverlay_addFileMapping\""))(arg1, var"c\"virtualPath\"", var"c\"realPath\"") = begin
+                    CBinding.funccall(func, arg1, var"c\"virtualPath\"", var"c\"realPath\"")
                 end
-            (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
-                    CBinding.Cuint
+            const clang_VirtualFileOverlay_addFileMapping = var"c\"clang_VirtualFileOverlay_addFileMapping\""
+            export var"c\"clang_VirtualFileOverlay_addFileMapping\""
+            export clang_VirtualFileOverlay_addFileMapping
+            var"c\"clang_VirtualFileOverlay_addFileMapping\""
+        end
+        begin
+            const var"c\"clang_VirtualFileOverlay_setCaseSensitivity\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"enum CXErrorCode\"", CBinding.Tuple{var"c\"CXVirtualFileOverlay\"", CBinding.Cint}, :cdecl}, libpath, :clang_VirtualFileOverlay_setCaseSensitivity}()
+            (func::CBinding.typeof(var"c\"clang_VirtualFileOverlay_setCaseSensitivity\""))(arg1, var"c\"caseSensitive\"") = begin
+                    CBinding.funccall(func, arg1, var"c\"caseSensitive\"")
                 end
-            (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
-                    var"(c\"enum CXErrorCode\")"
+            const clang_VirtualFileOverlay_setCaseSensitivity = var"c\"clang_VirtualFileOverlay_setCaseSensitivity\""
+            export var"c\"clang_VirtualFileOverlay_setCaseSensitivity\""
+            export clang_VirtualFileOverlay_setCaseSensitivity
+            var"c\"clang_VirtualFileOverlay_setCaseSensitivity\""
+        end
+        begin
+            const var"c\"clang_VirtualFileOverlay_writeToBuffer\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"enum CXErrorCode\"", CBinding.Tuple{var"c\"CXVirtualFileOverlay\"", CBinding.Cuint, CBinding.Cptr{CBinding.Cptr{CBinding.Cchar}}, CBinding.Cptr{CBinding.Cuint}}, :cdecl}, libpath, :clang_VirtualFileOverlay_writeToBuffer}()
+            (func::CBinding.typeof(var"c\"clang_VirtualFileOverlay_writeToBuffer\""))(arg1, var"c\"options\"", var"c\"out_buffer_ptr\"", var"c\"out_buffer_size\"") = begin
+                    CBinding.funccall(func, arg1, var"c\"options\"", var"c\"out_buffer_ptr\"", var"c\"out_buffer_size\"")
                 end
-            (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXErrorCode\""}) = begin
-                    var"(c\"enum CXErrorCode\")"
+            const clang_VirtualFileOverlay_writeToBuffer = var"c\"clang_VirtualFileOverlay_writeToBuffer\""
+            export var"c\"clang_VirtualFileOverlay_writeToBuffer\""
+            export clang_VirtualFileOverlay_writeToBuffer
+            var"c\"clang_VirtualFileOverlay_writeToBuffer\""
+        end
+        begin
+            const var"c\"clang_free\"" = CBinding.Cbinding{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{CBinding.Cptr{CBinding.Cvoid}}, :cdecl}, libpath, :clang_free}()
+            (func::CBinding.typeof(var"c\"clang_free\""))(var"c\"buffer\"") = begin
+                    CBinding.funccall(func, var"c\"buffer\"")
                 end
-            const var"c\"CXError_Success\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000000)
-            const var"c\"CXError_Failure\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000001)
-            const var"c\"CXError_Crashed\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000002)
-            const var"c\"CXError_InvalidArguments\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000003)
-            const var"c\"CXError_ASTReadError\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000004)
-            const CXErrorCode = var"c\"enum CXErrorCode\""
-            const CXError_Success = var"c\"CXError_Success\""
-            const CXError_Failure = var"c\"CXError_Failure\""
-            const CXError_Crashed = var"c\"CXError_Crashed\""
-            const CXError_InvalidArguments = var"c\"CXError_InvalidArguments\""
-            const CXError_ASTReadError = var"c\"CXError_ASTReadError\""
-            export var"c\"enum CXErrorCode\"", var"(c\"enum CXErrorCode\")", var"c\"CXError_Success\"", var"c\"CXError_Failure\"", var"c\"CXError_Crashed\"", var"c\"CXError_InvalidArguments\"", var"c\"CXError_ASTReadError\""
-            export CXErrorCode, CXError_Success, CXError_Failure, CXError_Crashed, CXError_InvalidArguments, CXError_ASTReadError
-            var"c\"enum CXErrorCode\""
+            const clang_free = var"c\"clang_free\""
+            export var"c\"clang_free\""
+            export clang_free
+            var"c\"clang_free\""
+        end
+        begin
+            const var"c\"clang_VirtualFileOverlay_dispose\"" = CBinding.Cbinding{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXVirtualFileOverlay\""}, :cdecl}, libpath, :clang_VirtualFileOverlay_dispose}()
+            (func::CBinding.typeof(var"c\"clang_VirtualFileOverlay_dispose\""))(arg1) = begin
+                    CBinding.funccall(func, arg1)
+                end
+            const clang_VirtualFileOverlay_dispose = var"c\"clang_VirtualFileOverlay_dispose\""
+            export var"c\"clang_VirtualFileOverlay_dispose\""
+            export clang_VirtualFileOverlay_dispose
+            var"c\"clang_VirtualFileOverlay_dispose\""
+        end
+        begin
+            abstract type var"c\"struct CXModuleMapDescriptorImpl\"" <: Cstruct end
+            const CXModuleMapDescriptorImpl = var"c\"struct CXModuleMapDescriptorImpl\""
+            export var"c\"struct CXModuleMapDescriptorImpl\""
+            export CXModuleMapDescriptorImpl
+            var"c\"struct CXModuleMapDescriptorImpl\""
+        end
+        begin
+            const var"c\"CXModuleMapDescriptor\"" = CBinding.Cptr{var"c\"struct CXModuleMapDescriptorImpl\""}
+            const CXModuleMapDescriptor = var"c\"CXModuleMapDescriptor\""
+            export var"c\"CXModuleMapDescriptor\""
+            export CXModuleMapDescriptor
+            var"c\"CXModuleMapDescriptor\""
+        end
+        begin
+            const var"c\"clang_ModuleMapDescriptor_create\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"CXModuleMapDescriptor\"", CBinding.Tuple{CBinding.Cuint}, :cdecl}, libpath, :clang_ModuleMapDescriptor_create}()
+            (func::CBinding.typeof(var"c\"clang_ModuleMapDescriptor_create\""))(var"c\"options\"") = begin
+                    CBinding.funccall(func, var"c\"options\"")
+                end
+            const clang_ModuleMapDescriptor_create = var"c\"clang_ModuleMapDescriptor_create\""
+            export var"c\"clang_ModuleMapDescriptor_create\""
+            export clang_ModuleMapDescriptor_create
+            var"c\"clang_ModuleMapDescriptor_create\""
+        end
+        begin
+            const var"c\"clang_ModuleMapDescriptor_setFrameworkModuleName\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"enum CXErrorCode\"", CBinding.Tuple{var"c\"CXModuleMapDescriptor\"", CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}}, :cdecl}, libpath, :clang_ModuleMapDescriptor_setFrameworkModuleName}()
+            (func::CBinding.typeof(var"c\"clang_ModuleMapDescriptor_setFrameworkModuleName\""))(arg1, var"c\"name\"") = begin
+                    CBinding.funccall(func, arg1, var"c\"name\"")
+                end
+            const clang_ModuleMapDescriptor_setFrameworkModuleName = var"c\"clang_ModuleMapDescriptor_setFrameworkModuleName\""
+            export var"c\"clang_ModuleMapDescriptor_setFrameworkModuleName\""
+            export clang_ModuleMapDescriptor_setFrameworkModuleName
+            var"c\"clang_ModuleMapDescriptor_setFrameworkModuleName\""
+        end
+        begin
+            const var"c\"clang_ModuleMapDescriptor_setUmbrellaHeader\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"enum CXErrorCode\"", CBinding.Tuple{var"c\"CXModuleMapDescriptor\"", CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}}, :cdecl}, libpath, :clang_ModuleMapDescriptor_setUmbrellaHeader}()
+            (func::CBinding.typeof(var"c\"clang_ModuleMapDescriptor_setUmbrellaHeader\""))(arg1, var"c\"name\"") = begin
+                    CBinding.funccall(func, arg1, var"c\"name\"")
+                end
+            const clang_ModuleMapDescriptor_setUmbrellaHeader = var"c\"clang_ModuleMapDescriptor_setUmbrellaHeader\""
+            export var"c\"clang_ModuleMapDescriptor_setUmbrellaHeader\""
+            export clang_ModuleMapDescriptor_setUmbrellaHeader
+            var"c\"clang_ModuleMapDescriptor_setUmbrellaHeader\""
+        end
+        begin
+            const var"c\"clang_ModuleMapDescriptor_writeToBuffer\"" = CBinding.Cbinding{CBinding.Cfunction{var"c\"enum CXErrorCode\"", CBinding.Tuple{var"c\"CXModuleMapDescriptor\"", CBinding.Cuint, CBinding.Cptr{CBinding.Cptr{CBinding.Cchar}}, CBinding.Cptr{CBinding.Cuint}}, :cdecl}, libpath, :clang_ModuleMapDescriptor_writeToBuffer}()
+            (func::CBinding.typeof(var"c\"clang_ModuleMapDescriptor_writeToBuffer\""))(arg1, var"c\"options\"", var"c\"out_buffer_ptr\"", var"c\"out_buffer_size\"") = begin
+                    CBinding.funccall(func, arg1, var"c\"options\"", var"c\"out_buffer_ptr\"", var"c\"out_buffer_size\"")
+                end
+            const clang_ModuleMapDescriptor_writeToBuffer = var"c\"clang_ModuleMapDescriptor_writeToBuffer\""
+            export var"c\"clang_ModuleMapDescriptor_writeToBuffer\""
+            export clang_ModuleMapDescriptor_writeToBuffer
+            var"c\"clang_ModuleMapDescriptor_writeToBuffer\""
+        end
+        begin
+            const var"c\"clang_ModuleMapDescriptor_dispose\"" = CBinding.Cbinding{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXModuleMapDescriptor\""}, :cdecl}, libpath, :clang_ModuleMapDescriptor_dispose}()
+            (func::CBinding.typeof(var"c\"clang_ModuleMapDescriptor_dispose\""))(arg1) = begin
+                    CBinding.funccall(func, arg1)
+                end
+            const clang_ModuleMapDescriptor_dispose = var"c\"clang_ModuleMapDescriptor_dispose\""
+            export var"c\"clang_ModuleMapDescriptor_dispose\""
+            export clang_ModuleMapDescriptor_dispose
+            var"c\"clang_ModuleMapDescriptor_dispose\""
         end
         begin
             const var"c\"CXIndex\"" = CBinding.Cptr{CBinding.Cvoid}

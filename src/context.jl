@@ -199,16 +199,18 @@ function configure!(ctx::Context, args::Vector{String})
 		end
 	end
 	
+	# TODO: libpaths might need to be added to LD_LIBRARY_PATH
+	
 	for lib in libs
 		l = find_library(lib, libpaths)
 		l = isempty(l) ? find_library("lib"*lib, libpaths) : l
 		isempty(l) && error("Failed to find library $(lib) in $(join(libpaths, ", "))")
 		
-		lib = dlopen(l)
+		lib = dlopen(l, RTLD_LAZY | RTLD_DEEPBIND | RTLD_LOCAL)
 		lib == C_NULL && error("Failed to dlopen library $(l)")
 		push!(ctx.libs, lib => Symbol(l))
 	end
-	lib = dlopen(_NullCString())
+	lib = dlopen(_NullCString(), RTLD_LAZY | RTLD_DEEPBIND | RTLD_LOCAL)
 	lib == C_NULL && error("Failed to dlopen Julia process")
 	push!(ctx.libs, lib => Nothing)
 	
