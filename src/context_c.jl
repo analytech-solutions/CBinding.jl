@@ -537,7 +537,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				const $(sym) = $(cb)()
 			end))
 		elseif Bool(clang_Cursor_isFunctionInlined(cursor))
-			getblock(ctx).flasg.quiet || @warn "Skipping inline function `$(name)`"
+			getblock(ctx).flags.quiet || @warn "Skipping inline function `$(name)`"
 		else
 			rettype = clang_getResultType(type)
 			

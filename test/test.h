@@ -327,6 +327,9 @@ struct S38 {
 };
 
 
+inline void inline_func() { return; }
+
+
 #define DEFINE_CHAR ('\'')
 #define DEFINE_STRING ("\"")
 // #define DEFINE_STRINGS ("\"" "\"")

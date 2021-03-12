@@ -4,7 +4,7 @@
 
 Use CBinding.jl to automatically create C library bindings with Julia at runtime!
 
-Package C support features:
+Package supports C features:
 
 - [x] fully supports C's `struct`, `union`, and `enum` types
 - [x] alignment strategies
