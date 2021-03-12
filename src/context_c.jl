@@ -292,11 +292,13 @@ end
 
 
 function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
-	type  = clang_getTypedefDeclUnderlyingType(cursor)
+	ispropagated = false
+	type = clang_getTypedefDeclUnderlyingType(cursor)
 	if type.kind == CXType_Elaborated
 		# get from elaborated to actual record definition
-		decl  = clang_getTypeDeclaration(type)
-		type  = clang_getCursorType(decl)
+		decl = clang_getTypeDeclaration(type)
+		type = clang_getCursorType(decl)
+		ispropagated = isempty(string(decl))
 	end
 	
 	tname = gettype(ctx, type)
@@ -304,8 +306,8 @@ function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
 	jlsym = getjl(ctx, string(cursor))
 	docs  = getdocs(ctx, cursor)
 	
-	# nested anonymous opaque type had this typedef's name and provided these exprs
-	return name == tname ? quote end : getexprs(ctx, ((name, jlsym, docs),), quote
+	# nested anonymous opaque type had this typedef's name propagated to it so no expr needed
+	return ispropagated ? quote end : getexprs(ctx, ((name, jlsym, docs),), quote
 		const $(name) = $(tname)
 	end)
 end
@@ -332,11 +334,10 @@ function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 		(getjl(ctx, string(type)), nothing, nothing) :
 		(nothing, getjl(ctx, string(type)), getdocs(ctx, cursor))
 	
-	cursorLoc = getlocation(cursor)
-	declLoc   = getlocation(decl)
-	islater = !isdecl && first(cursorLoc).file == first(declLoc).file
-	if !isanon && (isdecl || islater)
-		push!(exprs, getexprs(ctx, ((absname, jlabssym, islater ? nothing : docs),), quote
+	def = clang_getCursorDefinition(cursor)
+	loc = getlocation(def)
+	if !isanon && (isnothing(loc) || (first(loc).file == header(ctx) || haskey(ctx.hdrs, first(loc).file)))
+		push!(exprs, getexprs(ctx, ((absname, jlabssym, isdecl ? docs : nothing),), quote
 			abstract type $(absname) <: $(kind) end
 		end))
 	end
