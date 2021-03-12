@@ -247,6 +247,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 	exprs = []
 	
 	getblock(ctx).flags.skip && return exprs
+	getblock(ctx).flags.defer && return exprs
 	
 	if cursor.kind == CXCursor_TranslationUnit
 		append!(exprs, getexprs_tu(ctx, cursor))

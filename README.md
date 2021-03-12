@@ -200,6 +200,7 @@ The string macro has some options to handle more complex use cases.
 Occasionally it is necessary to include or define C code that is just a dependency and should not be exported or perhaps excluded from the generated bindings altogether.
 These kinds of situations can be handled with combinations of the following string macro suffixes.
 
+- `d` - defer conversion of the C code block; successive blocks marked with `d` will keep deferring until a block without it (its options will be used for processing the deferred blocks)
 - `i` - also parse implicitly included headers that are related (in the same directory or subdirectories of it) to explicitly included headers
 - `j` - also define bindings with Julian names (name collisions likely)
 - `p` - mark the C code as "private" content that will not be exported

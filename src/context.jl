@@ -312,6 +312,8 @@ end
 
 
 function advance!(ctx::Context)
+	getblock(ctx).flags.defer && return
+	
 	stop = ctx.line
 	root = clang_getTranslationUnitCursor(ctx.tu[])
 	for cursor in children(root)
@@ -343,6 +345,7 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	# TODO: allow interpolation in str?
 	
 	flags = (;
+		defer  = 'd' in opts,
 		implic = 'i' in opts,
 		jlsyms = 'j' in opts,
 		priv   = 'p' in opts,
