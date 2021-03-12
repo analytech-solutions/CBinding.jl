@@ -1,7 +1,6 @@
 using Test
 using Random
 using CBinding
-using Clang_jll
 
 
 include("layout-tests.jl")

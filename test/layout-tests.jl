@@ -87,7 +87,7 @@ function checkC(expr, val)
 		}
 		"""
 	
-	return clang() do bin
+	return CBinding.libclang.Clang_jll.clang() do bin
 		tmp = tempname()
 		open(f -> write(f, code), tmp*".c", "w+")
 		run(`gcc -Wno-overflow -Wno-constant-conversion -Wno-address-of-packed-member -std=c99 -o $(tmp) $(tmp).c`)

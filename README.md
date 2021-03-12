@@ -149,7 +149,7 @@ module LibFoo
     
     # set up the parser
     let
-      incdir = joinpath(dirname(dirname(Foo_jll.libfoo_path)), "include")
+      incdir = joinpath(Foo_jll.artifact_dir, "include")
       libdir = dirname(Foo_jll.libfoo_path)
       
       c`-std=c99 -fparse-all-comments -I$(incdir) -L$(libdir) -lfoo`
