@@ -35,14 +35,14 @@ julia> using C
 julia> c``
 ```
 
-Notice that ``` c`...` ``` is a command macro (with the back-ticks) and is the means of specifying command line arguments to the Clang parser.
+Notice that ``` c`...` ``` is a command macro (with the backticks) and is the means of specifying command line arguments to the Clang parser.
 Each time such a command macro is used, a new compiler context is started for the module creating it.
 A more real-life example might look like:
 
 ```jl
 julia> libpath = find_libpath();
 
-julia> c`-std=c99 -Wall -DGO_FAST=1 -Imy/include -L$(libpath) -lmylib`
+julia> c`-std=c99 -Wall -DGO_FAST=1 -Imylib/include -L$(libpath) -lmylib`
 ```
 
 The compiler context also finds the paths of all specified libraries so it can use them in any bindings that are created.
@@ -67,7 +67,8 @@ That's it...
 That's all that is needed to create a couple C types and a function binding in Julia, but actually, it gets even easier!
 
 C API's usually come with header files, so let's just use those to create the Julia bindings and save some effort.
-Bindings are generated from the code directly written in C string macros and header files explicitly included in them (but not headers included by those headers).
+By default, bindings are generated from the code directly written in C string macros and header files explicitly included in them, but not headers included by those headers.
+[See the `i` string macro option](#options-for-c)) to allow parsing certain implicitly included headers as well.
 
 ```jl
 julia> c"""
@@ -148,8 +149,8 @@ module LibFoo
     
     # set up the parser
     let
-      libdir = joinpath(dirname(dirname(Foo_jll.libfoo_path)), "include")
-      incdir = dirname(Foo_jll.libfoo_path)
+      incdir = joinpath(dirname(dirname(Foo_jll.libfoo_path)), "include")
+      libdir = dirname(Foo_jll.libfoo_path)
       
       c`-std=c99 -fparse-all-comments -I$(incdir) -L$(libdir) -lfoo`
     end
@@ -178,6 +179,7 @@ module LibFoo
   
   
   # high-level Julian interface to libfoo
+  using C
   using .libfoo
   
   function foo(i)
@@ -198,6 +200,7 @@ The string macro has some options to handle more complex use cases.
 Occasionally it is necessary to include or define C code that is just a dependency and should not be exported or perhaps excluded from the generated bindings altogether.
 These kinds of situations can be handled with combinations of the following string macro suffixes.
 
+- `i` - also parse implicitly included headers that are related (in the same directory or subdirectories of it) to explicitly included headers
 - `j` - also define bindings with Julian names (name collisions likely)
 - `p` - mark the C code as "private" content that will not be exported
 - `q` - quietly parse the block of C code, suppressing any compiler messages
