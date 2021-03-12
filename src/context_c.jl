@@ -197,7 +197,10 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		arrtype = clang_getElementType(type)
 		arrtype = gettype(ctx, arrtype; kwargs...)
 		result = :(Carray{$(arrtype), 0})
-	elseif type.kind == CXType_FunctionProto
+	elseif type.kind in (
+		CXType_FunctionProto,
+		CXType_FunctionNoProto,
+	)
 		rettype = clang_getResultType(type)
 		rettype = gettype(ctx, rettype; kwargs...)
 		

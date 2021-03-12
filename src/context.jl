@@ -80,7 +80,7 @@ function getexprs_tu(ctx::Context, cursor::CXCursor)
 		range = getlocation(child)
 		isnothing(range) && continue  # ignore built-ins and such
 		
-		haskey(ctx.hdrs, first(range).file) || continue
+		first(range).file == header(ctx) || haskey(ctx.hdrs, first(range).file) || continue
 		first(range).file != header(ctx) || first(range).line > ctx.line || continue
 		
 		append!(exprs, getexprs(ctx, child))
@@ -97,7 +97,7 @@ function getexprs_include(ctx::Context, cursor::CXCursor)
 	file = clang_getIncludedFile(cursor)
 	file = _string(clang_getFileName, file)
 	
-	if !isnothing(file)
+	if !isnothing(file) && !haskey(ctx.hdrs, file)
 		crng = getlocation(cursor)
 		basedir = get(ctx.hdrs, first(crng).file, "")
 		isimplicit = !isempty(basedir) && startswith(file, basedir)
@@ -234,7 +234,6 @@ function parse!(ctx::Context, mod::Module, loc::LineNumberNode, flags::NamedTupl
 	print(ctx.src, str)
 	
 	empty!(ctx.hdrs)
-	push!(ctx.hdrs, header(ctx) => "")
 	
 	blk = getblock(ctx)
 	start = isnothing(blk) ? 1 : blk.lines.stop+1
