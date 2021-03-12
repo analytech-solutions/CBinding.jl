@@ -52,7 +52,7 @@ end
 function Base.instances(::Type{CE}) where {CE<:Cenum}
 	result = ()
 	for (n, v) in Base.Enums.namemap(CE)
-		result = (result..., v) #CE(v))
+		result = (result..., CE(v))
 	end
 	return result
 end
@@ -63,4 +63,41 @@ function Base.Symbol(ce::Cenum)
 	end
 	error("Value of $(typeof(ce)) is not one of $(join(map(first, Base.Enums.namemap(ce)), ", "))")
 end
+
+
+function Base.show(io::IO, x::Cenum)
+    sym = Symbol(x)
+    if !get(io, :compact, false)
+        from = get(io, :module, Main)
+        def = typeof(x).name.module
+        if from === nothing || !Base.isvisible(sym, def, from)
+            show(io, def)
+            print(io, ".")
+        end
+    end
+    print(io, sym)
+end
+
+function Base.show(io::IO, ::MIME"text/plain", x::Cenum)
+    print(io, x, "::")
+    show(IOContext(io, :compact => true), typeof(x))
+    print(io, " = ")
+    show(io, Integer(x))
+end
+
+function Base.show(io::IO, m::MIME"text/plain", t::Type{<:Cenum})
+    if isconcretetype(t)
+        print(io, "Cenum ")
+        Base.show_datatype(io, t)
+        print(io, ":")
+        for x in instances(t)
+            print(io, "\n", Symbol(x), " = ")
+            show(io, Integer(x))
+        end
+    else
+        invoke(show, Tuple{IO, MIME"text/plain", Type}, io, m, t)
+    end
+end
+
+
 

@@ -18,7 +18,7 @@ const C_TYPES   = raw"\w+(?:(?:[*\s]+)\w+)*(?:[*\s]+)?"
 const C_MODULE  = r"\s*(\w+)\.(.*)$"
 const C_TYPEVAR = Regex(raw"^\s*("*C_TYPES*raw")\s*$")
 const C_FUNCPTR = Regex(raw"^\s*("*C_TYPES*raw")\s*\(\*\)\(([^)]*)\)(const)?(?:\s+__attribute__\(\(([^)]+)\)\))?\s*$")
-function getref(::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, Nothing} = nothing)
+function getref(ctx::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, Nothing} = nothing)
 	function decorate(t, set)
 		t = "volatile" in set ? :(Cvolatile{$(t)}) : t
 		t = "restrict" in set ? :(Crestrict{$(t)}) : t
@@ -41,7 +41,7 @@ function getref(::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, Nothi
 		
 		isempty(szs) && return nothing
 		
-		inner = getref(Context{:c}, t, mod)
+		inner = getref(ctx, t, mod)
 		isnothing(inner) && return nothing
 		
 		for sz in szs
@@ -56,14 +56,14 @@ function getref(::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, Nothi
 	
 	m = match(C_POINTER, str)
 	if !isnothing(m)
-		inner = getref(Context{:c}, m.captures[1], mod)
+		inner = getref(ctx, m.captures[1], mod)
 		isnothing(inner) || return decorate(:(Cptr{$(inner)}), (m.captures[2],))
 	end
 	
 	m = match(C_FUNCPTR, str)
 	if !isnothing(m)
-		rettype  = getref(Context{:c}, m.captures[1], mod)
-		argtypes = isempty(m.captures[2]) ? () : map(arg -> getref(Context{:c}, arg, mod), split(m.captures[2], ','))
+		rettype  = getref(ctx, m.captures[1], mod)
+		argtypes = isempty(m.captures[2]) ? () : map(arg -> getref(ctx, arg, mod), split(m.captures[2], ','))
 		decor    = (m.captures[3],)
 		conv     = isnothing(m.captures[4]) ? () : (QuoteNode(Symbol(m.captures[4])),)
 		
@@ -118,7 +118,7 @@ function getref(::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, Nothi
 	m = match(C_USER, str)
 	if !isnothing(m)
 		decor = (m.captures[1], m.captures[4])
-		inner = getname(Context{:c}, isnothing(m.captures[2]) ? "$(m.captures[3])" : "$(m.captures[2]) $(m.captures[3])")
+		inner = getname(ctx, isnothing(m.captures[2]) ? "$(m.captures[3])" : "$(m.captures[2]) $(m.captures[3])")
 		isnothing(inner) || return decorate(isnothing(mod) ? esc(inner) : :($(mod).$(inner)), decor)
 	end
 	
@@ -128,7 +128,7 @@ function getref(::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, Nothi
 	if !isnothing(m)
 		str = m.captures[2]
 		m   = Symbol(m.captures[1])
-		return getref(Context{:c}, str, isnothing(mod) ? esc(m) : :($(mod).$(m)))
+		return getref(ctx, str, isnothing(mod) ? esc(m) : :($(mod).$(m)))
 	end
 	
 	return nothing
@@ -136,7 +136,7 @@ end
 
 
 
-function gettype(::Type{Context{:c}}, type::CXType; kwargs...)
+function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 	if type.kind == CXType_Void
 		result = :(Cvoid)
 	elseif type.kind == CXType_Bool
@@ -179,32 +179,35 @@ function gettype(::Type{Context{:c}}, type::CXType; kwargs...)
 	)
 		decl = clang_getTypeDeclaration(type)
 		t = clang_getCursorType(decl)
-		result = gettype(Context{:c}, string(t); kwargs...)
+		result = gettype(ctx, string(t); kwargs...)
 	elseif type.kind == CXType_Complex
 		cplxtype = clang_getElementType(type)
-		cplxtype = gettype(Context{:c}, cplxtype; kwargs...)
+		cplxtype = gettype(ctx, cplxtype; kwargs...)
 		result = :(Ccomplex{$(cplxtype)})
 	elseif type.kind == CXType_Pointer
 		ptrtype = clang_getPointeeType(type)
-		ptrtype = gettype(Context{:c}, ptrtype; kwargs...)
+		ptrtype = gettype(ctx, ptrtype; kwargs...)
 		result = :(Cptr{$(ptrtype)})
 	elseif type.kind == CXType_ConstantArray
 		num = clang_getNumElements(type)
 		arrtype = clang_getElementType(type)
-		arrtype = gettype(Context{:c}, arrtype; kwargs...)
+		arrtype = gettype(ctx, arrtype; kwargs...)
 		result = :(Carray{$(arrtype), $(num)})
 	elseif type.kind == CXType_IncompleteArray
 		arrtype = clang_getElementType(type)
-		arrtype = gettype(Context{:c}, arrtype; kwargs...)
+		arrtype = gettype(ctx, arrtype; kwargs...)
 		result = :(Carray{$(arrtype), 0})
-	elseif type.kind == CXType_FunctionProto
+	elseif type.kind in (
+		CXType_FunctionProto,
+		CXType_FunctionNoProto,
+	)
 		rettype = clang_getResultType(type)
-		rettype = gettype(Context{:c}, rettype; kwargs...)
+		rettype = gettype(ctx, rettype; kwargs...)
 		
 		num = clang_getNumArgTypes(type)
 		argtypes = map(1:num) do ind
 			argtype = clang_getArgType(type, ind-1)
-			return gettype(Context{:c}, argtype; kwargs...)
+			return gettype(ctx, argtype; kwargs...)
 		end
 		argtypes = Bool(clang_isFunctionTypeVariadic(type)) ? [argtypes..., Cvariadic] : argtypes
 		
@@ -246,15 +249,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 	getblock(ctx).flags.skip && return exprs
 	
 	if cursor.kind == CXCursor_TranslationUnit
-		for child in children(cursor)
-			range = getlocation(child)
-			isnothing(range) && continue  # ignore built-ins and such
-			
-			first(range).file in ctx.hdrs || continue
-			first(range).file != header(ctx) || first(range).line > ctx.line || continue
-			
-			append!(exprs, getexprs(ctx, child))
-		end
+		append!(exprs, getexprs_tu(ctx, cursor))
 	elseif cursor.kind == CXCursor_TypedefDecl
 		push!(exprs, getexprs_typedef(ctx, cursor))
 	elseif cursor.kind in (
@@ -280,16 +275,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 			end
 		end
 	elseif cursor.kind == CXCursor_InclusionDirective
-		# track only directly included headers
-		range = getlocation(cursor)
-		if first(range).file == header(ctx)
-			file = clang_getIncludedFile(cursor)
-			file = _string(clang_getFileName, file)
-			push!(ctx.hdrs, file)
-			push!(exprs, quote
-				include_dependency($(file))
-			end)
-		end
+		append!(exprs, getexprs_include(ctx, cursor))
 	elseif !(cursor.kind in (
 		CXCursor_FieldDecl,
 		CXCursor_EnumConstantDecl,

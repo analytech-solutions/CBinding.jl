@@ -10,6 +10,8 @@ language(ctx::Context) = language(typeof(ctx))
 language(::Type{Context{lang}}) where {lang} = lang
 
 
+getcontext(mod::Module) = get(CONTEXT_CACHE, mod, nothing)
+
 
 getjl(ctx::Context, args...; kwargs...) = getjl(typeof(ctx), args...; kwargs...)
 getjl(::Type{C}, str::String; kwargs...) where {C<:Context} = getjl(C, Symbol(str); kwargs...)
@@ -25,6 +27,16 @@ end
 gettype(ctx::Context, args...; kwargs...) = gettype(typeof(ctx), args...; kwargs...)
 gettype(::Type{C}, str::String; kwargs...) where {C<:Context} = gettype(C, Symbol(str); kwargs...)
 gettype(::Type{C}, sym::Symbol; kwargs...) where {C<:Context} = esc(getname(C, sym; kwargs...))
+
+
+
+function getlib(ctx::Context, sym)
+	for (handle, lib) in ctx.libs
+		dlsym(handle, sym, throw_error = false) == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
+	end
+	@warn "Failed to find `$(sym)` in any library: $(join(map(String, filter(x -> x isa Symbol, map(last, collect(ctx.libs)))), ", "))"
+	return Nothing
+end
 
 
 
@@ -61,12 +73,83 @@ end
 
 
 
-function getlib(ctx::Context, sym)
-	for (handle, lib) in ctx.libs
-		dlsym(handle, sym, throw_error = false) == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
+function getexprs_tu(ctx::Context, cursor::CXCursor)
+	exprs = []
+	
+	for child in children(cursor)
+		range = getlocation(child)
+		isnothing(range) && continue  # ignore built-ins and such
+		
+		first(range).file == header(ctx) || haskey(ctx.hdrs, first(range).file) || continue
+		first(range).file != header(ctx) || first(range).line > ctx.line || continue
+		
+		append!(exprs, getexprs(ctx, child))
 	end
-	@warn "Failed to find `$(sym)` in any library: $(join(map(String, filter(x -> x isa Symbol, map(last, collect(ctx.libs)))), ", "))"
-	return Nothing
+	
+	return exprs
+end
+
+
+
+function getexprs_include(ctx::Context, cursor::CXCursor)
+	exprs = []
+	
+	file = clang_getIncludedFile(cursor)
+	file = _string(clang_getFileName, file)
+	
+	if !isnothing(file) && !haskey(ctx.hdrs, file)
+		crng = getlocation(cursor)
+		basedir = get(ctx.hdrs, first(crng).file, "")
+		isimplicit = !isempty(basedir) && startswith(file, basedir)
+		isexplicit = first(crng).file == header(ctx)
+		
+		if isexplicit || isimplicit
+			push!(ctx.hdrs, file => isexplicit && getblock(ctx).flags.implic ? "$(dirname(file))/" : basedir)
+			push!(exprs, :(include_dependency($(file))))
+		end
+	end
+	
+	return exprs
+end
+
+
+
+getblock(ctx::Context) = isempty(ctx.blocks) ? nothing : last(ctx.blocks)
+getblock(ctx::Context, ind::Integer) = ind in eachindex(ctx.blocks) ? ctx.blocks[ind] : nothing
+function getblock(ctx::Context, loc::CodeLocation)
+	loc.file == header(ctx) || return nothing
+	
+	ind = searchsortedfirst(ctx.blocks, loc.line, lt = (a::CodeBlock, b::Integer) -> a.lines.stop < b)
+	return getblock(ctx, ind)
+end
+
+
+
+function getlines(ctx::Context, blk::CodeBlock)
+	lines = []
+	
+	io = IOBuffer(ctx.src.data[1:ctx.src.size])
+	for (ind, line) in enumerate(eachline(io))
+		ind in blk.lines && push!(lines, line)
+	end
+	
+	return lines
+end
+
+
+
+function Base.pop!(ctx::Context)
+	blk = getblock(ctx)
+	if !isnothing(blk)
+		pop!(ctx.blocks)
+		io = IOBuffer(take!(ctx.src))
+		ctx.src = IOBuffer()
+		for (ind, line) in enumerate(eachline(io))
+			ind in blk.lines || println(ctx.src, line)
+		end
+	end
+	
+	return ctx
 end
 
 
@@ -134,7 +217,6 @@ function configure!(ctx::Context, args::Vector{String})
 	
 	ptrs = map(pointer, args)
 	
-	push!(ctx.hdrs, header(ctx))
 	unsaved = [CXUnsavedFile(
 		Filename = pointer(header(ctx)),
 		Contents = pointer(ctx.src.data),
@@ -150,6 +232,8 @@ end
 function parse!(ctx::Context, mod::Module, loc::LineNumberNode, flags::NamedTuple, str::String)
 	str = endswith(str, '\n') ? str : str*'\n'  # ensure new line here so countlines is consistent
 	print(ctx.src, str)
+	
+	empty!(ctx.hdrs)
 	
 	blk = getblock(ctx)
 	start = isnothing(blk) ? 1 : blk.lines.stop+1
@@ -171,29 +255,6 @@ function parse!(ctx::Context, mod::Module, loc::LineNumberNode, flags::NamedTupl
 	err == CXError_Success || error("Failed to parse translation unit $(err)")
 end
 
-
-
-getblock(ctx::Context) = isempty(ctx.blocks) ? nothing : last(ctx.blocks)
-function getblock(ctx::Context, loc::CodeLocation)
-	loc.file == header(ctx) || return nothing
-	
-	ind = searchsortedfirst(ctx.blocks, loc.line, lt = (a::CodeBlock, b::Integer) -> a.lines.stop < b)
-	ind <= length(ctx.blocks) || return nothing
-	
-	return ctx.blocks[ind]
-end
-
-
-function getlines(ctx::Context, blk::CodeBlock)
-	lines = []
-	
-	io = IOBuffer(ctx.src.data[1:ctx.src.size])
-	for (ind, line) in enumerate(eachline(io))
-		ind in blk.lines && push!(lines, line)
-	end
-	
-	return lines
-end
 
 
 function check(ctx::Context)
@@ -219,7 +280,7 @@ function check(ctx::Context)
 					line = (loc.line - blk.lines.start)+1
 					
 					pre = length(lines[line]) - length(lstrip(lines[line]))
-					here = lines[line][1:pre]*repeat(" ", loc.column-pre)*"^~~~~~ here"
+					here = lines[line][1:pre]*repeat(" ", loc.column-pre-1)*"^~~~~~ here"
 					insert!(lines, line+1, here)
 					
 					msg *= "\n"*join(lines[max(1, line-2):min(length(lines), line+3)], '\n')
@@ -241,15 +302,7 @@ function check(ctx::Context)
 	end
 	
 	if isfatal
-		# throw away the last code block so user can retry
-		blk = getblock(ctx)
-		isnothing(blk) || pop!(ctx.blocks)
-		io = IOBuffer(take!(ctx.src))
-		ctx.src = IOBuffer()
-		for (ind, line) in enumerate(eachline(io))
-			!isnothing(blk) && ind <= blk.lines.stop && println(ctx.src, line)
-		end
-		
+		pop!(ctx)
 		error("Failed to create bindings, errors parsing $(String(ctx)) code")
 	end
 end
@@ -288,6 +341,7 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	# TODO: allow interpolation in str?
 	
 	flags = (;
+		implic = 'i' in opts,
 		jlsyms = 'j' in opts,
 		priv   = 'p' in opts,
 		quiet  = 'q' in opts,
