@@ -28,6 +28,16 @@ gettype(::Type{C}, sym::Symbol; kwargs...) where {C<:Context} = esc(getname(C, s
 
 
 
+function getlib(ctx::Context, sym)
+	for (handle, lib) in ctx.libs
+		dlsym(handle, sym, throw_error = false) == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
+	end
+	@warn "Failed to find `$(sym)` in any library: $(join(map(String, filter(x -> x isa Symbol, map(last, collect(ctx.libs)))), ", "))"
+	return Nothing
+end
+
+
+
 function getexprs(ctx::Context, syms, blocks...)
 	expr = quote end
 	for block in blocks
@@ -61,12 +71,43 @@ end
 
 
 
-function getlib(ctx::Context, sym)
-	for (handle, lib) in ctx.libs
-		dlsym(handle, sym, throw_error = false) == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
+function getexprs_tu(ctx::Context, cursor::CXCursor)
+	exprs = []
+	
+	for child in children(cursor)
+		range = getlocation(child)
+		isnothing(range) && continue  # ignore built-ins and such
+		
+		haskey(ctx.hdrs, first(range).file) || continue
+		first(range).file != header(ctx) || first(range).line > ctx.line || continue
+		
+		append!(exprs, getexprs(ctx, child))
 	end
-	@warn "Failed to find `$(sym)` in any library: $(join(map(String, filter(x -> x isa Symbol, map(last, collect(ctx.libs)))), ", "))"
-	return Nothing
+	
+	return exprs
+end
+
+
+
+function getexprs_include(ctx::Context, cursor::CXCursor)
+	exprs = []
+	
+	file = clang_getIncludedFile(cursor)
+	file = _string(clang_getFileName, file)
+	
+	if !isnothing(file)
+		crng = getlocation(cursor)
+		basedir = get(ctx.hdrs, first(crng).file, "")
+		isimplicit = !isempty(basedir) && startswith(file, basedir)
+		isexplicit = first(crng).file == header(ctx)
+		
+		if isexplicit || isimplicit
+			push!(ctx.hdrs, file => isexplicit && getblock(ctx).flags.implic ? "$(dirname(file))/" : basedir)
+			push!(exprs, :(include_dependency($(file))))
+		end
+	end
+	
+	return exprs
 end
 
 
@@ -134,7 +175,7 @@ function configure!(ctx::Context, args::Vector{String})
 	
 	ptrs = map(pointer, args)
 	
-	push!(ctx.hdrs, header(ctx))
+	push!(ctx.hdrs, header(ctx) => "")
 	unsaved = [CXUnsavedFile(
 		Filename = pointer(header(ctx)),
 		Contents = pointer(ctx.src.data),
@@ -288,6 +329,7 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	# TODO: allow interpolation in str?
 	
 	flags = (;
+		implic = 'i' in opts,
 		jlsyms = 'j' in opts,
 		priv   = 'p' in opts,
 		quiet  = 'q' in opts,

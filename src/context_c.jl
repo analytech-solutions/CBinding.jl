@@ -246,15 +246,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 	getblock(ctx).flags.skip && return exprs
 	
 	if cursor.kind == CXCursor_TranslationUnit
-		for child in children(cursor)
-			range = getlocation(child)
-			isnothing(range) && continue  # ignore built-ins and such
-			
-			first(range).file in ctx.hdrs || continue
-			first(range).file != header(ctx) || first(range).line > ctx.line || continue
-			
-			append!(exprs, getexprs(ctx, child))
-		end
+		append!(exprs, getexprs_tu(ctx, cursor))
 	elseif cursor.kind == CXCursor_TypedefDecl
 		push!(exprs, getexprs_typedef(ctx, cursor))
 	elseif cursor.kind in (
@@ -280,16 +272,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 			end
 		end
 	elseif cursor.kind == CXCursor_InclusionDirective
-		# track only directly included headers
-		range = getlocation(cursor)
-		if first(range).file == header(ctx)
-			file = clang_getIncludedFile(cursor)
-			file = _string(clang_getFileName, file)
-			push!(ctx.hdrs, file)
-			push!(exprs, quote
-				include_dependency($(file))
-			end)
-		end
+		append!(exprs, getexprs_include(ctx, cursor))
 	elseif !(cursor.kind in (
 		CXCursor_FieldDecl,
 		CXCursor_EnumConstantDecl,

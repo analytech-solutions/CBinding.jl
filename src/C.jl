@@ -123,12 +123,12 @@ module C
 		tu::Ref{CXTranslationUnit}
 		line::Int
 		libs::Vector{Pair}
-		hdrs::Vector{String}
+		hdrs::Dict{String, String}
 		blocks::Vector{CodeBlock}
 		src::IOBuffer
 		
 		function Context{lang}(args...) where {lang}
-			ctx = new{lang}(nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], String[], CodeBlock[], IOBuffer())
+			ctx = new{lang}(nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), CodeBlock[], IOBuffer())
 			finalizer(ctx) do x
 				x.tu[] == C_NULL || clang_disposeTranslationUnit(x.tu[])
 				isnothing(x.ind) || x.ind == C_NULL || clang_disposeIndex(x.ind)
