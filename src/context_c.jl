@@ -258,11 +258,34 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 		CXCursor_UnionDecl,
 		CXCursor_EnumDecl,
 	)
+		for child in children(cursor)
+			if child.kind in (
+				CXCursor_StructDecl,
+				CXCursor_UnionDecl,
+				CXCursor_EnumDecl,
+				CXCursor_TypedefDecl,
+			)
+				append!(exprs, getexprs(ctx, child))
+			end
+		end
+		
 		append!(exprs, getexprs_opaque(ctx, cursor))
 	elseif cursor.kind in (
 		CXCursor_VarDecl,
 		CXCursor_FunctionDecl,
 	)
+		for child in children(cursor)
+			if child.kind in (
+				CXCursor_StructDecl,
+				CXCursor_UnionDecl,
+				CXCursor_EnumDecl,
+				CXCursor_TypedefDecl,
+				CXCursor_ParmDecl,
+			)
+				append!(exprs, getexprs(ctx, child))
+			end
+		end
+		
 		append!(exprs, getexprs_binding(ctx, cursor))
 	elseif cursor.kind == CXCursor_ParmDecl
 		for child in children(cursor)
@@ -502,29 +525,23 @@ end
 function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 	exprs = []
 	
-	for child in children(cursor)
-		if child.kind in (
-			CXCursor_StructDecl,
-			CXCursor_UnionDecl,
-			CXCursor_EnumDecl,
-			CXCursor_TypedefDecl,
-			CXCursor_ParmDecl,
-		)
-			append!(exprs, getexprs(ctx, child))
-		end
-	end
 	
 	exposed = clang_Cursor_getStorageClass(cursor)
 	visible = clang_getCursorVisibility(cursor)
 	linkage = clang_getCursorLinkage(cursor)
-	if exposed in (
-		CX_SC_None,
-		CX_SC_Extern,
-	) && visible in (
+	isinlined = cursor.kind == CXCursor_FunctionDecl && Bool(clang_Cursor_isFunctionInlined(cursor))
+	if visible in (
 		CXVisibility_Default,
 		CXVisibility_Protected,
-	) && linkage in (
-		CXLinkage_External,
+	) && (
+		isinlined || (
+			exposed in (
+				CX_SC_None,
+				CX_SC_Extern,
+			) && linkage in (
+				CXLinkage_External,
+			)
+		)
 	)
 		name = string(cursor)
 		lib = getlib(ctx, name)
@@ -538,9 +555,29 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 			push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
 				const $(sym) = $(cb)()
 			end))
-		elseif Bool(clang_Cursor_isFunctionInlined(cursor))
-			getblock(ctx).flags.quiet || @warn "Skipping inline function `$(name)`"
 		else
+			if isinlined
+				if !getblock(ctx).flags.wrap
+					getblock(ctx).flags.quiet || @warn "Skipping inline function `$(name)`"
+					return exprs
+				end
+				
+				unname = "cbinding__$(name)"
+				code = getcode(ctx, cursor)
+				code = replace(code, r"(^|\s)inline\s" => s"\1")
+				code = replace(code, r"(^|\s)static\s" => s"\1")
+				code = replace(code, r"(^|\s)extern\s" => s"\1")
+				code = replace(code, " $(name)(" => " $(unname)(")
+				code = "$(lstrip(code)) __attribute__((alias($(repr(name)))));"
+				push!(getblock(ctx).inlines, code)
+				
+				name = unname
+				lib  = getlib(ctx)
+				push!(exprs, quote
+					include_dependency($(String(lib.value)))
+				end)
+			end
+			
 			rettype = clang_getResultType(type)
 			
 			num = clang_Cursor_getNumArguments(cursor)

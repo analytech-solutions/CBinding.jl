@@ -11,6 +11,7 @@ language(::Type{Context{lang}}) where {lang} = lang
 
 
 getcontext(mod::Module) = get(CONTEXT_CACHE, mod, nothing)
+Base.close(ctx::Context) = delete!(CONTEXT_CACHE, ctx.mod)
 
 
 getjl(ctx::Context, args...; kwargs...) = getjl(typeof(ctx), args...; kwargs...)
@@ -29,6 +30,13 @@ gettype(::Type{C}, str::String; kwargs...) where {C<:Context} = gettype(C, Symbo
 gettype(::Type{C}, sym::Symbol; kwargs...) where {C<:Context} = esc(getname(C, sym; kwargs...))
 
 
+
+# TODO: prevent new compiler contexts within a module from overwriting libraries of prior contexts
+function getlib(ctx::Context)
+	dir = get_scratch!(@__MODULE__, string(Scratch.find_uuid(ctx.mod)), ctx.mod)
+	file = "libcbinding-$(length(ctx.blocks)).$(dlext)"
+	return QuoteNode(Symbol(joinpath(dir, file)))
+end
 
 function getlib(ctx::Context, sym)
 	for (handle, lib) in ctx.libs
@@ -214,7 +222,7 @@ struct _NullCString <: AbstractString end
 Base.cconvert(::Type{Cstring}, ::_NullCString) = Cstring(C_NULL)
 
 
-function configure!(ctx::Context, args::Vector{String})
+function configure!(ctx::Context)
 	# find packaged include
 	includedir = joinpath(dirname(dirname(libclang_path())), "lib", "clang")
 	for entry in readdir(includedir)
@@ -225,82 +233,74 @@ function configure!(ctx::Context, args::Vector{String})
 		end
 	end
 	
-	args = vcat(args, [
+	pushfirst!(ctx.args,
 		"-Wno-empty-translation-unit",
-		"-isystem", includedir,
-	])
+		"-isystem", includedir,  # these -isystem args are needed since Clang_jll packaging seems to have clang's InstallDir not set/found correctly
+		"-isystem", joinpath(dirname(dirname(libclang_path())), "include"),
+	)
 	
 	libs = []
 	libpaths = []
-	for ind in eachindex(args)
-		if args[ind] == "-L"
-			if ind < length(args)
-				push!(libpaths, args[ind+1])
-				args[ind] = ""
-				args[ind+1] = ""
+	for ind in eachindex(ctx.args)
+		if ctx.args[ind] == "-L"
+			if ind < length(ctx.args)
+				push!(libpaths, ctx.args[ind+1])
+				ctx.args[ind] = ""
+				ctx.args[ind+1] = ""
 			end
-		elseif args[ind] == "-l"
-			if ind < length(args)
-				push!(libs, args[ind+1])
-				args[ind] = ""
-				args[ind+1] = ""
+		elseif ctx.args[ind] == "-l"
+			if ind < length(ctx.args)
+				push!(libs, ctx.args[ind+1])
+				ctx.args[ind] = ""
+				ctx.args[ind+1] = ""
 		end
-		elseif startswith(args[ind], "-L")
-			push!(libpaths, args[ind][3:end])
-			args[ind] = ""
-		elseif startswith(args[ind], "-l")
-			push!(libs, args[ind][3:end])
-			args[ind] = ""
+		elseif startswith(ctx.args[ind], "-L")
+			push!(libpaths, ctx.args[ind][3:end])
+			ctx.args[ind] = ""
+		elseif startswith(ctx.args[ind], "-l")
+			push!(libs, ctx.args[ind][3:end])
+			ctx.args[ind] = ""
 		end
 	end
-	
-	# TODO: libpaths might need to be added to LD_LIBRARY_PATH
 	
 	for lib in libs
 		l = find_library(lib, libpaths)
 		l = isempty(l) ? find_library("lib"*lib, libpaths) : l
 		isempty(l) && error("Failed to find library $(lib) in $(join(libpaths, ", "))")
 		
-		lib = dlopen(l, RTLD_LAZY | RTLD_DEEPBIND | RTLD_LOCAL)
+		lib = dlopen(l)
 		lib == C_NULL && error("Failed to dlopen library $(l)")
 		push!(ctx.libs, lib => Symbol(l))
 	end
-	lib = dlopen(_NullCString(), RTLD_LAZY | RTLD_DEEPBIND | RTLD_LOCAL)
+	lib = dlopen(_NullCString())
 	lib == C_NULL && error("Failed to dlopen Julia process")
 	push!(ctx.libs, lib => Nothing)
 	
 	ctx.ind = clang_createIndex(false, true)
 	ctx.ind == C_NULL && error("Failed to create index")
-	
-	ptrs = map(pointer, args)
-	
-	unsaved = [CXUnsavedFile(
-		Filename = pointer(header(ctx)),
-		Contents = pointer(ctx.src.data),
-		Length   = ctx.src.size,
-	)]
-	
-	err = clang_parseTranslationUnit2(ctx.ind, header(ctx), ptrs, length(ptrs), unsaved, length(unsaved), FLAGS, ctx.tu)
-	err == CXError_Success || error("Failed to parse translation unit $(err)")
 end
 
 
 
-function parse!(ctx::Context, mod::Module, loc::LineNumberNode, flags::NamedTuple, str::String)
+function Base.push!(ctx::Context, loc::LineNumberNode, flags::NamedTuple, str::String)
 	str = endswith(str, '\n') ? str : str*'\n'  # ensure new line here so countlines is consistent
 	print(ctx.src, str)
-	
-	empty!(ctx.hdrs)
 	
 	blk = getblock(ctx)
 	start = isnothing(blk) ? 1 : blk.lines.stop+1
 	stop  = start + countlines(IOBuffer(str))-1
 	push!(ctx.blocks, CodeBlock(
-		mod,
 		loc,
 		start:stop,
 		flags,
+		String[],
 	))
+end
+
+
+
+function parse!(ctx::Context)
+	empty!(ctx.hdrs)
 	
 	unsaved = [CXUnsavedFile(
 		Filename = pointer(header(ctx)),
@@ -308,13 +308,15 @@ function parse!(ctx::Context, mod::Module, loc::LineNumberNode, flags::NamedTupl
 		Length   = ctx.src.size,
 	)]
 	
-	err = clang_reparseTranslationUnit(ctx.tu[], length(unsaved), unsaved, FLAGS)
+	if ctx.tu[] == C_NULL
+		ptrs = map(pointer, ctx.args)
+		err = clang_parseTranslationUnit2(ctx.ind, header(ctx), ptrs, length(ptrs), unsaved, length(unsaved), FLAGS, ctx.tu)
+	else
+		err = clang_reparseTranslationUnit(ctx.tu[], length(unsaved), unsaved, FLAGS)
+	end
 	err == CXError_Success || error("Failed to parse translation unit $(err)")
-end
-
-
-
-function check(ctx::Context)
+	
+	
 	isfatal = false
 	for ind in 1:clang_getNumDiagnostics(ctx.tu[])
 		diag = nothing
@@ -347,20 +349,41 @@ function check(ctx::Context)
 			sev = clang_getDiagnosticSeverity(diag)
 			if sev in (CXDiagnostic_Error, CXDiagnostic_Fatal)
 				isfatal = true
-				isquiet || @error msg  (_module = !isnothing(blk) ? blk.mod : @__MODULE__)  (_file = !isnothing(blk) ? String(blk.loc.file) : @__FILE__)  (_line = !isnothing(blk) ? blk.loc.line : @__LINE__)
+				isquiet || @error msg  (_module = !isnothing(blk) ? ctx.mod : @__MODULE__)  (_file = !isnothing(blk) ? String(blk.loc.file) : @__FILE__)  (_line = !isnothing(blk) ? blk.loc.line : @__LINE__)
 			elseif sev == CXDiagnostic_Warning
-				isquiet || @warn  msg  (_module = !isnothing(blk) ? blk.mod : @__MODULE__)  (_file = !isnothing(blk) ? String(blk.loc.file) : @__FILE__)  (_line = !isnothing(blk) ? blk.loc.line : @__LINE__)
+				isquiet || @warn  msg  (_module = !isnothing(blk) ? ctx.mod : @__MODULE__)  (_file = !isnothing(blk) ? String(blk.loc.file) : @__FILE__)  (_line = !isnothing(blk) ? blk.loc.line : @__LINE__)
 			else
-				isquiet || @debug msg  (_module = !isnothing(blk) ? blk.mod : @__MODULE__)  (_file = !isnothing(blk) ? String(blk.loc.file) : @__FILE__)  (_line = !isnothing(blk) ? blk.loc.line : @__LINE__)
+				isquiet || @debug msg  (_module = !isnothing(blk) ? ctx.mod : @__MODULE__)  (_file = !isnothing(blk) ? String(blk.loc.file) : @__FILE__)  (_line = !isnothing(blk) ? blk.loc.line : @__LINE__)
 			end
 		finally
 			clang_disposeDiagnostic(diag)
 		end
 	end
 	
-	if isfatal
-		pop!(ctx)
-		error("Failed to create bindings, errors parsing $(String(ctx)) code")
+	isfatal && error("Errors parsing $(String(ctx)) code")
+end
+
+
+
+function wrap!(ctx::Context)
+	getblock(ctx).flags.wrap || return
+	isempty(getblock(ctx).inlines) && return
+	
+	mktemp() do path, file
+		blk = 1
+		io = IOBuffer(ctx.src.data[1:ctx.src.size])
+		for (ind, line) in enumerate(eachline(io))
+			println(file, line)
+			if ind == ctx.blocks[blk].lines.stop
+				foreach(inline ->  println(file, inline), ctx.blocks[blk].inlines)
+				blk += 1
+			end
+		end
+		close(file)
+		
+		libclang.Clang_jll.clang() do bin
+			run(`$(bin) -w -O2 -fPIC -shared -o $(getlib(ctx).value) -x $(lowercase(String(ctx))) $(path) $(ctx.args)`)  # TODO: add -rpath for all ctx.libs?
+		end
 	end
 end
 
@@ -389,7 +412,7 @@ function clang_cmd(mod::Module, loc::LineNumberNode, lang::Symbol, str::String)
 	cmd = Meta.parse("`$(escape_string(str))`")
 	
 	return quote
-		CONTEXT_CACHE[@__MODULE__] = Context{$(QuoteNode(lang))}($(esc(cmd)).exec)
+		CONTEXT_CACHE[$(mod)] = Context{$(QuoteNode(lang))}($(mod), $(esc(cmd)).exec...)
 		nothing
 	end
 end
@@ -400,14 +423,19 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	# TODO: allow interpolation in str?
 	
 	flags = (;
-		defer  = 'd' in opts,
-		implic = 'i' in opts,
-		jlsyms = 'j' in opts,
-		priv   = 'p' in opts,
-		quiet  = 'q' in opts,
-		ref    = 'r' in opts,
-		skip   = 's' in opts,
-		nodocs = 'u' in opts,
+		defer   = 'd' in opts,
+		nofunc  = 'f' in opts,
+		implic  = 'i' in opts,
+		jlsyms  = 'j' in opts,
+		nomacro = 'm' in opts,
+		priv    = 'p' in opts,
+		quiet   = 'q' in opts,
+		ref     = 'r' in opts,
+		skip    = 's' in opts,
+		notype  = 't' in opts,
+		nodocs  = 'u' in opts,
+		novar   = 'v' in opts,
+		wrap    = 'w' in opts,
 	)
 	
 	ref = getref(Context{lang}, str)
@@ -418,11 +446,17 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	ctx = CONTEXT_CACHE[mod]
 	language(ctx) === lang || error("Compiler context ($(language(Context{lang}))`...`) not created before declaring $(String(Context{lang})) bindings ($(language(Context{lang}))\"...\")")
 	
-	parse!(ctx, mod, loc, flags, str)
-	check(ctx)
-	root = clang_getTranslationUnitCursor(ctx.tu[])
-	exprs = getexprs(ctx, root)
-	advance!(ctx)
+	exprs = []
+	try
+		push!(ctx, loc, flags, str)
+		parse!(ctx)
+		exprs = getexprs(ctx)
+		wrap!(ctx)
+		advance!(ctx)
+	catch
+		pop!(ctx)
+		rethrow()
+	end
 	
 	return quote
 		$(exprs...)

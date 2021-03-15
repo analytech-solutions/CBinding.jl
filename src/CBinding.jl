@@ -112,13 +112,15 @@ module CBinding
 	end
 	
 	struct CodeBlock
-		mod::Module
 		loc::LineNumberNode
 		lines::UnitRange{Int64}
 		flags::NamedTuple
+		inlines::Vector{String}
 	end
 	
 	mutable struct Context{lang}
+		mod::Module
+		args::Vector{String}
 		ind::Union{CXIndex, Nothing}
 		tu::Ref{CXTranslationUnit}
 		line::Int
@@ -127,16 +129,16 @@ module CBinding
 		blocks::Vector{CodeBlock}
 		src::IOBuffer
 		
-		function Context{lang}(args...) where {lang}
-			ctx = new{lang}(nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), CodeBlock[], IOBuffer())
+		function Context{lang}(mod::Module, args...) where {lang}
+			ctx = new{lang}(mod, map(String, collect(args)), nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), CodeBlock[], IOBuffer())
 			finalizer(ctx) do x
 				x.tu[] == C_NULL || clang_disposeTranslationUnit(x.tu[])
 				isnothing(x.ind) || x.ind == C_NULL || clang_disposeIndex(x.ind)
 				foreach(lib -> dlclose(lib.first), x.libs)
 			end
 			
-			configure!(ctx, args...)
-			check(ctx)
+			configure!(ctx)
+			parse!(ctx)
 			
 			return ctx
 		end
