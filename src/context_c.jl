@@ -342,6 +342,8 @@ end
 function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 	exprs = []
 	
+	getblock(ctx).flags.notype && return exprs
+	
 	type = clang_getCursorType(cursor)
 	decl = clang_getTypeDeclaration(type)
 	
@@ -517,6 +519,8 @@ end
 function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 	exprs = []
 	
+	getblock(ctx).flags.nofunc && cursor.kind == CXCursor_FunctionDecl && return exprs
+	getblock(ctx).flags.novar && cursor.kind == CXCursor_VarDecl && return exprs
 	
 	exposed = clang_Cursor_getStorageClass(cursor)
 	visible = clang_getCursorVisibility(cursor)
