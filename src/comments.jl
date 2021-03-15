@@ -1,6 +1,6 @@
 
 
-function getdocs(ctx::Context, cursor::CXCursor, nested = [])
+function getdocs(ctx::Context, cursor::CXCursor)
 	getblock(ctx).flags.nodocs && return nothing
 	
 	comment = clang_Cursor_getParsedComment(cursor)
@@ -18,56 +18,14 @@ end
 
 
 function Markdown.MD(ctx::Context, cursor::CXCursor)
-	tokens = tokenize(ctx.tu[], cursor)
-	tokens = join(map(token -> clang_getTokenKind(token) == CXToken_Comment ? "" : string(ctx.tu[], token), tokens), ' ')
-	tokens = replace(tokens, "{" => "{\n")
-	tokens = replace(tokens, " ;" => ";\n")
-	tokens = replace(tokens, " }" => "\n}")
-	tokens = replace(tokens, " ," => ",")
-	tokens = replace(tokens, ": " => ":")
-	tokens = replace(tokens, " :" => ":")
-	tokens = replace(tokens, "( " => "(")
-	tokens = replace(tokens, " )" => ")")
-	tokens = replace(tokens, "[ " => "[")
-	tokens = replace(tokens, " [" => "[")
-	tokens = replace(tokens, " ]" => "]")
-	tokens = replace(tokens, " (" => "(")
-	tokens = replace(tokens, r"(\w)(\(\*)\s+" => s"\1 \2")
-	tokens = replace(tokens, "  " => " ")
-	tokens = replace(tokens, r"\n\s+" => "\n")
+	code = getcode(ctx, cursor)
+	code = Markdown.Code(String(language(ctx)), code)
 	
-	indents = 0
-	result = ""
-	isParens = false
-	wasComma = false
-	wasEOL = false
-	for c in tokens
-		if c == '}'
-			indents -= 1
-		elseif c == '{'
-			indents += 1
-		elseif c == '('
-			isParens = true
-		elseif c == ')'
-			isParens = false
-		end
-		
-		if wasEOL
-			result *= repeat("  ", indents)
-		end
-		if !(!isParens && wasComma)
-			result *= c
-		end
-		
-		wasEOL = c == '\n'
-		wasComma = c == ','
-		if !isParens && wasComma
-			result *= '\n'
-			wasEOL = true
-		end
-	end
+	loc = first(getlocation(cursor))
+	loc = loc.file == header(ctx) ? getblock(ctx, loc).loc : loc
+	ref = Markdown.Paragraph(Markdown.Link("Defined at $(basename(String(loc.file))):$(loc.line)", "file://$(loc.file)"))
 	
-	return Markdown.MD(Markdown.Code(String(language(ctx)), strip(result)))
+	return Markdown.MD(code, ref)
 end
 
 

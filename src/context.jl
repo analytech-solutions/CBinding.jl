@@ -40,6 +40,61 @@ end
 
 
 
+function getcode(ctx::Context, cursor::CXCursor)
+	tokens = tokenize(ctx.tu[], cursor)
+	tokens = join(map(token -> clang_getTokenKind(token) == CXToken_Comment ? "" : string(ctx.tu[], token), tokens), ' ')
+	tokens = replace(tokens, "{" => "{\n")
+	tokens = replace(tokens, " ;" => ";\n")
+	tokens = replace(tokens, " }" => "\n}")
+	tokens = replace(tokens, " ," => ",")
+	tokens = replace(tokens, ": " => ":")
+	tokens = replace(tokens, " :" => ":")
+	tokens = replace(tokens, "( " => "(")
+	tokens = replace(tokens, " )" => ")")
+	tokens = replace(tokens, "[ " => "[")
+	tokens = replace(tokens, " [" => "[")
+	tokens = replace(tokens, " ]" => "]")
+	tokens = replace(tokens, " (" => "(")
+	tokens = replace(tokens, r"(\w)(\(\*)\s+" => s"\1 \2")
+	tokens = replace(tokens, "  " => " ")
+	tokens = replace(tokens, r"\n\s+" => "\n")
+	
+	indents = 0
+	code = ""
+	isParens = false
+	wasComma = false
+	wasEOL = false
+	for c in tokens
+		if c == '}'
+			indents -= 1
+		elseif c == '{'
+			indents += 1
+		elseif c == '('
+			isParens = true
+		elseif c == ')'
+			isParens = false
+		end
+		
+		if wasEOL
+			code *= repeat("  ", indents)
+		end
+		if !(!isParens && wasComma)
+			code *= c
+		end
+		
+		wasEOL = c == '\n'
+		wasComma = c == ','
+		if !isParens && wasComma
+			code *= '\n'
+			wasEOL = true
+		end
+	end
+	return strip(code)
+end
+
+
+getexprs(ctx::Context) = getexprs(ctx, clang_getTranslationUnitCursor(ctx.tu[]))
+
 function getexprs(ctx::Context, syms, blocks...)
 	expr = quote end
 	for block in blocks
