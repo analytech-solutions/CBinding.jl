@@ -316,22 +316,23 @@ end
 
 
 function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
-	ispropagated = false
+	getblock(ctx).flags.notype && return quote end
+	
+	name  = gettype(ctx, string(cursor))
+	jlsym = getjl(ctx, string(cursor))
+	docs  = getdocs(ctx, cursor)
+	
 	type = clang_getTypedefDeclUnderlyingType(cursor)
 	if type.kind == CXType_Elaborated
 		# get from elaborated to actual record definition
 		decl = clang_getTypeDeclaration(type)
 		type = clang_getCursorType(decl)
-		ispropagated = isempty(string(decl))
+		docs = jlsym == getjl(ctx, string(decl)) ? nothing : docs  # avoid "replacing docs" warnings when julia-ized names are the same if struct/union/enum was stripped
 	end
-	
 	tname = gettype(ctx, type)
-	name  = gettype(ctx, string(cursor))
-	jlsym = getjl(ctx, string(cursor))
-	docs  = getdocs(ctx, cursor)
 	
 	# nested anonymous opaque type had this typedef's name propagated to it so no expr needed
-	return ispropagated ? quote end : getexprs(ctx, ((name, jlsym, docs),), quote
+	return tname == name ? quote end : getexprs(ctx, ((name, jlsym, docs),), quote
 		const $(name) = $(tname)
 	end)
 end
@@ -354,19 +355,20 @@ function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 	(name, absname) = isanon ?
 		(gettype(ctx, type), kind) :
 		(gettype(ctx, type, isbitstype = true), gettype(ctx, type))
-	(jlsym, jlabssym, docs) = isanon ?
-		(getjl(ctx, string(type)), nothing, nothing) :
-		(nothing, getjl(ctx, string(type)), getdocs(ctx, cursor))
+	(jlsym, jlabssym) = isanon ?
+		(getjl(ctx, string(type)), nothing) :
+		(nothing, getjl(ctx, string(type)))
 	
 	def = clang_getCursorDefinition(cursor)
 	loc = getlocation(def)
 	if !isanon && (isnothing(loc) || (first(loc).file == header(ctx) || haskey(ctx.hdrs, first(loc).file)))
-		push!(exprs, getexprs(ctx, ((absname, jlabssym, isdecl ? docs : nothing),), quote
+		push!(exprs, getexprs(ctx, ((absname, jlabssym, nothing),), quote
 			abstract type $(absname) <: $(kind) end
 		end))
 	end
 	
 	if isdecl
+		docs = getdocs(ctx, cursor)
 		common = quote
 			CBinding.bitstype(::Type{$(name)}) = $(name)
 			$(!isanon ? :(CBinding.bitstype(::Type{$(absname)}) = $(name)) : :())
@@ -375,16 +377,6 @@ function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 		if cursor.kind == CXCursor_EnumDecl
 			push!(exprs, getexprs_enum(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
 		else
-			for child in children(cursor)
-				if child.kind in (
-					CXCursor_StructDecl,
-					CXCursor_UnionDecl,
-					CXCursor_EnumDecl,
-					CXCursor_TypedefDecl,
-				)
-					append!(exprs, getexprs(ctx, child))
-				end
-			end
 			push!(exprs, getexprs_aggregate(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
 		end
 	end
@@ -415,7 +407,7 @@ function getexprs_enum(ctx::Context{:c}, cursor::CXCursor, name, absname, jlsym,
 	end
 	
 	return getexprs(ctx, (
-		(!isnothing(jlabssym) ? ((absname, jlabssym, nothing),) : ())...,
+		(!isnothing(jlabssym) ? ((absname, jlabssym, docs),) : ())...,
 		(name, jlsym, docs),
 		map(((j, v, d),) -> (esc(getname(ctx, j)), esc(j), d), values)...,
 	), quote
@@ -503,7 +495,7 @@ function getexprs_aggregate(ctx::Context{:c}, cursor::CXCursor, name, absname, j
 	reverse!(fields)
 	
 	return getexprs(ctx, (
-		(!isnothing(jlabssym) ? ((absname, jlabssym, nothing),) : ())...,
+		(!isnothing(jlabssym) ? ((absname, jlabssym, docs),) : ())...,
 		(name, jlsym, docs),
 	), quote
 		struct $(name) <: $(absname)
