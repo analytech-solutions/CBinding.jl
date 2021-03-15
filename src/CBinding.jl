@@ -1,6 +1,7 @@
 module CBinding
 	using Libdl
 	using Markdown
+	using Scratch
 	
 	
 	# TODO: something for Base?
