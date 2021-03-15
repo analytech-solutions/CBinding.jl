@@ -15,11 +15,8 @@ function (::Type{CA})(init::Union{NTuple{N, UInt8} where {N}, CA, Cbinding{CA}, 
 		init isa Cptrs ? init[] :
 		init
 	
-	for arg in args
-		arg::Pair
-		first(arg)::Integer
-		
-		result = setindex!(result, last(arg), first(arg))
+	for (ind, arg) in enumerate(args)
+		result = arg isa Pair && first(arg) isa Integer ? setindex!(result, last(arg), first(arg)) : setindex!(result, arg, ind)
 	end
 	
 	return result
@@ -31,6 +28,7 @@ Base.sizeof(::Type{CA}) where {CA<:Carray} = invoke(sizeof, Tuple{Any}, bitstype
 Base.size(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = (N,)
 Base.length(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = N
 Base.eltype(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = T
+Base.convert(::Type{CA}, t::Tuple) where {CA<:Carray} = CA(t...)
 
 Base.firstindex(ca::CA) where {CA<:Carrays} = 1
 Base.lastindex(ca::CA) where {CA<:Carrays} = length(ca)

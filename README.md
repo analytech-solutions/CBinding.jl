@@ -306,16 +306,26 @@ The `unqualifiedtype(T)` can be used to strip away the type qualifiers to get to
 [As mentioned above](#any-gotchas), the `bitstype(T)` function can be used to acquire the concrete bits type of user-defined C types as well.
 
 
-## Working with C objects
+## Working with aggregate types and sized arrays
 
-User-defined aggregate types (`struct` and `union`) have several ways to be constructed.
+User-defined aggregate types (`struct` and `union`) have several ways to be constructed:
 
 - `t = c"struct T"()` - zero-ed immutable object
 - `t = c"struct T"(i = 123)` - zero-ed immutable object with field `i` initialized to 123
 - `t = c"struct T"(t, i = 321)` - copy of `t` with field `i` initialized to 321
 
-These types are immutable structs and changing fields will have no effect.
-Nested calls are also possible, and performance should match that of accessing fields within standard Julia immutable structs.
+These objects are immutable and changing fields will have no effect, so a copy must be constructed with the desired field overrides or ((pointers must be used)[#working-with-pointers]).
+Nested field access is transparent, and performance should match that of accessing fields within standard Julia immutable structs.
+
+Statically-sized arrays (i.e. `c"typedef int IntArray[4];"`) can be constructed:
+
+- `t = c"IntArray"()` - zero-ed immutable array
+- `t = c"IntArray"(1, 2)` - zero-ed immutable array with first 2 elements initialized to 1 and 2
+- `t = c"IntArray"(t, 3)` - copy of `t` with first element initialized to 3
+- `t = c"IntArray"(t, 4 => 123)` - copy of `t` with 4th element initialized to 123
+
+Constructors for both aggregates and arrays can also accept nested `Tuple` and `NamedTuple` arguments which get splatted appropriately into the respective field's constructor.
+A comprehensive example of constructing a complex C type and accessing fields/elements is shown below:
 
 ```jl
 julia> c`` ; c"""
@@ -326,26 +336,26 @@ julia> c`` ; c"""
            struct {
              struct {
                int i;
-             } c;
+             } c[2];
            } b;
          };
        """;
 
-julia> a = c"struct A"()
+julia> a = c"struct A"();
 
 julia> a.i
 0
 
-julia> a.b.c.i
+julia> a.b.c[2].i
 0
 
-julia> a = c"struct A"(i = 123, b = (c = (i = 321,),))
+julia> a = c"struct A"(i = 123, b = (c = ((i = 321,), (i = 654,)),));
 
 julia> a.i
 123
 
-julia> a.b.c.i
-321
+julia> a.b.c[2].i
+654
 
 ```
 
@@ -364,13 +374,13 @@ Cptr{Int32}(0x0000000003458810)
 julia> ptr.i[]
 123
 
-julia> ptr.b.c.i
+julia> ptr.b.c[2].i
 Cptr{Int32}(0x0000000003458814)
 
-julia> ptr.b.c.i[]
-321
+julia> ptr.b.c[2].i[]
+654
 
-julia> ptr.b.c.i[] = 42
+julia> ptr.b.c[2].i[] = 42
 42
 
 julia> Libc.free(ptr)  # deallocate it
@@ -380,31 +390,7 @@ An exception to the rule is bitfields.
 It is not possible to refer to bitfields with a pointer, so access to bitfields is automatically dereferenced.
 
 
-## Working with arrays
-
-Included with CBinding.jl is a static array type which works as one expects.
-However, when using a subscript with a pointer to an array, a properly typed pointer to the element specified is returned and must be dereferenced.
-
-```jl
-julia> c"""
-         typedef struct {
-           int i;
-         } IntArray[4];
-       """;
-
-julia> ptr = Libc.malloc(c"IntArray");
-
-julia> ptr[4].i
-Cptr{Int32}(0x00000000023d8194)
-
-julia> ptr[4].i[] = 123
-123
-
-julia> Libc.free(ptr)  # deallocate it
-```
-
-
-## Using C bindings
+## Using global variable and function bindings
 
 Bindings to global variables also behave as if they are pointers, and must be dereferenced to be read or written, but any fields and elements can be followed through with pointers.
 Bindings to functions are direct, but getting the pointer to a bound function can be done with the `func[]` syntax.
