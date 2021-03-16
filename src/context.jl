@@ -112,6 +112,7 @@ function getcode(ctx::Context, cursor::CXCursor)
 end
 
 
+
 getexprs(ctx::Context) = getexprs(ctx, clang_getTranslationUnitCursor(ctx.tu[]))
 
 function getexprs(ctx::Context, syms, blocks...)
@@ -395,7 +396,7 @@ function wrap!(ctx::Context)
 		close(file)
 		
 		libclang.Clang_jll.clang() do bin
-			run(`$(bin) -w -O2 -fPIC -shared -o $(getlib(ctx).value) -x $(lowercase(String(ctx))) $(path) $(ctx.args)`)  # TODO: add -rpath for all ctx.libs?
+			run(`$(bin) -w -O2 -fPIC -shared -o $(getlib(ctx).value) $(path) $(ctx.args)`)  # TODO: add -rpath for all ctx.libs?
 		end
 	end
 end

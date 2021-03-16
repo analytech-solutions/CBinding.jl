@@ -87,9 +87,6 @@ function getlocation(rng::CXSourceRange)
 	
 	start = clang_getRangeStart(rng)
 	stop  = clang_getRangeEnd(rng)
-	Bool(clang_Location_isInSystemHeader(start)) && return nothing
-	Bool(clang_Location_isInSystemHeader(stop))  && return nothing
-	
 	locs = map(getlocation, (start, stop))
 	any(isnothing, locs) && return nothing
 	
