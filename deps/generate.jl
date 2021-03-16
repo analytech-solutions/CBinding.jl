@@ -24,7 +24,7 @@ withenv("LD_LIBRARY_PATH" => get(ENV, "LD_LIBRARY_PATH", "")*":"*normpath(dirnam
 			$(@eval @macroexpand c"""
 				#include <clang-c/Documentation.h>
 				#include <clang-c/Index.h>
-			"""jiu)
+			"""jium)
 		end
 		
 		
