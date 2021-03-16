@@ -4,7 +4,7 @@
 
 Use CBinding.jl to automatically create C library bindings with Julia at runtime!
 
-Package supports C features:
+Package supports these C features:
 
 - [x] fully supports C's `struct`, `union`, and `enum` types
 - [x] alignment strategies
@@ -14,12 +14,12 @@ Package supports C features:
 - [x] type qualifiers
 - [x] variadic functions
 - [x] unknown-length arrays
-- [ ] inline functions (todo)
+- [x] inline functions (experimental opt-in)
 - [x] typed function pointers
 - [x] function calling conventions
 - [x] automatic callback function pointers
 - [x] documentation generation
-- [ ] macros (work-in-progress)
+- [x] preprocessor macros (partially supported)
 - [x] fully supports insane C (i.e. `extern struct { int i; } g[2], func();`)
 
 Read on to learn how to automatically create C library bindings, or [learn how to use the generated bindings](#using-cjl-generated-bindings).
@@ -136,7 +136,7 @@ Most often it is only a few `using` and `const` statements.
 
 ## A complete example
 
-Finally, an example of what a package using CBinding.jl might look like:
+Finally, a set of examples can be found at https://github.com/analytech-solutions/ExamplesUsingCBinding.jl, but here is a generalized example of what a package using CBinding.jl might look like:
 
 ```jl
 module LibFoo
@@ -201,13 +201,19 @@ Occasionally it is necessary to include or define C code that is just a dependen
 These kinds of situations can be handled with combinations of the following string macro suffixes.
 
 - `d` - defer conversion of the C code block; successive blocks marked with `d` will keep deferring until a block without it (its options will be used for processing the deferred blocks)
+- `f` - don't create bindings for `extern` functions
 - `i` - also parse implicitly included headers that are related (in the same directory or subdirectories of it) to explicitly included headers
 - `j` - also define bindings with Julian names (name collisions likely)
+- `m` - skip conversion of C macros
+- `n` - show warnings for macros or inline functions that must be skipped
 - `p` - mark the C code as "private" content that will not be exported
 - `q` - quietly parse the block of C code, suppressing any compiler messages
 - `r` - the C code is only a reference to something in C-land and bindings are not to be generated
-- `s` - skip creating bindings for this block of C code
+- `s` - skip processing of this block of C code
+- `t` - skip conversion of C types
 - `u` - leave this block of C code undocumented
+- `v` - don't create bindings for `extern` variables
+- `w` - create bindings for inline functions by using wrapper libraries (somewhat experimental)
 
 ```jl
 julia> c"""
@@ -267,7 +273,7 @@ All other types, pointers, arrays, global variables, enumeration constants, func
 Here is a quick reference for C string macro usage:
 
 - `c"int"` - the `Cint` type
-- `c"int[2]"` - a length-2 static array `Cint`'s
+- `c"int[2]"` - a length-2 static array of `Cint`'s
 - `c"int[2][4]"` - a length-2 static array of length-4 static arrays of `Cint`'s
 - `c"int *"` - pointer to a `Cint`
 - `c"int **"` - pointer to a pointer to a `Cint`
@@ -276,10 +282,10 @@ Here is a quick reference for C string macro usage:
 - `c"union MyUnion"` - a user-defined C `union` type
 - `c"struct MyStruct"` - a user-defined C `struct` type
 - `c"struct MyStruct *"` - a pointer to a user-defined C `struct` type
-- `c"struct MyStruct [2]"` - a length-2 static array of user-defined C `struct` type
+- `c"struct MyStruct[2]"` - a length-2 static array of user-defined C `struct` type
 - `c"MyStruct"` - a user-defined `typedef`-ed type
 - `c"MyStruct *"` - a pointer to a user-defined `typedef`-ed type
-- `c"printf"` - the printf function
+- `c"printf"` - a C function (specifically the `printf` function)
 - `c"int (*)(int, int)"` - a function pointer
 - `c"int (*)(char const *, ...)"` - a variadic function pointer
 
@@ -392,8 +398,9 @@ It is not possible to refer to bitfields with a pointer, so access to bitfields 
 
 ## Using global variable and function bindings
 
-Bindings to global variables also behave as if they are pointers, and must be dereferenced to be read or written, but any fields and elements can be followed through with pointers.
-Bindings to functions are direct, but getting the pointer to a bound function can be done with the `func[]` syntax.
+Bindings to global variables also behave as if they are pointers, and must be dereferenced to be read or written.
+Fields and elements can be followed through the same as with pointers.
+Bindings to functions can be called directly, and getting the pointer to a one can be done with the "dereferencing" (`func[]`) syntax in case a bound function must be used as a callback function.
 
 ```jl
 julia> c"func"(Cint(1), Cint(2));  # call the C function directly
@@ -427,8 +434,6 @@ julia> c"set_callback"(saferadd)
 
 
 # Any gotchas?
-
-Inline functions and macros are not yet implemented, but they will be added in future releases.
 
 Since Julia does not yet provide `incomplete type` (please voice your support of the feature here: https://github.com/JuliaLang/julia/issues/269), abstract types are used to allow forward declarations in C.
 Therefore, referencing C types usually refers to the abstract type which can have significant implications when creating Julia arrays, using `ccall`, etc.
