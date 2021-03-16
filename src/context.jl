@@ -246,10 +246,11 @@ function configure!(ctx::Context)
 	end
 	
 	pushfirst!(ctx.args,
-		"-Wno-empty-translation-unit",
-		"-x", lowercase(String(ctx)),
 		"-isystem", includedir,  # these -isystem args are needed since Clang_jll packaging seems to have clang's InstallDir not set/found correctly
 		"-isystem", joinpath(dirname(dirname(libclang_path())), "include"),
+		# NOTE: in wrap!, ctx.args[5:8] is used separately from ctx.args[9:end] in the compile command
+		"-x", lowercase(String(ctx)),
+		"-Wno-empty-translation-unit",
 	)
 	
 	libs = []
@@ -396,7 +397,7 @@ function wrap!(ctx::Context)
 		close(file)
 		
 		libclang.Clang_jll.clang() do bin
-			run(`$(bin) -w -O2 -fPIC -shared -o $(getlib(ctx).value) $(path) $(ctx.args)`)  # TODO: add -rpath for all ctx.libs?
+			run(`$(bin) $(ctx.args[5:8]) -w -O2 -fPIC -shared -o $(getlib(ctx).value) $(path) $(ctx.args[9:end])`)  # TODO: add -rpath for all ctx.libs?
 		end
 	end
 end
@@ -424,6 +425,7 @@ end
 
 function clang_cmd(mod::Module, loc::LineNumberNode, lang::Symbol, str::String)
 	cmd = :(``)
+	cmd.args[end-1] = loc
 	cmd.args[end] = str
 	
 	return quote
