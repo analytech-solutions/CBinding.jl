@@ -11,4 +11,5 @@ Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 
 [compat]
 Clang_jll = "^9,^11"
+Scratch = "^1"
 julia = "^1.5"
