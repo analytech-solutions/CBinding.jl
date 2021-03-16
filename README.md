@@ -2,502 +2,471 @@
 
 [![Build Status](https://github.com/analytech-solutions/CBinding.jl/workflows/CI/badge.svg)](https://github.com/analytech-solutions/CBinding.jl/actions)
 
-This package provides improvements for specifying and using C bindings in Julia.
-CBinding.jl has the goal of making it easier to correctly connect Julia to your C API and libraries.
-We have highlighted in our blog post many of the issues encountered when [using C libraries from Julia](https://analytech-solutions.com/analytech-solutions/blog/cbinding.html), and those issues have fueled us to develop this package.
+Use CBinding.jl to automatically create C library bindings with Julia at runtime!
 
-# Usage
+Package supports these C features:
 
-CBinding.jl provides some missing functionality and more precise specification capabilities than those provided by the builtin Julia facilities for interfacing C.
-All of the functionality and correctness of the CBinding.jl package has been compared to the behavior of GCC on x86_64 and AArch64 Linux distributions.
-Since many aspects of C are platform or compiler defined, the behavior of API's built for other platforms or compilers may not be matched by this package.
-Any help to test and develop against other setups is very much welcome!
+- [x] fully supports C's `struct`, `union`, and `enum` types
+- [x] alignment strategies
+- [x] bit fields
+- [x] nested types
+- [x] anonymous types
+- [x] type qualifiers
+- [x] variadic functions
+- [x] unknown-length arrays
+- [x] inline functions (experimental opt-in)
+- [x] typed function pointers
+- [x] function calling conventions
+- [x] automatic callback function pointers
+- [x] documentation generation
+- [x] preprocessor macros (partially supported)
+- [x] fully supports insane C (i.e. `extern struct { int i; } g[2], func();`)
 
-## C Aggregate and Array Types
+Read on to learn how to automatically create C library bindings, or [learn how to use the generated bindings](#using-cjl-generated-bindings).
 
-CBinding.jl provides a statically-sized C array similar to the static array constructs found in some other Julia packages.
-An array definition is obtained by using the`@carray ElementType[SIZE]` syntax, which is provided to ease in the transcribing of C to Julia.
-When used within the context of a `@cunion`, `@cstruct`, or `@ctypedef` macro, `ElementType[SIZE]` can be used directly to define arrays.
 
-The `union` and `struct` aggregate types in C are described in very similar ways using CBinding.jl.
-Both require the bit range of each aggregate field to be specified in order to support the different field packing approaches used in C.
-Aggregate fields can be nested and anonymous aggregate fields can be used as well - two significant improvements over the usual Julian approach.
+# Create bindings with `CBinding.jl`
+
+First, set up a compiler context to collect C expressions (at the module scope, or at the REPL).
 
 ```jl
 julia> using CBinding
 
-julia> @cstruct MyFirstCStruct {    # struct MyFirstCStruct {
-           i::Cint                  #     int i;
-       }                            # };
-
-julia> @ctypedef MySecondType @cstruct MySecondCStruct {    # typedef struct MySecondCStruct {
-           i::Cint                                          #     int i;
-           j::Cint                                          #     int j;
-           @cunion {                                        #     union {
-               w::Cuchar[sizeof(Cint)÷sizeof(Cuchar)]       #         unsigned char w[sizeof(int)/sizeof(unsigned char)];
-               x::Cint                                      #         int x;
-               (y::_[4])::@cstruct {                        #         struct {
-                   c::Cuchar                                #             unsigned char c;
-               }                                            #         } y[4];
-               z::MyFirstCStruct[1]                         #         struct MyFirstCStruct z[1];
-           }                                                #     };
-           m::MyFirstCStruct                                #     struct MyFirstCStruct m;
-       }                                                    # } MySecondType;
+julia> c``
 ```
 
-As you can see, type definition syntax closely mimics that of C, which you should find helpful when transcribing more complicated types or API's with numerous types.
-There are a few syntax differences to note though:
-
-- a `@ctypedef` is specified with the type name before the definition rather than after (as is done in C)  
-- likewise, an aggregate field is specified in the Julia `fieldName::FieldType` syntax rather than the C style of `FieldType fieldName`
-- in C a single line can specified multiple types (like `SomeType a, *b, c[4]`), but with our syntax these are expressed as a tuple (`(a, b::Ptr{_}, c::_[4])::SomeType`) with the use of an underscore `_` to mean "plug in type here"
-- Julia does not support forward declarations, so CBinding.jl uses some very dubious methods to simulate the capability which may cause grief and confusion for users when types don't appear as they should
-
-The generic constructor provided by CBinding.jl allows you to create an aggregate with uninitialized values, zero-initialized values, or from existing an existing aggregate object.
-It is also possible to use keyword arguments to specify values for particular fields within the aggregate as well.
-Pass the `zero` function to the constructor to create a zero-initialized object (an alternative is to pass the aggregate type to the `zero` function).
-The "undef" constructor is also defined and does nothing to initialize the memory region of the allocated object, so it is optimal to use in situations where an object will be fully initialized with particular values provided as keyword arguments.
+Notice that ``` c`...` ``` is a command macro (with the backticks) and is the means of specifying command line arguments to the Clang parser.
+Each time such a command macro is used, a new compiler context is started for the module creating it.
+A more real-life example might look like:
 
 ```jl
-julia> garbage = MySecondCStruct(undef)    # struct MySecondCStruct garbage;
-MySecondCStruct(i=-340722048, j=32586, w=UInt8[0x00, 0x00, 0x00, 0x00], x=0, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0x00), (c=0x00)], z=MyFirstCStruct[(i=0)], m=MyFirstCStruct(i=0))
+julia> libpath = find_libpath();
 
-julia> zeroed = MySecondCStruct(zero)    # struct MySecondCStruct zeroed; memset(&zeroed, 0, sizeof(zeroed));
-MySecondCStruct(i=0, j=0, w=UInt8[0x00, 0x00, 0x00, 0x00], x=0, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0x00), (c=0x00)], z=MyFirstCStruct[(i=0)], m=MyFirstCStruct(i=0))
+julia> c`-std=c99 -Wall -DGO_FAST=1 -Imylib/include -L$(libpath) -lmylib`
 ```
 
-Accessing the data fields within a C aggregate type works the way you would expect with one noteworthy detail.
-Notice that when modifying fields within a union (e.g. `zeroed.y[3].c = 0xff`) the change is also observed in the other fields in the union (`zeroed.w`, `zeroed.x`, and `zeroed.y`).
+The compiler context also finds the paths of all specified libraries so it can use them in any bindings that are created.
+
+Next the `c"..."` string macro can be used to input C code and automatically create the equivalent Julia types, global variable bindings, and function bindings.
+It is often the case that the C code will span multiple lines, so the triple-quoted variant (`c"""..."""`) is most effective for this usage.
 
 ```jl
-julia> zeroed.i = 100
-100
-
-julia> zeroed
-MySecondCStruct(i=100, j=0, w=UInt8[0x00, 0x00, 0x00, 0x00], x=0, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0x00), (c=0x00)], z=MyFirstCStruct[(i=0)], m=MyFirstCStruct(i=0))
-
-julia> zeroed.y[3].c = 0xff
-0xff
-
-julia> zeroed
-MySecondCStruct(i=100, j=0, w=UInt8[0x00, 0x00, 0xff, 0x00], x=16711680, y=<anonymous-struct>[(c=0x00), (c=0x00), (c=0xff), (c=0x00)], z=MyFirstCStruct[(i=16711680)], m=MyFirstCStruct(i=0))
+julia> c"""
+         struct S;
+         struct T {
+           int i;
+           struct S *s;
+           struct T *t;
+         };
+         
+         extern void func(struct S *s, struct T t);
+       """;
 ```
 
-When accessing a nested aggregate (or array) type, a `Caccessor` object is used to maintain a reference to the enclosing object.
-To get the aggregate itself that a `Caccessor` is referring to you must use `[]` similar to Julia `Ref` usage.
-This will lead to some surprising results/behavior if you forget this detail.
-The implemented `Base.show` function will also cause the `Caccessor` to appear as if you are working with the aggregate, so trust `typeof`.
+That's it...
+That's all that is needed to create a couple C types and a function binding in Julia, but actually, it gets even easier!
+
+C API's usually come with header files, so let's just use those to create the Julia bindings and save some effort.
+By default, bindings are generated from the code directly written in C string macros and header files explicitly included in them, but not headers included by those headers.
+[See the `i` string macro option](#options-for-c)) to allow parsing certain implicitly included headers as well.
 
 ```jl
-julia> typeof(zeroed.m)
-Caccessor{MyFirstCStruct,MySecondCStruct,Val{12}}
-
-julia> typeof(zeroed.m[])
-MyFirstCStruct
-
-julia> sizeof(zeroed.m)
-8
-
-julia> sizeof(zeroed.m[])
-4
-
-julia> zeroed.m
-MyFirstCStruct(i=0)
-
-julia> zeroed.m = MyFirstCStruct(zero, i = 42)
-MyFirstCStruct(i=42)
-
-julia> zeroed.m
-MyFirstCStruct(i=42)
-
-julia> zeroed.m[] = MyFirstCStruct(zero, i = 0)
-MyFirstCStruct(i=0)
-
-julia> zeroed.m
-MyFirstCStruct(i=0)
+julia> c"""
+         #include <mylib/header.h>
+       """;
 ```
 
-## C Field Alignment
+- [x] all C types are defined in Julia
+- [x] C function and global variable bindings defined
+- [x] the C API is documented and exported by the enclosing module
 
-By default, the fields in aggregates use native alignment to match the default alignment in C, but it is possible to denote packed aggregates using `__packed__`, similar to using a `__attribute__((packed))` attribute in C.
-CBinding.jl also features the `@calign` macro to describe additional alignment requirements when defining aggregate types.
+All done in just a few lines of code!
+[Take a look at the complete example below](#a-complete-example) or continue reading to learn about some more details.
+
+
+## Some gory details
+
+The C expressions are parsed and immediately converted to Julia code.
+In fact, the generated Julia code can be inspected using `@macroexpand`, like this:
 
 ```jl
-julia> @cstruct MyUnalignedCStruct {    # struct MyUnalignedCStruct {
-           c::Cchar                     #     char c;
-           i::Cint                      #     int i;
-           @cunion {                    #     union {
-               f::Cfloat                #         float f;
-               d::Cdouble               #         double d;
-           }                            #     };
-       } __packed__                     # } __attribute__((packed));
-MyUnalignedCStruct
-
-julia> sizeof(MyUnalignedCStruct)
-13
-
-julia> @cstruct MyAlignedCStruct {    # struct MyAlignedCStruct {
-           c::Cchar                   #     char c;
-           i::Cint                    #     int i;
-           @cunion {                  #     union {
-               f::Cfloat              #         float f;
-               d::Cdouble             #         double d;
-           }                          #     };
-       }                              # };
-
-julia> sizeof(MyAlignedCStruct)
-16
-
-julia> @cstruct MyStrictlyAlignedCStruct {                           # struct MyStrictlyAlignedCStruct {
-           @calign 1   # align next field at 1 byte                  #     alignas(1) char c;
-           c::Cchar                                                  #     alignas(int) int i;
-           @calign sizeof(Cint)   # align next field at 4 bytes      #     alignas(double) union {
-           i::Cint                                                   #         alignas(float) float f;
-           @calign sizeof(Cdouble)   # align largest nested field    #         alignas(double) double d;
-           @cunion {                                                 #     };
-               @calign sizeof(Cfloat)                                # };
-               f::Cfloat
-               @calign sizeof(Cdouble)
-               d::Cdouble
-           }
-       }
-MyStrictlyAlignedCStruct
-
-julia> sizeof(MyStrictlyAlignedCStruct)
-16
+julia> @macroexpand c"""
+         struct S;
+         struct T {
+           int i;
+           struct S *s;
+           struct T *t;
+         };
+         
+         extern void func(struct S *s, struct T t);
+       """
+  ⋮
+YIKES!
+  ⋮
 ```
 
-## C Const-ness
-
-One feature of C that doesn't necessarily port well into Julia is the `const` modifier on types.
-The aggregate types provided by CBinding.jl are mutable by default, but the `Cconst` type can be used to create an immutable `struct` form of the type.
-This mechanism can be used in a way that is _similar_ to the `const` modifier in C.
+In order to support the fully automatic conversion and avoid name collisions, the names of C types or functions are mangled a bit to work in Julia.
+Therefore everything generated by CBinding.jl can be accessed with the `c"..."` string macro ([more about this below](#using-cjl-generated-bindings)) to indicate that it lives in C-land.
+As an example, the function `func` above is available in Julia as `c"func"`.
+It is possible to store the generated bindings to more user-friendly names (this can sometimes be automated, [see the `j` option](#options-for-c)).
+Placing each C declaration in its own macro helps when doing this manually, like:
 
 ```jl
-julia> @cstruct ConstStruct {    # struct ConstStruct {
-           i::Cint               #     int i;
-           j::Cconst{Cint}       #     int const j;
-       }                         # };
-ConstStruct
+julia> const S = c"""
+         struct S;
+       """;
 
-julia> s = ConstStruct(zero, i = 1, j = 2)
-ConstStruct(i=1, j=2)
+julia> const T = c"""
+         struct T {
+           int i;
+           struct S *s;
+           struct T *t;
+         };
+       """;
 
-julia> s.i = 3
-3
-
-julia> s
-ConstStruct(i=3, j=2)
-
-julia> s.j = 4
-ERROR: Unable to change the value of a Cconst field
-Stacktrace:
- [1] error(::String) at ./error.jl:33
-  ⁝
-
-julia> c = Cconst(s)
-Cconst(ConstStruct(i=3, j=2))
-
-julia> c.i = 5
-ERROR: Unable to change the value of a Cconst field
-Stacktrace:
- [1] error(::String) at ./error.jl:33
-  ⁝
-
-julia> s.i = 5
-5
-
-julia> s
-ConstStruct(i=5, j=2)
-
-julia> c  # notice that `i` is not changed, `c` is a constant _copy_ of `s`
-Cconst(ConstStruct(i=3, j=2))
+julia> c"""
+         extern void func(struct S *s, struct T t);
+       """j;
 ```
 
-Run time and memory usage can be improved by using `Cconst` wrapped types as well.
-If you do not wish to modify any fields in an aggregate, then it is recommended that you use the `Cconst` form of the object.
+Constructs from the standard C library headers are currently not being emitted by CBinding.jl, but other packages may be developed to provide a unified source for them.
+For now, dependencies on C library or other libraries should be placed before any C code blocks referencing them.
+Most often it is only a few `using` and `const` statements.
 
-## C Enumerations
 
-We also provide an implementation of C-style enumeration with a syntax very similar to that of C.
-Enumerations may be defined by using the `@cenum` macro in typedef or aggregate type macros and may be specified as either anonymous or named types.
-The values of an enumeration must evaluate to integers, and can reference values defined earlier.
-Usage of enumerations and values is generally promoted to integer arithmetic.
+## A complete example
 
-```jl
-julia> @cenum MyNamedEnum {    # enum MyNamedEnum {
-           VALUE_1,            #     VALUE_1,
-           VALUE_2,            #     VALUE_2,
-           VALUE_3,            #     VALUE_3
-       }                       # };
-MyNamedEnum
-
-julia> e = MyNamedEnum(VALUE_3)
-MyNamedEnum(<VALUE_3>(0x00000002))
-
-julia> e = MyNamedEnum(VALUE_1)
-MyNamedEnum(<VALUE_1>(0x00000000))
-
-julia> e | VALUE_3
-2
-
-julia> @cstruct EnumStruct {    # struct EnumStruct {
-           e::@cenum {          #     enum {
-               X = 1<<0,        #         X = 1<<0,
-               Y = 1<<1,        #         Y = 1<<1,
-               Z = 1<<2,        #         Z = 1<<2
-           }                    #     } e;
-       }                        # };
-EnumStruct
-
-julia> e = EnumStruct(zero)
-EnumStruct(e=<anonymous-enum>(0x00000000))
-
-julia> e.e = X|Y|Z
-7
-
-julia> e
-EnumStruct(e=<anonymous-enum>(0x00000007))
-```
-
-CBinding.jl also allows you to apply an alignment strategy, such as `__packed__`, to an enumeration definition.
-An alignment strategy can be applied to both standalone enumeration types and enumerations nested within unions or structures.
+Finally, a set of examples can be found at https://github.com/analytech-solutions/ExamplesUsingCBinding.jl, but here is a generalized example of what a package using CBinding.jl might look like:
 
 ```jl
-julia> @cenum MyPackedNamedEnum {    # enum MyPackedNamedEnum {
-           PACKED_VALUE_1,           #     PACKED_VALUE_1,
-           PACKED_VALUE_2,           #     PACKED_VALUE_2,
-           PACKED_VALUE_3,           #     PACKED_VALUE_3
-       } __packed__                  # } __attribute__((packed));
-MyPackedNamedEnum
-
-julia> sizeof(MyNamedEnum)
-4
-
-julia> sizeof(MyPackedNamedEnum)
-1
-```
-
-## C Bit Fields
-
-Specifying C bit fields is another feature provided by CBinding.jl.
-Bit fields can be defined with `(fieldName:FIELD_BITS)::FieldType` where `FIELD_BITS` is an Integer number of bits and `FieldType` is either `Cint` or `Cuint`.
-
-```jl
-julia> @cstruct BitfieldStruct {    # struct BitfieldStruct {
-           (i:2)::Cint              #     int i:2;
-           (j:2)::Cuint             #     unsigned int j:2;
-       }                            # };
-BitfieldStruct
-
-julia> bf = BitfieldStruct(zero)
-BitfieldStruct(i=0, j=0x00000000)
-
-julia> sizeof(bf)
-4
-
-julia> for i in 1:5
-           bf.i = i ; @show bf
-       end
-bf = BitfieldStruct(i=1, j=0x00000000)
-bf = BitfieldStruct(i=-2, j=0x00000000)
-bf = BitfieldStruct(i=-1, j=0x00000000)
-bf = BitfieldStruct(i=0, j=0x00000000)
-bf = BitfieldStruct(i=1, j=0x00000000)
-
-julia> for i in 1:5
-           bf.j = i ; @show bf
-       end
-bf = BitfieldStruct(i=1, j=0x00000001)
-bf = BitfieldStruct(i=1, j=0x00000002)
-bf = BitfieldStruct(i=1, j=0x00000003)
-bf = BitfieldStruct(i=1, j=0x00000000)
-bf = BitfieldStruct(i=1, j=0x00000001)
-```
-
-## C Libraries
-
-Interfacing C libraries is done through a `Clibrary` object.
-Once the library object is available, it can be used for obtaining global variables or functions directly.
-This approach allows for multiple libraries to be loaded without causing symbol conflicts.
-
-```jl
-julia> lib = Clibrary()  # dlopens the Julia process    # void *lib = dlopen(NULL, RTLD_LAZY|RTLD_DEEPBIND|RTLD_LOCAL); 
-Clibrary(Ptr{Nothing} @0x000061eefd6a1000)
-
-julia> lib2 = Clibrary("/path/to/library.so")  # dlopens the library    # void *lib2 = dlopen("/path/to/library.so", RTLD_LAZY|RTLD_DEEPBIND|RTLD_LOCAL);
-Clibrary(Ptr{Nothing} @0x00006c1ce98c5000)
-```
-
-## C Global Variables
-
-A simple wrapper type, `Cglobal`, is provided to obtain global variables from a library.
-
-```jl
-julia> val = Cglobal{Ptr{Cvoid}}(lib, :jl_nothing)    # const void **val = dlsym(lib, "jl_nothing");
-Cglobal{Ptr{Nothing}}(Ptr{Ptr{Nothing}} @0x00007fc384893bb8)
-
-julia> val[]   # dereference val
-Ptr{Nothing} @0x00007fc3735ce008
-```
-
-The new `@cextern` macro is the recommended method of binding global variables.
-It is a more concise Julian representation that closely mirrors the C syntax.
-This macro also includes the ability to use anonymous types in the definition of global variables.
-
-```jl
-julia> @cextern jl_base_module::Ptr{@cstruct jl_module_t}    # extern struct _jl_module_t *jl_base_module;
-Cglobal{Ptr{jl_module_t}}(Ptr{Ptr{jl_module_t}} @0x00007f84ce375230)
-```
-
-## C Functions
-
-This package adds the ability to specify function pointers in a type-safe way to Julia, similar to how you would in C.
-You may specify a `Cfunction` pointer directly, or use the constructor to load a symbol from a bound library.
-The parametric types to `Cfunction` are used to specify the return type and the tuple of argument types for the function referenced.
-The additional type-safety will help you avoid many mishaps when calling C functions.
-
-```jl
-julia> CFuncType = Cfunction{Clong, Tuple{Ptr{Clong}}}    # type of the function `long func(long *);`
-Cfunction{Int64,Tuple{Ptr{Int64}},ConvT} where ConvT<:Cconvention
-
-julia> CFuncPtrType = Ptr{CFuncType}    # long (*func)(long *);
-Ptr{Cfunction{Int64,Tuple{Ptr{Int64}},ConvT} where ConvT<:Cconvention}
-
-julia> func = CFuncType(lib, :time)    # long (*func)(long *) = dlsym(lib, "time");
-Ptr{Cfunction{Int64,Tuple{Ptr{Int64}},ConvT} where ConvT<:Cconvention} @0x00007fff95de08c0
-
-julia> @cstruct tm {
-           sec::Cint
-           min::Cint
-           hour::Cint
-           mday::Cint
-           mon::Cint
-           year::Cint
-           wday::Cint
-           yday::Cint
-           isdst::Cint
-       }
-tm
-
-julia> localtime = Cfunction{Ptr{tm}, Tuple{Ptr{Clong}}}(lib, :localtime)    # struct tm *(*localtime)(long *) = dlsym(lib, "localtime");
-Ptr{Cfunction{Ptr{tm},Tuple{Ptr{Int64}},ConvT} where ConvT<:Cconvention} @0x0000652bdb253fd0
-```
-
-CBinding.jl also makes a function pointer (`Ptr{<:Cfunction}`) callable.
-So, just as you would in C, you can simply call the function pointer to invoke it.
-
-```jl
-julia> func(C_NULL)
-1560708358
-
-julia> t = Ref(Clong(0))
-Base.RefValue{Int64}(0)
-
-julia> func(t)
-1560708359
-
-julia> t[]   # dereference t
-1560708359
-
-julia> p = localtime(t)
-Ptr{tm} @0x00007f4afa08b300
-
-julia> unsafe_load(p)   # dereference p
-tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
-```
-
-It is also possible to create type-safe function pointers to Julia functions for use in C code.
-A closure is automatically created for the wrapped function and returned along with the C function pointer, so a reference to the closure (`Base.CFunction`) must be kept to keep the function pointer valid.
-One important thing to note is that the Julia function used is not (yet) guarded, so the argument and return types of the Julia function must match that of the Cfunction signature.
-The new `@ccallback` macro is now the recommended method of creating function pointers from Julia functions.
-
-```jl
-julia> (Cadd, add) = Cfunction{Cint, Tuple{Cint, Cint}}() do x::Cint, y::Cint
-           return Cint(x + y)
-       end
-(Ptr{Cfunction{Int32,Tuple{Int32,Int32},Cconvention{:cdecl}}} @0x00007fc34e4dfa40, Base.CFunction(Ptr{Nothing} @0x00007fc34e4dfa40, getfield(Main, Symbol("##5#6"))(), Ptr{Nothing} @0x0000000000000000, Ptr{Nothing} @0x0000000000000000))
-
-julia> Cadd(2, 3)  # ccall the C function pointer, arguments are Base.cconvert-ed automatically
-5
-
-julia> add.f(Cint(2), Cint(3))  # directly call the Julia function
-5
-
-julia> Cadd = @ccallback function add(x::Cint, y::Cint)::Cint
-           return x + y
-       end
-```
-
-## C Variadic Functions
-
-Declaring a variadic function pointer can be done using a `Vararg` argument type (which must be the last argument).
-The variadic function calling capability provided with CBinding.jl is not limited in the ways that native Julia ccall usage is.
-This enables Julia the ability to perform real-world variadic function usage as demonstrated with an example of binding to `printf` and then calling it below.
-
-```jl
-julia> func = Cfunction{Cint, Tuple{Cstring, Vararg}}(lib, :printf)    # int (*func)(char *, ...) = dlsym(lib, "printf");
-Ptr{Cfunction{Int32,Tuple{Cstring,Vararg{Any,N} where N},ConvT} where ConvT<:Cconvention} @0x000061eefc388930
-
-julia> func("%s i%c %d great demo of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
-this is 1 great demo of CBinding.jl v0.1!
-42
-```
-
-## Binding Julia with a C library
-
-The new `@cbindings` and `@cextern` macros provide the recommended method of binding C functions with Julia.
-Its intended use is for creating optimized function bindings rather than loading function pointers.
-It provides a more concise Julian representation that closely mirrors the C syntax.
-The `@cextern` macro also includes the ability to use anonymous types in the definition of function.
-
-```jl
-julia> @cextern time(ptr::Ptr{Clong})::Clong
-time (generic function with 1 method)
-
-julia> @cextern localtime(ptr::Ptr{Clong})::Ptr{tm}
-localtime (generic function with 1 method)
-
-julia> @cextern printf(format::Cstring, vals...)::Cint
-printf (generic function with 1 method)
-
-julia> time(t)
-1560708359
-
-julia> unsafe_load(localtime(t))
-tm(sec=59, min=5, hour=14, mday=16, mon=5, year=119, wday=0, yday=166, isdst=1)
-
-julia> printf("%s i%c %d great demo of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
-this is 1 great demo of CBinding.jl v0.1!
-42
-```
-
-The `@cbindings` macro can be used to cleanly group and target bindings to a particular library.
-Any `@ctypedef`, `@cstruct`, `@cextern`, etc. macro usage can be placed within a `@cbindings` macro as well.
-
-```jl
-module CJulia
-  using CBinding
+module LibFoo
+  module libfoo
+    import Foo_jll
+    using CBinding
+    
+    # libfoo has libbar as a dep, and LibBar has bindings for it
+    using LibBar: libbar
+    
+    # set up the parser
+    let
+      incdir = joinpath(Foo_jll.artifact_dir, "include")
+      libdir = dirname(Foo_jll.libfoo_path)
+      
+      c`-std=c99 -fparse-all-comments -I$(incdir) -L$(libdir) -lfoo`
+    end
+    
+    # libfoo refers to some std C sized types (eventually made available with something like `using C99`)
+    const c"int32_t"  = Int32
+    const c"int64_t"  = Int64
+    const c"uint32_t" = UInt32
+    const c"uint64_t" = UInt64
+    
+    # generate bindings for libfoo
+    c"""
+      #include <libfoo/header-1.h>
+      #include <libfoo/header-2.h>
+    """
+    
+    # any other bindings not in headers
+    c"""
+      struct FooStruct {
+        struct BarStruct bs;
+      };
+      
+      extern struct FooStruct *foo_like_its_the_80s(int i);
+    """
+  end
   
-  @cbindings "./path/to/libjulia.so" begin
-    @ctypedef jl_nullable_float64_t @cstruct {
-      hasvalue::UInt8
-      value::Cdouble
-    }
-    
-    @ctypedef jl_value_t @cstruct _jl_value_t
-    
-    @cextern jl_gc_enable(on::Cint)::Cint
-    @cextern jl_gc_is_enabled()::Cint
-    
-    @cextern jl_gc_alloc_0w()::Ptr{jl_value_t}
-    @cextern jl_gc_alloc_1w()::Ptr{jl_value_t}
-    @cextern jl_gc_alloc_2w()::Ptr{jl_value_t}
-    @cextern jl_gc_alloc_3w()::Ptr{jl_value_t}
-    @cextern jl_gc_allocobj(sz::Csize_t)::Ptr{jl_value_t}
-    
-    @cextern jl_base_module::Ptr{@cstruct jl_module_t}
+  
+  # high-level Julian interface to libfoo
+  using CBinding
+  using .libfoo
+  
+  function foo(i)
+    ptr = c"foo_like_its_the_80s"(Cint(i-1))
+    try
+      return JulianFoo(ptr[])
+    finally
+      Libc.free(ptr)
+    end
   end
 end
 ```
+
+
+## Options for `c"..."`
+
+The string macro has some options to handle more complex use cases.
+Occasionally it is necessary to include or define C code that is just a dependency and should not be exported or perhaps excluded from the generated bindings altogether.
+These kinds of situations can be handled with combinations of the following string macro suffixes.
+
+- `d` - defer conversion of the C code block; successive blocks marked with `d` will keep deferring until a block without it (its options will be used for processing the deferred blocks)
+- `f` - don't create bindings for `extern` functions
+- `i` - also parse implicitly included headers that are related (in the same directory or subdirectories of it) to explicitly included headers
+- `j` - also define bindings with Julian names (name collisions likely)
+- `m` - skip conversion of C macros
+- `n` - show warnings for macros or inline functions that must be skipped
+- `p` - mark the C code as "private" content that will not be exported
+- `q` - quietly parse the block of C code, suppressing any compiler messages
+- `r` - the C code is only a reference to something in C-land and bindings are not to be generated
+- `s` - skip processing of this block of C code
+- `t` - skip conversion of C types
+- `u` - leave this block of C code undocumented
+- `v` - don't create bindings for `extern` variables
+- `w` - create bindings for inline functions by using wrapper libraries (somewhat experimental)
+
+```jl
+julia> c"""
+         #include <stdio.h>  // provides FILE type, but skip emitting bindings for this block
+       """s;
+
+julia> c"""
+         struct File {  // do not include this type in module exports, and suppress compiler messages
+          FILE *f;
+         };
+       """pq;
+```
+
+
+# Using `CBinding.jl`-generated bindings
+
+The `c"..."` string macro can be used to refer to any of the types, global variables, or functions generated by CBinding.jl.
+When simply referencing the C content, setting up a compiler context (i.e. using ``` c`...` ```) is not necessary.
+
+The `c"..."` string macro can take on two meanings depending on the content placed in it.
+So to guarantee it is interpreted as a reference to something in C, rather than a block of C code to create bindings with, include an `r` in the string macro options.
+
+```jl
+julia> module MyLib  # generally some C bindings are defined elsewhere
+         using CBinding
+         
+         c`-std=c99 -Wall -Imy/include`
+         
+         c"""
+           struct S;
+           struct T {
+             int i;
+             struct S *s;
+             struct T *t;
+           };
+           
+           extern void func(struct S *s, struct T t);
+         """
+       end
+
+julia> using CBinding, .MyLib
+
+julia> c"struct T" <: Cstruct
+true
+
+julia> c"struct T"r <: Cstruct  # use 'r' option to guarantee it is treated as a reference
+true
+
+julia> t = c"struct T"(i = 123);
+
+julia> t.i
+123
+```
+
+The user-defined types (`enum`, `struct`, and `union`) are referenced just as they are in C (e.g. `c"enum E"`, `c"struct S"`, and `c"union U"`).
+All other types, pointers, arrays, global variables, enumeration constants, functions, etc. are also referenced just as they are in C.
+Here is a quick reference for C string macro usage:
+
+- `c"int"` - the `Cint` type
+- `c"int[2]"` - a length-2 static array of `Cint`'s
+- `c"int[2][4]"` - a length-2 static array of length-4 static arrays of `Cint`'s
+- `c"int *"` - pointer to a `Cint`
+- `c"int **"` - pointer to a pointer to a `Cint`
+- `c"int const **"` - pointer to a pointer to a read-only `Cint`
+- `c"enum MyUnion"` - a user-defined C `enum` type
+- `c"union MyUnion"` - a user-defined C `union` type
+- `c"struct MyStruct"` - a user-defined C `struct` type
+- `c"struct MyStruct *"` - a pointer to a user-defined C `struct` type
+- `c"struct MyStruct[2]"` - a length-2 static array of user-defined C `struct` type
+- `c"MyStruct"` - a user-defined `typedef`-ed type
+- `c"MyStruct *"` - a pointer to a user-defined `typedef`-ed type
+- `c"printf"` - a C function (specifically the `printf` function)
+- `c"int (*)(int, int)"` - a function pointer
+- `c"int (*)(char const *, ...)"` - a variadic function pointer
+
+The following examples demonstrate how to refer to C-land content that resides in other modules and is not exported/imported:
+
+- `c"SomeModule.SubModule.enum MyUnion"`
+- `c"SomeModule.SubModule.struct MyStruct *"`
+- `c"SomeModule.SubModule.printf"`
+- `c"int (*)(Some.Other.Module.struct MyStruct *, ...)"`
+
+The C string macro can also be used to expose Julia content to C-land.
+
+```jl
+julia> const c"IntPtr" = Cptr{Cint};
+
+julia> c"void (*)(IntPtr, IntPtr *, IntPtr[2])" <: Cptr{<:Cfunction}
+true
+```
+
+Type qualifiers are carried over from the C code.
+As an example, `int const *` is a pointer to a read-only integer in is represented by CBinding.jl as the type `Cptr{Cconst{Cint}}`.
+The `unqualifiedtype(T)` can be used to strip away the type qualifiers to get to the core type, so `unqualifiedtype(Cconst{Cint}) === Cint`.
+
+[As mentioned above](#any-gotchas), the `bitstype(T)` function can be used to acquire the concrete bits type of user-defined C types as well.
+
+
+## Working with aggregate types and sized arrays
+
+User-defined aggregate types (`struct` and `union`) have several ways to be constructed:
+
+- `t = c"struct T"()` - zero-ed immutable object
+- `t = c"struct T"(i = 123)` - zero-ed immutable object with field `i` initialized to 123
+- `t = c"struct T"(t, i = 321)` - copy of `t` with field `i` initialized to 321
+
+These objects are immutable and changing fields will have no effect, so a copy must be constructed with the desired field overrides or ((pointers must be used)[#working-with-pointers]).
+Nested field access is transparent, and performance should match that of accessing fields within standard Julia immutable structs.
+
+Statically-sized arrays (i.e. `c"typedef int IntArray[4];"`) can be constructed:
+
+- `t = c"IntArray"()` - zero-ed immutable array
+- `t = c"IntArray"(1, 2)` - zero-ed immutable array with first 2 elements initialized to 1 and 2
+- `t = c"IntArray"(t, 3)` - copy of `t` with first element initialized to 3
+- `t = c"IntArray"(t, 4 => 123)` - copy of `t` with 4th element initialized to 123
+
+Constructors for both aggregates and arrays can also accept nested `Tuple` and `NamedTuple` arguments which get splatted appropriately into the respective field's constructor.
+A comprehensive example of constructing a complex C type and accessing fields/elements is shown below:
+
+```jl
+julia> c`` ; c"""
+         struct A {
+           struct {
+             int i;
+           };
+           struct {
+             struct {
+               int i;
+             } c[2];
+           } b;
+         };
+       """;
+
+julia> a = c"struct A"();
+
+julia> a.i
+0
+
+julia> a.b.c[2].i
+0
+
+julia> a = c"struct A"(i = 123, b = (c = ((i = 321,), (i = 654,)),));
+
+julia> a.i
+123
+
+julia> a.b.c[2].i
+654
+
+```
+
+
+## Working with pointers
+
+CBinding.jl also works elegantly with pointers to aggregate types.
+Pointers are followed through fields and array elements as they are accessed, and they can be dereferenced with `ptr[]` or written to with `ptr[] = val`.
+
+```jl
+julia> ptr = Libc.malloc(a);  # allocate a `struct A` as a copy of `a`
+
+julia> ptr.i
+Cptr{Int32}(0x0000000003458810)
+
+julia> ptr.i[]
+123
+
+julia> ptr.b.c[2].i
+Cptr{Int32}(0x0000000003458814)
+
+julia> ptr.b.c[2].i[]
+654
+
+julia> ptr.b.c[2].i[] = 42
+42
+
+julia> Libc.free(ptr)  # deallocate it
+```
+
+An exception to the rule is bitfields.
+It is not possible to refer to bitfields with a pointer, so access to bitfields is automatically dereferenced.
+
+
+## Using global variable and function bindings
+
+Bindings to global variables also behave as if they are pointers, and must be dereferenced to be read or written.
+Fields and elements can be followed through the same as with pointers.
+Bindings to functions can be called directly, and getting the pointer to a one can be done with the "dereferencing" (`func[]`) syntax in case a bound function must be used as a callback function.
+
+```jl
+julia> c"func"(Cint(1), Cint(2));  # call the C function directly
+
+julia> funcptr = c"func"[]
+Cptr{Cfunction{Int32, Tuple{Int32, Int32}, :cdecl}}(0x00007f8f50722b10)
+
+julia> funcptr(Cint(1), Cint(2));  # call the C function pointer
+```
+
+
+## Using Julia functions in C
+
+Providing a Julia method to C as a callback function has never been easier!
+Just pass it as an argument to the CBinding.jl function binding or function pointer.
+Assuming a binding to a C function, like `void set_callback(int (*cb)(int, int))` exists:
+
+```jl
+julia> function myadd(a, b)  # a callback function to give to C
+         return a+b
+       end;
+
+julia> c"set_callback"(myadd)  # that's it!
+
+julia> function saferadd(a::Cint, b::Cint)::Cint  # a safer callback function might require type paranoia
+         return a+b
+       end;
+
+julia> c"set_callback"(saferadd)
+```
+
+
+# Any gotchas?
+
+Since Julia does not yet provide `incomplete type` (please voice your support of the feature here: https://github.com/JuliaLang/julia/issues/269), abstract types are used to allow forward declarations in C.
+Therefore, referencing C types usually refers to the abstract type which can have significant implications when creating Julia arrays, using `ccall`, etc.
+The following example illustrates this kind of unexpected behavior:
+
+```jl
+julia> struct X
+         i::Cint
+       end
+
+julia> const Y = c"""
+         struct Y {
+           int i;
+         };
+       """
+
+julia> [X(123)] isa Vector{X}
+true
+
+julia> [Y(i=123)] isa Vector{Y}
+false
+
+julia> [Y(i=123)] isa Vector{bitstype(Y)}
+true
+
+```
+
+The `bitstype(T)` function can be used to acquire the concrete bits type of any C type when the distinction matters.
+
+Another implementation detail worth noting is that function bindings are brought into Julia as singleton constants, not as actual functions.
+This approach allows a user to obtain function pointers from C functions in case one must be used as a callback function.
+Therefore, attaching other methods to a bound C function is not possible.
+
+It is also sometimes necessary to use the `c"..."` mangled names directly in Julia (for instance in the REPL help mode).
+Until consistent, universal support for the string macro is available, the mangled names can be used directly as `var"c\"...\""`, like `help?> var"c\"struct Y\""`.
 
