@@ -49,7 +49,10 @@ end
 
 
 function getcode(ctx::Context, cursor::CXCursor)
+	ismacro = cursor.kind == CXCursor_MacroDefinition
+	
 	tokens = tokenize(ctx.tu[], cursor)
+	tokens = ismacro ? tokens[2:end] : tokens
 	tokens = join(map(token -> clang_getTokenKind(token) == CXToken_Comment ? "" : string(ctx.tu[], token), tokens), ' ')
 	tokens = replace(tokens, "{" => "{\n")
 	tokens = replace(tokens, " ;" => ";\n")
@@ -97,7 +100,13 @@ function getcode(ctx::Context, cursor::CXCursor)
 			wasEOL = true
 		end
 	end
-	return strip(code)
+	code = strip(code)
+	
+	if ismacro
+		code = "#define $(string(cursor)) $(code)"
+	end
+	
+	return code
 end
 
 
@@ -124,9 +133,9 @@ function getexprs(ctx::Context, syms, blocks...)
 	if !blk.flags.nodocs
 		for (sym, jlsym, docs) in syms
 			isnothing(docs) && continue
-			push!(expr.args, :(@doc $(docs) $(sym.args[1])))
+			push!(expr.args, :(@doc $(docs) $(startswith(String(sym.args[1]), '@') ? QuoteNode(sym.args[1]) : sym.args[1])))
 			isnothing(jlsym) && continue
-			blk.flags.jlsyms && push!(expr.args, :(@doc $(docs) $(jlsym.args[1])))
+			blk.flags.jlsyms && push!(expr.args, :(@doc $(docs) $(startswith(String(jlsym.args[1]), '@') ? QuoteNode(jlsym.args[1]) : jlsym.args[1])))
 		end
 	end
 	
@@ -301,6 +310,7 @@ end
 
 function parse!(ctx::Context)
 	empty!(ctx.hdrs)
+	empty!(ctx.macros)
 	
 	unsaved = [CXUnsavedFile(
 		Filename = pointer(header(ctx)),
@@ -409,7 +419,8 @@ end
 
 
 function clang_cmd(mod::Module, loc::LineNumberNode, lang::Symbol, str::String)
-	cmd = Meta.parse("`$(escape_string(str))`")
+	cmd = :(``)
+	cmd.args[end] = str
 	
 	return quote
 		CONTEXT_CACHE[$(mod)] = Context{$(QuoteNode(lang))}($(mod), $(esc(cmd)).exec...)
@@ -428,6 +439,7 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 		implic  = 'i' in opts,
 		jlsyms  = 'j' in opts,
 		nomacro = 'm' in opts,
+		notify  = 'n' in opts,
 		priv    = 'p' in opts,
 		quiet   = 'q' in opts,
 		ref     = 'r' in opts,

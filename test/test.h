@@ -327,43 +327,56 @@ struct S38 {
 };
 
 
-inline void inline_func() { return; }
+static inline int inline_func(int i, int j) { return i+j; }
 
 
+#define DEFINE_NOTHING
 #define DEFINE_CHAR ('\'')
 #define DEFINE_STRING ("\"")
-// #define DEFINE_STRINGS ("\"" "\"")
+#define DEFINE_STRINGS ("\"" "\"")
 #define DEFINE_INT (1234)
 #define DEFINE_OxINT (0xabcd)
 #define DEFINE_OINT (0777)
 #define DEFINE_INTu (4321u)
 #define DEFINE_FLOAT (0.1234f)
 #define DEFINE_DOUBLE (0.1234)
-//#define DEFINE_LONGDOUBLE (0.1234l)
+#define DEFINE_LONGDOUBLE (0.1234l)
 #define DEFINE_DOT_FLOAT (.1234f)
 #define DEFINE_DOT_DOUBLE (.1234)
-//#define DEFINE_DOT_LONGDOUBLE (.1234l)
+#define DEFINE_DOT_LONGDOUBLE (.1234l)
 #define DEFINE_FLOAT_DOT (1234.f)
 #define DEFINE_DOUBLE_DOT (1234.)
-//#define DEFINE_LONGDOUBLE_DOT (1234.l)
+#define DEFINE_LONGDOUBLE_DOT (1234.l)
 #define DEFINE_EXP_FLOAT (-2.14e3f)
 #define DEFINE_EXP_DOUBLE (-2.14e3)
-//#define DEFINE_EXP_LONGDOUBLE (-2.14e3l)
+#define DEFINE_EXP_LONGDOUBLE (-2.14e3l)
 #define DEFINE_INT_TYPE (int)
 #define DEFINE_UINT_TYPE (unsigned int)
 #define DEFINE_DEFINED DEFINE_INT_TYPE
-// #define DEFINE_MATH ((DEFINE_DOUBLE+DEFINE_FLOAT) * (DEFINE_INT-DEFINE_OINT) / DEFINE_EXP_DOUBLE)
-// #define DEFINE_INT_DIVIDE (1 / DEFINE_INT)
-// #define DEFINE_OP_NEG (-i)
-// #define DEFINE_OP_PRE_DEC (--i)
-// #define DEFINE_OP_POST_DEC (i++)
-// #define DEFINE_OP_DOT (s.i)
-// #define DEFINE_OP_ARROW (s->i)
-// #define DEFINE_OP_SUBSCRIPT (DEFINE_STRING[0])
-// #define DEFINE_CALL (printf("\n"))
-// #define DEFINE_INT_CAST ((int)0xffffffff)
-// #define DEFINE_INTPTR_CAST ((int *)0xffffffff)
-#define E6_0 0
+#define DEFINE_MATH ((DEFINE_DOUBLE+DEFINE_FLOAT) * (DEFINE_INT-DEFINE_OINT) / DEFINE_EXP_DOUBLE)
+#define DEFINE_INT_DIVIDE (1 / DEFINE_INT)
+#define DEFINE_OP_NEG (-i)
+#define DEFINE_OP_PRE_DEC (--i)
+#define DEFINE_OP_POST_DEC (i--)
+#define DEFINE_OP_DOT (s.i)
+#define DEFINE_OP_ARROW (s->i)
+#define DEFINE_OP_SUBSCRIPT (DEFINE_STRING[0])
+#define DEFINE_CALL (printf("\n"))
+#define DEFINE_INT_CAST ((int)0xffffffff)
+#define DEFINE_INTPTR_CAST ((int *)0xffffffff)
 
+#define DEFINE_UNDEFINED
+#ifdef DEFINE_UNDEFINED
+	#undef DEFINE_UNDEFINED
+#endif
+
+#define DEFINE_REDEFINED true
+#ifdef DEFINE_REDEFINED
+	#undef DEFINE_REDEFINED
+	#define DEFINE_REDEFINED false
+#endif
+
+// macro that overshadows an enum constant
+#define E6_0 0
 
 #endif

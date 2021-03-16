@@ -18,7 +18,7 @@ const C_TYPES   = raw"\w+(?:(?:[*\s]+)\w+)*(?:[*\s]+)?"
 const C_MODULE  = r"\s*(\w+)\.(.*)$"
 const C_TYPEVAR = Regex(raw"^\s*("*C_TYPES*raw")\s*$")
 const C_FUNCPTR = Regex(raw"^\s*("*C_TYPES*raw")\s*\(\*\)\(([^)]*)\)(const)?(?:\s+__attribute__\(\(([^)]+)\)\))?\s*$")
-function getref(ctx::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, Nothing} = nothing)
+function getref(ctx::Type{Context{:c}}, str::AbstractString, mod::Union{Symbol, Expr, Nothing} = nothing)
 	function decorate(t, set)
 		t = "volatile" in set ? :(Cvolatile{$(t)}) : t
 		t = "restrict" in set ? :(Crestrict{$(t)}) : t
@@ -118,8 +118,22 @@ function getref(ctx::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, No
 	m = match(C_USER, str)
 	if !isnothing(m)
 		decor = (m.captures[1], m.captures[4])
-		inner = getname(ctx, isnothing(m.captures[2]) ? "$(m.captures[3])" : "$(m.captures[2]) $(m.captures[3])")
-		isnothing(inner) || return decorate(isnothing(mod) ? esc(inner) : :($(mod).$(inner)), decor)
+		if isnothing(m.captures[2])
+			sym = getname(ctx, "$(m.captures[3])")
+			mac = Symbol("@", sym)
+			
+			expr = :(@macrocall)
+			expr.args[1] = isnothing(mod) ? mac : :($(mod).$(mac))
+			
+			expr = isnothing(mod) ?
+				:(@static @isdefined($(mac)) ? $(esc(expr)) : $(esc(sym))) :
+				:(@static isdefined($(mod), $(QuoteNode(mac))) ? $(esc(expr)) : $(esc(:($(mod).$(sym)))))
+		else
+			expr = getname(ctx, "$(m.captures[2]) $(m.captures[3])")
+			expr = isnothing(mod) ? expr : :($(mod).$(expr))
+			expr = esc(expr)
+		end
+		return decorate(expr, decor)
 	end
 	
 	strip(str) == "..." && return :(Cvariadic)
@@ -128,7 +142,7 @@ function getref(ctx::Type{Context{:c}}, str::AbstractString, mod::Union{Expr, No
 	if !isnothing(m)
 		str = m.captures[2]
 		m   = Symbol(m.captures[1])
-		return getref(ctx, str, isnothing(mod) ? esc(m) : :($(mod).$(m)))
+		return getref(ctx, str, isnothing(mod) ? m : :($(mod).$(m)))
 	end
 	
 	return nothing
@@ -251,6 +265,10 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 	
 	if cursor.kind == CXCursor_TranslationUnit
 		append!(exprs, getexprs_tu(ctx, cursor))
+		
+		for (_, child) in ctx.macros
+			append!(exprs, getexprs_macro(ctx, child))
+		end
 	elseif cursor.kind == CXCursor_TypedefDecl
 		push!(exprs, getexprs_typedef(ctx, cursor))
 	elseif cursor.kind in (
@@ -300,14 +318,15 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 		end
 	elseif cursor.kind == CXCursor_InclusionDirective
 		append!(exprs, getexprs_include(ctx, cursor))
+	elseif cursor.kind == CXCursor_MacroDefinition
+		getblock(ctx).flags.nomacro || push!(ctx.macros, string(cursor) => cursor)
 	elseif !(cursor.kind in (
 		CXCursor_FieldDecl,
 		CXCursor_EnumConstantDecl,
 		CXCursor_ParmDecl,
-		CXCursor_MacroDefinition,  # TODO: support this
-		CXCursor_MacroInstantiation,  # TODO: support this
+		CXCursor_MacroInstantiation,
 	))
-		@warn "Not implemented $(cursor.kind):  $(string(cursor))"
+		getblock(ctx).flags.notify && @warn "Skipping unsupported $(cursor.kind) expression:  $(string(cursor))"  (_module = ctx.mod)  (_file = String(getblock(ctx).loc.file))  (_line = getblock(ctx).loc.line)
 	end
 	
 	return exprs
@@ -554,7 +573,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		else
 			if isinlined
 				if !getblock(ctx).flags.wrap
-					getblock(ctx).flags.quiet || @warn "Skipping inline function `$(name)`"
+					getblock(ctx).flags.notify && @warn "Skipping inline function `$(name)`"  (_module = ctx.mod)  (_file = String(getblock(ctx).loc.file))  (_line = getblock(ctx).loc.line)
 					return exprs
 				end
 				
@@ -602,6 +621,93 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				($(func)::typeof($(sym)))($(map(first, args)...),) = funccall($(func), $(map(first, args)...),)
 			end))
 		end
+	end
+	
+	return exprs
+end
+
+
+
+function getexprs_macro(ctx::Context{:c}, cursor::CXCursor)
+	exprs = []
+	
+	expr = Bool(clang_Cursor_isMacroFunctionLike(cursor)) ? nothing : ""
+	for (ind, token) in enumerate(tokenize(ctx.tu[], cursor))
+		ind == 1 && continue  # first token is the macro name itself, so skip it
+		expr === nothing && break
+		
+		str = string(ctx.tu[], token)
+		kind = clang_getTokenKind(token)
+		if kind == CXToken_Literal
+			int = match(r"^(0|0x|0b)?([\da-f]+)([ul]*)$", lowercase(str))
+			float = match(r"^(\d*\.)?(\d*)(e[-+]?\d+)?([fl])?$", lowercase(str))
+			if !isnothing(int)
+				(pre, val, suf) = int.captures
+				isUnsigned = occursin('u', suf)
+				howLong = count(isequal('l'), suf)
+				
+				typ = howLong == 0 ? Cint : (howLong == 1 ? Clong : Clonglong)
+				typ = isUnsigned || !isnothing(pre) ? unsigned(typ) : typ
+				pre = isnothing(pre) ? "" : (pre == "0" ? "0o" : pre)
+				
+				str = repr(parse(typ, pre*val))
+			elseif !isnothing(float)
+				(val1, val2, exp, suf) = float.captures
+				val = val1*val2
+				val = val[end] == '.' ? val*"0" : val
+				val = val[1] == '.' ? "0"*val : val
+				
+				if suf == "l"
+					expr = nothing  # TODO: convert long double literals
+					continue
+				end
+				typ = suf == "f" ? Cfloat : Cdouble
+				exp = isnothing(exp) ? "" : exp
+				
+				str = repr(parse(typ, val*exp))
+			end
+			
+			if endswith(expr, "\")") && startswith(str, '"')
+				expr *= "*"
+			end
+			expr *= "("*str*")"
+		elseif kind == CXToken_Punctuation
+			expr *=
+				str == "->" ? "." :
+				str == "[" ? "[(" :
+				str == "]" ? ")+1]" :
+				str
+		elseif kind == CXToken_Identifier
+			if endswith(expr, '.')
+				expr *= str
+			else
+				expr *= "("*String(getname(ctx, string(ctx.mod)*"."*str))*")"
+			end
+		elseif kind == CXToken_Keyword
+			# TODO: convert casts (int const **) to c"int const **"
+			expr = nothing
+		else
+			expr = nothing
+		end
+	end
+	
+	expr = isnothing(expr) ? nothing : "quote ; $(join(expr)) ; end"
+	expr = isnothing(expr) ? nothing : Meta.parse(expr, raise = false)
+	expr = isnothing(expr) || expr.head in (:error, :incomplete) ? nothing : expr
+	
+	if isnothing(expr)
+		getblock(ctx).flags.notify && @warn "Skipping macro `$(string(cursor))`"  (_module = ctx.mod)  (_file = String(getblock(ctx).loc.file))  (_line = getblock(ctx).loc.line)
+	else
+		name = getname(ctx, string(cursor))
+		sym = esc(Symbol("@", name))
+		jlsym = esc(Symbol("@", string(cursor)))
+		docs = getdocs(ctx, cursor)
+		
+		push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
+			macro $(esc(name))()
+				return $(esc(expr))
+			end
+		end))
 	end
 	
 	return exprs

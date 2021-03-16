@@ -127,11 +127,12 @@ module CBinding
 		line::Int
 		libs::Vector{Pair}
 		hdrs::Dict{String, String}
+		macros::Dict{String, CXCursor}
 		blocks::Vector{CodeBlock}
 		src::IOBuffer
 		
 		function Context{lang}(mod::Module, args...) where {lang}
-			ctx = new{lang}(mod, map(String, collect(args)), nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), CodeBlock[], IOBuffer())
+			ctx = new{lang}(mod, map(String, collect(args)), nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), Dict{String, CXCursor}(), CodeBlock[], IOBuffer())
 			finalizer(ctx) do x
 				x.tu[] == C_NULL || clang_disposeTranslationUnit(x.tu[])
 				isnothing(x.ind) || x.ind == C_NULL || clang_disposeIndex(x.ind)
