@@ -2,10 +2,12 @@
 
 const CONTEXT_CACHE = Dict{Module, Context}()
 const FLAGS = CXTranslationUnit_DetailedPreprocessingRecord | CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_PrecompiledPreamble #| CXTranslationUnit_SingleFileParse
+const HEADER = joinpath(@__DIR__, "$(nameof(@__MODULE__)).h")
 
 
 Base.String(ctx::Context) = String(typeof(ctx))
 header(ctx::Context) = header(typeof(ctx))
+header(::Type{C}) where {C<:Context}  = HEADER
 language(ctx::Context) = language(typeof(ctx))
 language(::Type{Context{lang}}) where {lang} = lang
 
@@ -244,6 +246,7 @@ function configure!(ctx::Context)
 	
 	pushfirst!(ctx.args,
 		"-Wno-empty-translation-unit",
+		"-x", lowercase(String(ctx)),
 		"-isystem", includedir,  # these -isystem args are needed since Clang_jll packaging seems to have clang's InstallDir not set/found correctly
 		"-isystem", joinpath(dirname(dirname(libclang_path())), "include"),
 	)
@@ -456,7 +459,6 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	
 	haskey(CONTEXT_CACHE, mod) || error("Compiler context ($(language(Context{lang}))`...`) not created before declaring $(String(Context{lang})) bindings ($(language(Context{lang}))\"...\")")
 	ctx = CONTEXT_CACHE[mod]
-	language(ctx) === lang || error("Compiler context ($(language(Context{lang}))`...`) not created before declaring $(String(Context{lang})) bindings ($(language(Context{lang}))\"...\")")
 	
 	exprs = []
 	try

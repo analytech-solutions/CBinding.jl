@@ -1,11 +1,10 @@
 
 
-macro c_cmd(exprs...) return clang_cmd(__module__, __source__, :c, exprs...) end
-macro c_str(exprs...) return clang_str(__module__, __source__, :c, exprs...) end
+macro cc_cmd(exprs...) return clang_cmd(__module__, __source__, :c, exprs...) end
+macro  c_cmd(exprs...) return clang_cmd(__module__, __source__, :c, exprs...) end
+macro  c_str(exprs...) return clang_str(__module__, __source__, :c, exprs...) end
 
 
-const C_HEADER = joinpath(@__DIR__, "$(nameof(@__MODULE__)).h")
-header(::Type{Context{:c}}) = C_HEADER
 Base.String(::Type{Context{:c}}) = "C"
 
 

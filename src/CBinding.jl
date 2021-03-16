@@ -8,8 +8,9 @@ module CBinding
 	Base.iterate(::Type{T}, state::Type{<:Tuple} = T) where {T<:Tuple} = state === Tuple{} ? nothing : (Base.tuple_type_head(state), Base.tuple_type_tail(state))
 	
 	
+	export @cc_cmd
 	export @c_cmd, @c_str
-	#export @cxx_cmd, @cxx_str
+	# export @cxx_cmd, @cxx_str
 	export Cbool, Ccomplex, Clongdouble, Cptr, Cstruct, Cunion, Cenum, Carray
 	export Cfunction, Cbinding, Cconst, Crestrict, Cvolatile
 	export isqualifiedwith, unqualifiedtype, bitstype
@@ -28,7 +29,7 @@ module CBinding
 	abstract type Cenum end
 	
 	
-	# TODO: whenever incomplete type becomes available, this can become Carray{T, N} with NTuple{N, T}
+	# TODO: whenever `incomplete type` becomes available, this can become Carray{T, N} with NTuple{N, T}
 	struct Carray{T, N, S} <: AbstractVector{T}
 		mem::NTuple{S, UInt8}
 		
