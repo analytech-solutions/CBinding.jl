@@ -233,7 +233,7 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		
 		result = :(Cfunction{$(rettype), Tuple{$(argtypes...)}, $(QuoteNode(conv))})
 	else
-		error("Unhandle type $(type.kind)")
+		error("Unhandle type $(type.kind): $(string(type))")
 	end
 	
 	if Bool(clang_isVolatileQualifiedType(type))
@@ -341,6 +341,8 @@ function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
 	docs  = getdocs(ctx, cursor)
 	
 	type = clang_getTypedefDeclUnderlyingType(cursor)
+	type.kind == CXType_BlockPointer && return quote end  # don't know how to support these yet
+	
 	if type.kind == CXType_Elaborated
 		# get from elaborated to actual record definition
 		decl = clang_getTypeDeclaration(type)
