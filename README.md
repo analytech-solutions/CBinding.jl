@@ -202,10 +202,10 @@ These kinds of situations can be handled with combinations of the following stri
 
 - `d` - defer conversion of the C code block; successive blocks marked with `d` will keep deferring until a block without it (its options will be used for processing the deferred blocks)
 - `f` - don't create bindings for `extern` functions
-- `i` - also parse implicitly included headers that are related (in the same directory or subdirectories of it) to explicitly included headers
+- `i` - also parse implicitly included headers that are related (in the same directory or subdirectories) to explicitly included headers
 - `j` - also define bindings with Julian names (name collisions likely)
 - `m` - skip conversion of C macros
-- `n` - show warnings for macros or inline functions that must be skipped
+- `n` - show warnings for macros or inline functions that are skipped
 - `p` - mark the C code as "private" content that will not be exported
 - `q` - quietly parse the block of C code, suppressing any compiler messages
 - `r` - the C code is only a reference to something in C-land and bindings are not to be generated
@@ -469,4 +469,22 @@ Therefore, attaching other methods to a bound C function is not possible.
 
 It is also sometimes necessary to use the `c"..."` mangled names directly in Julia (for instance in the REPL help mode).
 Until consistent, universal support for the string macro is available, the mangled names can be used directly as `var"c\"...\""`, like `help?> var"c\"struct Y\""`.
+
+
+# Some helpful tips
+
+Thorough tutorials and examples should be developed illustrating the countless scenarios that could be encountered when interfacing C from Julia in an automated manner.
+However, until such a body of a work is available, the following list of hopefully helpful comments will have to suffice:
+
+- Documentation comments are not converted?
+  Try adding `-fparse-all-comments` to your compiler context command.
+- Encounter syntax/types that are not yet supported errors?
+  Try disabling compiler extensions (e.g. `-fno-blocks`) or specifying a language standard (such as `-std=c99`).
+- Are some functions or macros missing from the generated bindings?
+  See warnings if CBinding.jl skips anything by using the 'n' string macro option (like `c"..."n`).
+- Are there undefined references to C library items (such as `uint8_t`, `FILE`, or `va_list`)?
+  Until C library modules are published, define these symbols using existing Julia types:
+  `const c"uint8_t" = UInt8`, `const c"FILE" = Cvoid`, `const c"va_list" = Cvoid`, etc.
+
+
 

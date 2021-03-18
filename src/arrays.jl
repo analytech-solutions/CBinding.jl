@@ -16,7 +16,7 @@ function (::Type{CA})(init::Union{NTuple{N, UInt8} where {N}, CA, Cbinding{CA}, 
 		init
 	
 	for (ind, arg) in enumerate(args)
-		result = arg isa Pair && first(arg) isa Integer ? setindex!(result, last(arg), first(arg)) : setindex!(result, arg, ind)
+		result = arg isa Pair && first(arg) isa Integer ? initindex!(result, last(arg), first(arg)) : initindex!(result, arg, ind)
 	end
 	
 	return result
@@ -29,6 +29,11 @@ Base.size(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = (N,)
 Base.length(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = N
 Base.eltype(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = T
 Base.convert(::Type{CA}, t::Tuple) where {CA<:Carray} = CA(t...)
+
+Base.convert(::Type{CA}, str::String) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}, CA<:Carray{T}} = CA(str...)
+Base.String(ca::Carray{T}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = String(map(t -> reinterpret(UInt8, convert(unqualifiedtype(T), t)), collect(ca)))
+Base.show(io::IO, ca::Carray{T}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = show(io, String(ca))
+
 
 Base.firstindex(ca::CA) where {CA<:Carrays} = 1
 Base.lastindex(ca::CA) where {CA<:Carrays} = length(ca)
@@ -47,4 +52,5 @@ Base.getindex(ptr::Cptrs{CA}, i::Integer) where {T, N, CA<:Carrays{T, N}} = Core
 Base.getindex(ca::CA, i::Integer) where {T, N, CA<:Carrays{T, N}} = load(ca, field(CA, i))
 
 Base.setindex!(ptr::Cptrs{CA}, val, i::Integer) where {T, N, CA<:Carray{T, N}} = unsafe_store!(Core.Intrinsics.bitcast(Cptr{T}, ptr) + (i-1), val)
-Base.setindex!(ca::CA, val, i::Integer) where {T, N, CA<:Carray{T, N}} = store!(ca, field(CA, i), val)
+initindex!(ca::CA, val, i::Integer) where {T, N, CA<:Carray{T, N}} = store!(ca, field(CA, i), val)
+

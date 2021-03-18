@@ -150,6 +150,23 @@ end
 
 
 function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
+	function getbuiltintype(t)
+		isatomic = startswith(string(t), "_Atomic(")
+		
+		s = clang_Type_getSizeOf(t)
+		a = clang_Type_getAlignOf(t)
+		(a in (1, 2, 4, 8) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(string(t))`")
+		
+		# create correct size and alignment to mimic the type
+		t =
+			a == 1 ? :(UInt8) :
+			a == 2 ? :(UInt16) :
+			a == 4 ? :(UInt32) :
+			a == 8 ? :(UInt64) : :(UInt128)
+		return s÷a == 1 ? isatomic ? :(Threads.Atomic{$(t)}) : t : :(Carray{$(t), $(s÷a)})
+	end
+	
+	
 	if type.kind == CXType_Void
 		result = :(Cvoid)
 	elseif type.kind == CXType_Bool
@@ -184,6 +201,12 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		result = :(Cdouble)
 	elseif type.kind == CXType_LongDouble
 		result = :(Clongdouble)
+	elseif @isdefined(CXType_Atomic) && type.kind == CXType_Atomic  # libclang 9 lacks atomic
+		atomictype = clang_Type_getValueType(type)
+		atomictype = gettype(ctx, atomictype; kwargs...)
+		result = :(Threads.Atomic{$(atomictype)})
+	elseif !@isdefined(CXType_Atomic) && type.kind == CXType_Unexposed && startswith(string(type), "_Atomic(")  # fallback for libclang 9 atomic, etc.
+		result = getbuiltintype(type)
 	elseif type.kind in (
 		CXType_Typedef,
 		CXType_Record,
@@ -191,8 +214,15 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		CXType_Enum,
 	)
 		decl = clang_getTypeDeclaration(type)
-		t = clang_getCursorType(decl)
-		result = gettype(ctx, string(t); kwargs...)
+		loc = clang_getCursorLocation(decl)
+		isbuiltin = isnothing(getlocation(loc))
+		
+		if isbuiltin
+			result = getbuiltintype(type)
+		else
+			t = clang_getCursorType(decl)
+			result = gettype(ctx, string(t); kwargs...)
+		end
 	elseif type.kind == CXType_Complex
 		cplxtype = clang_getElementType(type)
 		cplxtype = gettype(ctx, cplxtype; kwargs...)
@@ -341,8 +371,6 @@ function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
 	docs  = getdocs(ctx, cursor)
 	
 	type = clang_getTypedefDeclUnderlyingType(cursor)
-	type.kind == CXType_BlockPointer && return quote end  # don't know how to support these yet
-	
 	if type.kind == CXType_Elaborated
 		# get from elaborated to actual record definition
 		decl = clang_getTypeDeclaration(type)
@@ -382,8 +410,9 @@ function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 		(nothing, getjl(ctx, string(type)))
 	
 	def = clang_getCursorDefinition(cursor)
-	loc = getlocation(def)
-	if !isanon && (isnothing(loc) || (first(loc).file == header(ctx) || haskey(ctx.hdrs, first(loc).file)))
+	loc = getlocation(clang_getCursorLocation(def))
+	
+	if !isanon && (isnothing(loc) || getblock(ctx).flags.libc || (loc.file == header(ctx) || haskey(ctx.hdrs, loc.file)))
 		push!(exprs, getexprs(ctx, ((absname, jlabssym, nothing),), quote
 			abstract type $(absname) <: $(kind) end
 		end))
@@ -574,7 +603,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		else
 			if isinlined
 				if !getblock(ctx).flags.wrap
-					getblock(ctx).flags.notify && @warn "Skipping inline function `$(name)`"  (_module = ctx.mod)  (_file = String(getblock(ctx).loc.file))  (_line = getblock(ctx).loc.line)
+					getblock(ctx).flags.notify && @warn "Skipping inline function `$(name)` (enable wrapping with the 'w' string macro option)"  (_module = ctx.mod)  (_file = String(getblock(ctx).loc.file))  (_line = getblock(ctx).loc.line)
 					return exprs
 				end
 				
@@ -651,7 +680,7 @@ function getexprs_macro(ctx::Context{:c}, cursor::CXCursor)
 				typ = isUnsigned || !isnothing(pre) ? unsigned(typ) : typ
 				pre = isnothing(pre) ? "" : (pre == "0" ? "0o" : pre)
 				
-				str = repr(parse(typ, pre*val))
+				str = repr(parse(isUnsigned ? UInt128 : Int128, pre*val))
 			elseif !isnothing(float)
 				(val1, val2, exp, suf) = float.captures
 				val = val1*val2
@@ -665,7 +694,7 @@ function getexprs_macro(ctx::Context{:c}, cursor::CXCursor)
 				typ = suf == "f" ? Cfloat : Cdouble
 				exp = isnothing(exp) ? "" : exp
 				
-				str = repr(parse(typ, val*exp))
+				str = repr(parse(Cdouble, val*exp))
 			end
 			
 			if endswith(expr, "\")") && startswith(str, '"')

@@ -21,11 +21,16 @@ function Markdown.MD(ctx::Context, cursor::CXCursor)
 	code = getcode(ctx, cursor)
 	code = Markdown.Code(String(language(ctx)), code)
 	
-	loc = first(getlocation(cursor))
-	loc = loc.file == header(ctx) ? getblock(ctx, loc).loc : loc
-	ref = Markdown.Paragraph(Markdown.Link("Defined at $(basename(String(loc.file))):$(loc.line)", "file://$(loc.file)"))
+	loc = getlocation(cursor)
+	if isnothing(loc)
+		loc = "Defined in the C Standard Library"
+	else
+		loc = first(loc)
+		loc = loc.file == header(ctx) ? getblock(ctx, loc).loc : loc
+		loc = Markdown.Link("Defined at $(basename(String(loc.file))):$(loc.line)", "file://$(loc.file)")
+	end
 	
-	return Markdown.MD(code, ref)
+	return Markdown.MD(code, Markdown.Paragraph(loc))
 end
 
 
