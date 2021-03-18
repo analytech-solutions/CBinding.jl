@@ -65,39 +65,56 @@ function Base.Symbol(ce::Cenum)
 end
 
 
-function Base.show(io::IO, x::Cenum)
-    sym = Symbol(x)
-    if !get(io, :compact, false)
-        from = get(io, :module, Main)
-        def = typeof(x).name.module
-        if from === nothing || !Base.isvisible(sym, def, from)
-            show(io, def)
-            print(io, ".")
-        end
-    end
-    print(io, sym)
+function Base.show(io::IO, ce::Cenum)
+	for (ind, val) in enumerate(sort(collect(instances(typeof(ce))), by = val -> convert(Base.Enums.basetype(typeof(ce)), val)))
+		if ce == val
+			print(io, Symbol(ce))
+			return
+		end
+	end
+	
+	show(io, typeof(ce))
+	print(io, " (")
+	show(io, convert(Base.Enums.basetype(typeof(ce)), ce))
+	println(io, ')')
 end
 
-function Base.show(io::IO, ::MIME"text/plain", x::Cenum)
-    print(io, x, "::")
-    show(IOContext(io, :compact => true), typeof(x))
-    print(io, " = ")
-    show(io, Integer(x))
+function Base.show(io::IO, m::MIME"text/plain", ce::Cenum)
+	show(io, typeof(ce))
+	print(io, " (")
+	show(io, convert(Base.Enums.basetype(typeof(ce)), ce))
+	println(io, ')')
+	
+	numvals = length(instances(typeof(ce)))
+	maxwidth = mapreduce(val -> length(String(Symbol(val))), max, instances(typeof(ce)), init = 0)
+	
+	indent = get(io, :indent, 1)
+	prefix = repeat("  ", indent-1)
+	for (ind, val) in enumerate(sort(collect(instances(typeof(ce))), by = val -> convert(Base.Enums.basetype(typeof(ce)), val)))
+		select = ce == val ? "->" : "  "
+		print(io, prefix, select, rpad(String(Symbol(val)), maxwidth), " (")
+		show(io, convert(Base.Enums.basetype(typeof(ce)), val))
+		print(io, ')')
+		ind < numvals && println(io)
+	end
 end
 
-function Base.show(io::IO, m::MIME"text/plain", t::Type{<:Cenum})
-    if isconcretetype(t)
-        print(io, "Cenum ")
-        Base.show_datatype(io, t)
-        print(io, ":")
-        for x in instances(t)
-            print(io, "\n", Symbol(x), " = ")
-            show(io, Integer(x))
-        end
-    else
-        invoke(show, Tuple{IO, MIME"text/plain", Type}, io, m, t)
-    end
+function Base.show(io::IO, m::MIME"text/plain", ce::Type{<:Cenum})
+	show(io, ce)
+	
+	numvals = length(instances(ce))
+	println(io, " (", numvals, " option", numvals > 1 ? "s)" : ")")
+	
+	maxwidth = mapreduce(val -> length(String(Symbol(val))), max, instances(ce), init = 0)
+	
+	indent = get(io, :indent, 1)
+	prefix = repeat("  ", indent)
+	for (ind, val) in enumerate(sort(collect(instances(ce)), by = val -> convert(Base.Enums.basetype(ce), val)))
+		print(io, prefix, rpad(String(Symbol(val)), maxwidth), " (")
+		show(io, convert(Base.Enums.basetype(ce), val))
+		print(io, ')')
+		ind < numvals && println(io)
+	end
 end
-
 
 
