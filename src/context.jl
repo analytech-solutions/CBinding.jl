@@ -116,9 +116,8 @@ end
 getexprs(ctx::Context) = getexprs(ctx, clang_getTranslationUnitCursor(ctx.tu[]))
 
 function getexprs(ctx::Context, syms, blocks...)
-	expr = quote end
-	for block in blocks
-		append!(expr.args, block.args)
+	expr = quote
+		$(blocks...)
 	end
 	
 	blk = getblock(ctx)
@@ -152,11 +151,13 @@ function getexprs_tu(ctx::Context, cursor::CXCursor)
 	exprs = []
 	
 	for child in children(cursor)
-		range = getlocation(child)
-		isnothing(range) && continue  # ignore built-ins and such
-		
-		first(range).file == header(ctx) || haskey(ctx.hdrs, first(range).file) || continue
-		first(range).file != header(ctx) || first(range).line > ctx.line || continue
+		if !getblock(ctx).flags.libc
+			range = getlocation(child)
+			isnothing(range) && continue  # ignore built-ins and such
+			
+			first(range).file == header(ctx) || haskey(ctx.hdrs, first(range).file) || continue
+			first(range).file != header(ctx) || first(range).line > ctx.line || continue
+		end
 		
 		append!(exprs, getexprs(ctx, child))
 	end
@@ -178,7 +179,7 @@ function getexprs_include(ctx::Context, cursor::CXCursor)
 		isimplicit = !isempty(basedir) && startswith(file, basedir)
 		isexplicit = first(crng).file == header(ctx)
 		
-		if isexplicit || isimplicit
+		if isexplicit || isimplicit || getblock(ctx).flags.libc
 			push!(ctx.hdrs, file => isexplicit && getblock(ctx).flags.implic ? "$(dirname(file))/" : basedir)
 			push!(exprs, :(include_dependency($(file))))
 		end
@@ -248,7 +249,7 @@ function configure!(ctx::Context)
 	pushfirst!(ctx.args,
 		"-isystem", includedir,  # these -isystem args are needed since Clang_jll packaging seems to have clang's InstallDir not set/found correctly
 		"-isystem", joinpath(dirname(dirname(libclang_path())), "include"),
-		# NOTE: in wrap!, ctx.args[5:8] is used separately from ctx.args[9:end] in the compile command
+		# NOTE: in wrap!, ctx.args[5:7] is used separately from ctx.args[8:end] in the compile command
 		"-x", lowercase(String(ctx)),
 		"-Wno-empty-translation-unit",
 	)
@@ -397,7 +398,7 @@ function wrap!(ctx::Context)
 		close(file)
 		
 		libclang.Clang_jll.clang() do bin
-			run(`$(bin) $(ctx.args[5:8]) -w -O2 -fPIC -shared -o $(getlib(ctx).value) $(path) $(ctx.args[9:end])`)  # TODO: add -rpath for all ctx.libs?
+			run(`$(bin) $(ctx.args[5:7]) -w -O2 -fPIC -shared -o $(getlib(ctx).value) $(path) $(ctx.args[8:end])`)  # TODO: add -rpath for all ctx.libs?
 		end
 	end
 end
@@ -425,8 +426,8 @@ end
 
 function clang_cmd(mod::Module, loc::LineNumberNode, lang::Symbol, str::String)
 	cmd = :(``)
-	cmd.args[end-1] = loc
-	cmd.args[end] = str
+	cmd.args[2] = loc
+	cmd.args[3] = str
 	
 	return quote
 		CONTEXT_CACHE[$(mod)] = Context{$(QuoteNode(lang))}($(mod), $(esc(cmd)).exec...)
@@ -440,6 +441,7 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	# TODO: allow interpolation in str?
 	
 	flags = (;
+		libc    = 'c' in opts,
 		defer   = 'd' in opts,
 		nofunc  = 'f' in opts,
 		implic  = 'i' in opts,
