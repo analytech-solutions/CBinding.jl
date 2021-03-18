@@ -197,6 +197,10 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		cplxtype = clang_getElementType(type)
 		cplxtype = gettype(ctx, cplxtype; kwargs...)
 		result = :(Ccomplex{$(cplxtype)})
+	elseif type.kind == CXType_Atomic
+		atomictype = clang_Type_getValueType(type)
+		atomictype = gettype(ctx, atomictype; kwargs...)
+		result = :(Threads.Atomic{$(atomictype)})
 	elseif type.kind == CXType_Pointer
 		ptrtype = clang_getPointeeType(type)
 		ptrtype = gettype(ctx, ptrtype; kwargs...)
@@ -341,8 +345,6 @@ function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
 	docs  = getdocs(ctx, cursor)
 	
 	type = clang_getTypedefDeclUnderlyingType(cursor)
-	type.kind == CXType_BlockPointer && return quote end  # don't know how to support these yet
-	
 	if type.kind == CXType_Elaborated
 		# get from elaborated to actual record definition
 		decl = clang_getTypeDeclaration(type)
