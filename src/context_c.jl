@@ -299,7 +299,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 			append!(exprs, getexprs_macro(ctx, child))
 		end
 	elseif cursor.kind == CXCursor_TypedefDecl
-		push!(exprs, getexprs_typedef(ctx, cursor))
+		append!(exprs, getexprs_typedef(ctx, cursor))
 	elseif cursor.kind in (
 		CXCursor_StructDecl,
 		CXCursor_UnionDecl,
@@ -364,7 +364,7 @@ end
 
 
 function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
-	getblock(ctx).flags.notype && return quote end
+	getblock(ctx).flags.notype && return ()
 	
 	name  = gettype(ctx, string(cursor))
 	jlsym = getjl(ctx, string(cursor))
@@ -380,9 +380,9 @@ function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
 	tname = gettype(ctx, type)
 	
 	# nested anonymous opaque type had this typedef's name propagated to it so no expr needed
-	return tname == name ? quote end : getexprs(ctx, ((name, jlsym, docs),), quote
-		const $(name) = $(tname)
-	end)
+	return tname == name ? () : getexprs(ctx, ((name, jlsym, docs),),
+		:(const $(name) = $(tname)),
+	)
 end
 
 
@@ -413,22 +413,22 @@ function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 	loc = getlocation(clang_getCursorLocation(def))
 	
 	if !isanon && (isnothing(loc) || getblock(ctx).flags.libc || (loc.file == header(ctx) || haskey(ctx.hdrs, loc.file)))
-		push!(exprs, getexprs(ctx, ((absname, jlabssym, nothing),), quote
-			abstract type $(absname) <: $(kind) end
-		end))
+		append!(exprs, getexprs(ctx, ((absname, jlabssym, nothing),),
+			:(abstract type $(absname) <: $(kind) end),
+		))
 	end
 	
 	if isdecl
 		docs = getdocs(ctx, cursor)
-		common = quote
-			CBinding.bitstype(::Type{$(name)}) = $(name)
-			$(!isanon ? :(CBinding.bitstype(::Type{$(absname)}) = $(name)) : :())
-		end
+		common = (
+			:(CBinding.bitstype(::Type{$(name)}) = $(name)),
+			!isanon ? :(CBinding.bitstype(::Type{$(absname)}) = $(name)) : nothing,
+		)
 		
 		if cursor.kind == CXCursor_EnumDecl
-			push!(exprs, getexprs_enum(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
+			append!(exprs, getexprs_enum(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
 		else
-			push!(exprs, getexprs_aggregate(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
+			append!(exprs, getexprs_aggregate(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
 		end
 	end
 	
@@ -461,18 +461,18 @@ function getexprs_enum(ctx::Context{:c}, cursor::CXCursor, name, absname, jlsym,
 		(!isnothing(jlabssym) ? ((absname, jlabssym, docs),) : ())...,
 		(name, jlsym, docs),
 		map(((j, v, d),) -> (esc(getname(ctx, j)), esc(j), d), values)...,
-	), quote
-		primitive type $(name) <: $(absname) $(size*8) end
-		(::$(Type){$(name)})($(esc(:val))::Integer = zero($(itype))) = Core.Intrinsics.bitcast($(name), convert($(itype), $(esc(:val))))
+	),
+		:(primitive type $(name) <: $(absname) $(size*8) end),
+		:((::$(Type){$(name)})($(esc(:val))::Integer = zero($(itype))) = Core.Intrinsics.bitcast($(name), convert($(itype), $(esc(:val))))),
 		
 		# values = Tuple{
 		# 	Tuple{:name, value},  # name and literal value
 		# }
-		CBinding.values(::Type{$(name)}) = Tuple{$(map(((j, v, d),) -> :(Tuple{$(QuoteNode(getname(ctx, j))), $(v)}), values)...)}
-		Base.Enums.basetype(::Type{$(name)}) = $(itype)
-	end, common, map(((j, v, d),) -> quote
-		const $(esc(getname(ctx, j))) = $(name)($(v))
-	end, values)...)
+		:(CBinding.values(::Type{$(name)}) = Tuple{$(map(((j, v, d),) -> :(Tuple{$(QuoteNode(getname(ctx, j))), $(v)}), values)...)}),
+		:(Base.Enums.basetype(::Type{$(name)}) = $(itype)),
+		common...,
+		map(((j, v, d),) -> :(const $(esc(getname(ctx, j))) = $(name)($(v))), values)...,
+	)
 end
 
 
@@ -548,19 +548,22 @@ function getexprs_aggregate(ctx::Context{:c}, cursor::CXCursor, name, absname, j
 	return getexprs(ctx, (
 		(!isnothing(jlabssym) ? ((absname, jlabssym, docs),) : ())...,
 		(name, jlsym, docs),
-	), quote
-		struct $(name) <: $(absname)
-			mem::NTuple{$(size), UInt8}
-			
-			$(name)(::UndefInitializer, $(esc(:mem))::NTuple{$(size), UInt8}) = new($(esc(:mem)))
-		end
+	),
+		:(
+			struct $(name) <: $(absname)
+				mem::NTuple{$(size), UInt8}
+				
+				$(name)(::UndefInitializer, $(esc(:mem))::NTuple{$(size), UInt8}) = new($(esc(:mem)))
+			end
+		),
 		
 		# fields = Tuple{
 		# 	# a field's name, type, type with const/volatile/restrict removed, integral equivalent, bytes+bits offset, and bitfield size (-1 for non-bitfield)
 		# 	Tuple{:name, Tuple{FieldType, UnqualifiedFieldType, IntegerType, bytes, bits, size}},
 		# }
-		CBinding.fields(::Type{$(name)}) = Tuple{$(fields...)}
-	end, common)
+		:(CBinding.fields(::Type{$(name)}) = Tuple{$(fields...)}),
+		common...,
+	)
 end
 
 
@@ -589,6 +592,11 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		)
 	)
 		name = string(cursor)
+		binding = Symbol(:Cbinding_, name)
+		binding in ctx.bindings && return exprs
+		push!(ctx.bindings, binding)
+		binding = esc(binding)
+		
 		lib = getlib(ctx, name)
 		jlsym = getjl(ctx, name)
 		sym = gettype(ctx, name)
@@ -596,10 +604,10 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		
 		type = clang_getCursorType(cursor)
 		if cursor.kind == CXCursor_VarDecl
-			cb = :(Cbinding{$(gettype(ctx, type)), $(QuoteNode(Symbol(lib))), $(QuoteNode(Symbol(name)))})
-			push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
-				const $(sym) = $(cb)()
-			end))
+			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
+				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{$(gettype(ctx, type)), $(QuoteNode(Symbol(lib))), $(QuoteNode(Symbol(name)))} end),
+				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
+			))
 		else
 			if isinlined
 				if !getblock(ctx).flags.wrap
@@ -618,9 +626,9 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				
 				name = unname
 				lib  = getlib(ctx)
-				push!(exprs, quote
-					include_dependency($(String(lib.value)))
-				end)
+				push!(exprs,
+					:(include_dependency($(String(lib.value)))),
+				)
 			end
 			
 			rettype = clang_getResultType(type)
@@ -645,11 +653,11 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 			end
 			
 			func = getjl(ctx, :func)
-			cb = :(Cbinding{Cfunction{$(gettype(ctx, rettype)), Tuple{$(map(last, args)...)}, $(QuoteNode(conv))}, $(lib), $(QuoteNode(Symbol(name)))})
-			push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
-				const $(sym) = $(cb)()
-				($(func)::typeof($(sym)))($(map(first, args)...),) = funccall($(func), $(map(first, args)...),)
-			end))
+			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
+				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{Cfunction{$(gettype(ctx, rettype)), Tuple{$(map(last, args)...)}, $(QuoteNode(conv))}, $(lib), $(QuoteNode(Symbol(name)))} end),
+				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
+				:(($(func)::$(binding))($(map(first, args)...),) = funccall($(func), $(map(first, args)...),)),
+			))
 		end
 	end
 	
@@ -733,11 +741,7 @@ function getexprs_macro(ctx::Context{:c}, cursor::CXCursor)
 		jlsym = esc(Symbol("@", string(cursor)))
 		docs = getdocs(ctx, cursor)
 		
-		push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
-			macro $(esc(name))()
-				return $(esc(expr))
-			end
-		end))
+		append!(exprs, getexprs(ctx, ((sym, jlsym, docs),), :(macro $(esc(name))() ; return $(esc(expr)) ; end)))
 	end
 	
 	return exprs

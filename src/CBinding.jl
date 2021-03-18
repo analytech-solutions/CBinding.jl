@@ -41,8 +41,7 @@ module CBinding
 		let constructor = false end
 	end
 	
-	struct Cbinding{T, sym, lib}
-	end
+	abstract type Cbinding{T, lib, name} end
 	Base.eltype(::Type{CB}) where {T, CB<:Cbinding{T}} = T
 	
 	struct Cvariadic
@@ -129,11 +128,12 @@ module CBinding
 		libs::Vector{Pair}
 		hdrs::Dict{String, String}
 		macros::Dict{String, CXCursor}
+		bindings::Vector{Symbol}
 		blocks::Vector{CodeBlock}
 		src::IOBuffer
 		
 		function Context{lang}(mod::Module, args...) where {lang}
-			ctx = new{lang}(mod, map(String, collect(args)), nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), Dict{String, CXCursor}(), CodeBlock[], IOBuffer())
+			ctx = new{lang}(mod, map(String, collect(args)), nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), Dict{String, CXCursor}(), Symbol[], CodeBlock[], IOBuffer())
 			finalizer(ctx) do x
 				x.tu[] == C_NULL || clang_disposeTranslationUnit(x.tu[])
 				isnothing(x.ind) || x.ind == C_NULL || clang_disposeIndex(x.ind)

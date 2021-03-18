@@ -116,32 +116,30 @@ end
 getexprs(ctx::Context) = getexprs(ctx, clang_getTranslationUnitCursor(ctx.tu[]))
 
 function getexprs(ctx::Context, syms, blocks...)
-	expr = quote
-		$(blocks...)
-	end
+	expr = filter(!isnothing, collect(blocks))
 	
 	blk = getblock(ctx)
 	if blk.flags.jlsyms
 		for (sym, jlsym, docs) in syms
-			isnothing(jlsym) || push!(expr.args, :(const $(jlsym) = $(sym)))
+			isnothing(jlsym) || push!(expr, :(const $(jlsym) = $(sym)))
 		end
 	end
 	
 	if !blk.flags.priv
-		push!(expr.args, :(export $(map(((sym, jlsym, docs),) -> sym, syms)...)))
-		blk.flags.jlsyms && push!(expr.args, :(export $(filter(!isnothing, map(((sym, jlsym, docs),) -> jlsym, syms))...)))
+		push!(expr, :(export $(map(((sym, jlsym, docs),) -> sym, syms)...)))
+		blk.flags.jlsyms && push!(expr, :(export $(filter(!isnothing, map(((sym, jlsym, docs),) -> jlsym, syms))...)))
 	end
 	
 	if !blk.flags.nodocs
 		for (sym, jlsym, docs) in syms
 			isnothing(docs) && continue
-			push!(expr.args, :(@doc $(docs) $(startswith(String(sym.args[1]), '@') ? QuoteNode(sym.args[1]) : sym.args[1])))
+			push!(expr, :(@doc $(docs) $(startswith(String(sym.args[1]), '@') ? QuoteNode(sym.args[1]) : sym.args[1])))
 			isnothing(jlsym) && continue
-			blk.flags.jlsyms && push!(expr.args, :(@doc $(docs) $(startswith(String(jlsym.args[1]), '@') ? QuoteNode(jlsym.args[1]) : jlsym.args[1])))
+			blk.flags.jlsyms && push!(expr, :(@doc $(docs) $(startswith(String(jlsym.args[1]), '@') ? QuoteNode(jlsym.args[1]) : jlsym.args[1])))
 		end
 	end
 	
-	push!(expr.args, first(first(syms)))
+	push!(expr, first(first(syms)))
 	return expr
 end
 
@@ -159,7 +157,7 @@ function getexprs_tu(ctx::Context, cursor::CXCursor)
 			first(range).file != header(ctx) || first(range).line > ctx.line || continue
 		end
 		
-		append!(exprs, getexprs(ctx, child))
+		append!(exprs, filter(!isnothing, getexprs(ctx, child)))
 	end
 	
 	return exprs
