@@ -16,7 +16,7 @@ function (::Type{CA})(init::Union{NTuple{N, UInt8} where {N}, CA, Cbinding{CA}, 
 		init
 	
 	for (ind, arg) in enumerate(args)
-		result = arg isa Pair && first(arg) isa Integer ? setindex!(result, last(arg), first(arg)) : setindex!(result, arg, ind)
+		result = arg isa Pair && first(arg) isa Integer ? initindex!(result, last(arg), first(arg)) : initindex!(result, arg, ind)
 	end
 	
 	return result
@@ -52,4 +52,5 @@ Base.getindex(ptr::Cptrs{CA}, i::Integer) where {T, N, CA<:Carrays{T, N}} = Core
 Base.getindex(ca::CA, i::Integer) where {T, N, CA<:Carrays{T, N}} = load(ca, field(CA, i))
 
 Base.setindex!(ptr::Cptrs{CA}, val, i::Integer) where {T, N, CA<:Carray{T, N}} = unsafe_store!(Core.Intrinsics.bitcast(Cptr{T}, ptr) + (i-1), val)
-Base.setindex!(ca::CA, val, i::Integer) where {T, N, CA<:Carray{T, N}} = store!(ca, field(CA, i), val)
+initindex!(ca::CA, val, i::Integer) where {T, N, CA<:Carray{T, N}} = store!(ca, field(CA, i), val)
+
