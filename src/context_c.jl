@@ -150,6 +150,23 @@ end
 
 
 function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
+	function getbuiltintype(t)
+		isatomic = startswith(string(t), "_Atomic(")
+		
+		s = clang_Type_getSizeOf(t)
+		a = clang_Type_getAlignOf(t)
+		(a in (1, 2, 4, 8) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(string(t))`")
+		
+		# create correct size and alignment to mimic the type
+		t =
+			a == 1 ? :(UInt8) :
+			a == 2 ? :(UInt16) :
+			a == 4 ? :(UInt32) :
+			a == 8 ? :(UInt64) : :(UInt128)
+		return s÷a == 1 ? isatomic ? :(Threads.Atomic{$(t)}) : t : :(Carray{$(t), $(s÷a)})
+	end
+	
+	
 	if type.kind == CXType_Void
 		result = :(Cvoid)
 	elseif type.kind == CXType_Bool
@@ -184,6 +201,12 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		result = :(Cdouble)
 	elseif type.kind == CXType_LongDouble
 		result = :(Clongdouble)
+	elseif @isdefined(CXType_Atomic) && type.kind == CXType_Atomic  # libclang 9 lacks atomic
+		atomictype = clang_Type_getValueType(type)
+		atomictype = gettype(ctx, atomictype; kwargs...)
+		result = :(Threads.Atomic{$(atomictype)})
+	elseif !@isdefined(CXType_Atomic) && type.kind == CXType_Unexposed && startswith(string(type), "_Atomic(")  # fallback for libclang 9 atomic, etc.
+		result = getbuiltintype(type)
 	elseif type.kind in (
 		CXType_Typedef,
 		CXType_Record,
@@ -195,17 +218,7 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		isbuiltin = isnothing(getlocation(loc))
 		
 		if isbuiltin
-			s = clang_Type_getSizeOf(type)
-			a = clang_Type_getAlignOf(type)
-			(a in (1, 2, 4, 8) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(string(type))`")
-			
-			# create an array of the correct size and alignment to mimic the type
-			t =
-				a == 1 ? :(UInt8) :
-				a == 2 ? :(UInt16) :
-				a == 4 ? :(UInt32) :
-				a == 8 ? :(UInt64) : :(UInt128)
-			result = :(Carray{$(t), $(s÷a)})
+			result = getbuiltintype(type)
 		else
 			t = clang_getCursorType(decl)
 			result = gettype(ctx, string(t); kwargs...)
@@ -214,10 +227,6 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		cplxtype = clang_getElementType(type)
 		cplxtype = gettype(ctx, cplxtype; kwargs...)
 		result = :(Ccomplex{$(cplxtype)})
-	elseif type.kind == CXType_Atomic
-		atomictype = clang_Type_getValueType(type)
-		atomictype = gettype(ctx, atomictype; kwargs...)
-		result = :(Threads.Atomic{$(atomictype)})
 	elseif type.kind == CXType_Pointer
 		ptrtype = clang_getPointeeType(type)
 		ptrtype = gettype(ctx, ptrtype; kwargs...)
