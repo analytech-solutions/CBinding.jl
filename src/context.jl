@@ -460,7 +460,7 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 	isnothing(ref) || return ref
 	flags.ref && error("Failed to parse $(String(Context{lang})) expression $(language(Context{lang}))$(repr(str))")
 	
-	haskey(CONTEXT_CACHE, mod) || error("Compiler context ($(language(Context{lang}))`...`) not created before declaring $(String(Context{lang})) bindings ($(language(Context{lang}))\"...\")")
+	haskey(CONTEXT_CACHE, mod) || error("Compiler context ($(language(Context{lang}))`...`) not created before declaring $(String(Context{lang})) bindings ($(language(Context{lang}))\"...\") in $(mod)")
 	ctx = CONTEXT_CACHE[mod]
 	
 	exprs = []

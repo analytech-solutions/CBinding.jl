@@ -11,13 +11,19 @@ module CBinding
 	export @cc_cmd
 	export @c_cmd, @c_str
 	# export @cxx_cmd, @cxx_str
-	export Cbool, Ccomplex, Clongdouble, Cptr, Cstruct, Cunion, Cenum, Carray
+	export Cbool, Ccomplex, Cmem8, Cmem16, Cmem32, Cmem64, Cmem128, Clongdouble
+	export Cptr, Cstruct, Cunion, Cenum, Carray
 	export Cfunction, Cbinding, Cconst, Crestrict, Cvolatile
 	export isqualifiedwith, unqualifiedtype, bitstype
 	
 	
 	const Cbool    = Cuchar
 	const Ccomplex = Complex
+	primitive type Cmem8 <: Unsigned 8 end
+	primitive type Cmem16 <: Unsigned 16 end
+	primitive type Cmem32 <: Unsigned 32 end
+	primitive type Cmem64 <: Unsigned 64 end
+	primitive type Cmem128 <: Unsigned 128 end
 	primitive type Clongdouble <: AbstractFloat 2*sizeof(Cdouble)*8 end
 	
 	primitive type Cptr{T} <: Ref{T} sizeof(Ptr)*8 end

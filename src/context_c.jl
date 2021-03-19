@@ -149,64 +149,92 @@ end
 
 
 
-function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
-	function getbuiltintype(t)
-		isatomic = startswith(string(t), "_Atomic(")
-		
-		s = clang_Type_getSizeOf(t)
-		a = clang_Type_getAlignOf(t)
-		(a in (1, 2, 4, 8) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(string(t))`")
-		
-		# create correct size and alignment to mimic the type
-		t =
-			a == 1 ? :(UInt8) :
-			a == 2 ? :(UInt16) :
-			a == 4 ? :(UInt32) :
-			a == 8 ? :(UInt64) : :(UInt128)
-		return s÷a == 1 ? isatomic ? :(Threads.Atomic{$(t)}) : t : :(Carray{$(t), $(s÷a)})
-	end
-	
-	
-	if type.kind == CXType_Void
+function getbuiltintype(ctx::Type{Context{:c}}, type::CXType)
+	n = string(type)
+	s = clang_Type_getSizeOf(type)
+	a = clang_Type_getAlignOf(type)
+	return getbuiltintype(ctx, type.kind, n, s, a)
+end
+
+function getbuiltintype(ctx::Type{Context{:c}}, k::CXTypeKind, n::String, s::Integer, a::Integer)
+	if k == CXType_Void
 		result = :(Cvoid)
-	elseif type.kind == CXType_Bool
-		result = :(Cbool)
-	elseif type.kind == CXType_Char_S
+	elseif k in (
+		CXType_Char_S,
+		CXType_SChar,
+	)
 		result = :(Cchar)
-	elseif type.kind == CXType_Char_U
-		result = :(Cuchar)
-	elseif type.kind == CXType_SChar
-		result = :(Cchar)
-	elseif type.kind == CXType_UChar
-		result = :(Cuchar)
-	elseif type.kind == CXType_Short
+	elseif k == CXType_Short
 		result = :(Cshort)
-	elseif type.kind == CXType_Int
+	elseif k == CXType_Int
 		result = :(Cint)
-	elseif type.kind == CXType_Long
+	elseif k == CXType_Long
 		result = :(Clong)
-	elseif type.kind == CXType_LongLong
+	elseif k == CXType_LongLong
 		result = :(Clonglong)
-	elseif type.kind == CXType_UShort
+	elseif k in (
+		CXType_Char_U,
+		CXType_UChar,
+	) || (k == CXType_Bool && s == sizeof(Cuchar))
+		result = :(Cuchar)
+	elseif k == CXType_UShort || (k == CXType_Bool && s == sizeof(Cushort))
 		result = :(Cushort)
-	elseif type.kind == CXType_UInt
+	elseif k == CXType_UInt || (k == CXType_Bool && s == sizeof(Cuint))
 		result = :(Cuint)
-	elseif type.kind == CXType_ULong
+	elseif k == CXType_ULong || (k == CXType_Bool && s == sizeof(Culong))
 		result = :(Culong)
-	elseif type.kind == CXType_ULongLong
+	elseif k == CXType_ULongLong || (k == CXType_Bool && s == sizeof(Culonglong))
 		result = :(Culonglong)
-	elseif type.kind == CXType_Float
+	elseif k == CXType_Float
 		result = :(Cfloat)
-	elseif type.kind == CXType_Double
+	elseif k == CXType_Double
 		result = :(Cdouble)
-	elseif type.kind == CXType_LongDouble
+	elseif k == CXType_LongDouble
 		result = :(Clongdouble)
+	else
+		# create correct size and alignment to mimic the type
+		(a in (1, 2, 4, 8, 16) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(n)`")
+		
+		t =
+			a == 1 ? :(Cmem8) :
+			a == 2 ? :(Cmem16) :
+			a == 4 ? :(Cmem32) :
+			a == 8 ? :(Cmem64) : :(Cmem128)
+		
+		if s÷a == 1
+			if startswith(n, "_Atomic(")
+				n = n[9:end-1]
+				t = getref(ctx, n)
+				isnothing(t) && error("Unhandled atomic type $(n)")
+				return :(Threads.Atomic{$(t)})
+			else
+				return t
+			end
+		end
+		return :(Carray{$(t), $(s÷a)})
+	end
+end
+
+
+
+function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
+	if type.kind in (
+		CXType_Void, CXType_Bool,
+		CXType_Char_S, CXType_Char_U,
+		CXType_SChar, CXType_UChar,
+		CXType_Short, CXType_UShort,
+		CXType_Int, CXType_UInt,
+		CXType_Long, CXType_ULong,
+		CXType_LongLong, CXType_ULongLong,
+		CXType_Float, CXType_Double, CXType_LongDouble,
+	)
+		result = getbuiltintype(ctx, type)
 	elseif @isdefined(CXType_Atomic) && type.kind == CXType_Atomic  # libclang 9 lacks atomic
 		atomictype = clang_Type_getValueType(type)
 		atomictype = gettype(ctx, atomictype; kwargs...)
 		result = :(Threads.Atomic{$(atomictype)})
 	elseif !@isdefined(CXType_Atomic) && type.kind == CXType_Unexposed && startswith(string(type), "_Atomic(")  # fallback for libclang 9 atomic, etc.
-		result = getbuiltintype(type)
+		result = getbuiltintype(ctx, type)
 	elseif type.kind in (
 		CXType_Typedef,
 		CXType_Record,
@@ -218,7 +246,7 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		isbuiltin = isnothing(getlocation(loc))
 		
 		if isbuiltin
-			result = getbuiltintype(type)
+			result = getbuiltintype(ctx, type)
 		else
 			t = clang_getCursorType(decl)
 			result = gettype(ctx, string(t); kwargs...)
@@ -378,9 +406,28 @@ function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
 		docs = jlsym == getjl(ctx, string(decl)) ? nothing : docs  # avoid "replacing docs" warnings when julia-ized names are the same if struct/union/enum was stripped
 	end
 	tname = gettype(ctx, type)
+	builtin = nothing
+	exports = ()
+	
+	decl = clang_getTypeDeclaration(type)
+	loc = clang_getCursorLocation(decl)
+	isbuiltin = isnothing(getlocation(loc))
+	if isbuiltin && type.kind in (
+		CXType_Typedef,
+		CXType_Elaborated,
+		CXType_Record,
+		CXType_Enum,
+	)
+		newname = gettype(ctx, string(type))
+		jlname = getjl(ctx, string(type))
+		builtin = :(const $(newname) = $(tname))
+		tname = newname
+		exports = ((tname, jlname, nothing),)
+	end
 	
 	# nested anonymous opaque type had this typedef's name propagated to it so no expr needed
-	return tname == name ? () : getexprs(ctx, ((name, jlsym, docs),),
+	return tname == name ? () : getexprs(ctx, ((name, jlsym, docs), exports...),
+		builtin,
 		:(const $(name) = $(tname)),
 	)
 end
