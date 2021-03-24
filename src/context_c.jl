@@ -149,64 +149,92 @@ end
 
 
 
-function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
-	function getbuiltintype(t)
-		isatomic = startswith(string(t), "_Atomic(")
-		
-		s = clang_Type_getSizeOf(t)
-		a = clang_Type_getAlignOf(t)
-		(a in (1, 2, 4, 8) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(string(t))`")
-		
-		# create correct size and alignment to mimic the type
-		t =
-			a == 1 ? :(UInt8) :
-			a == 2 ? :(UInt16) :
-			a == 4 ? :(UInt32) :
-			a == 8 ? :(UInt64) : :(UInt128)
-		return s÷a == 1 ? isatomic ? :(Threads.Atomic{$(t)}) : t : :(Carray{$(t), $(s÷a)})
-	end
-	
-	
-	if type.kind == CXType_Void
+function getbuiltintype(ctx::Type{Context{:c}}, type::CXType)
+	n = string(type)
+	s = clang_Type_getSizeOf(type)
+	a = clang_Type_getAlignOf(type)
+	return getbuiltintype(ctx, type.kind, n, s, a)
+end
+
+function getbuiltintype(ctx::Type{Context{:c}}, k::CXTypeKind, n::String, s::Integer, a::Integer)
+	if k == CXType_Void
 		result = :(Cvoid)
-	elseif type.kind == CXType_Bool
-		result = :(Cbool)
-	elseif type.kind == CXType_Char_S
+	elseif k in (
+		CXType_Char_S,
+		CXType_SChar,
+	)
 		result = :(Cchar)
-	elseif type.kind == CXType_Char_U
-		result = :(Cuchar)
-	elseif type.kind == CXType_SChar
-		result = :(Cchar)
-	elseif type.kind == CXType_UChar
-		result = :(Cuchar)
-	elseif type.kind == CXType_Short
+	elseif k == CXType_Short
 		result = :(Cshort)
-	elseif type.kind == CXType_Int
+	elseif k == CXType_Int
 		result = :(Cint)
-	elseif type.kind == CXType_Long
+	elseif k == CXType_Long
 		result = :(Clong)
-	elseif type.kind == CXType_LongLong
+	elseif k == CXType_LongLong
 		result = :(Clonglong)
-	elseif type.kind == CXType_UShort
+	elseif k in (
+		CXType_Char_U,
+		CXType_UChar,
+	) || (k == CXType_Bool && s == sizeof(Cuchar))
+		result = :(Cuchar)
+	elseif k == CXType_UShort || (k == CXType_Bool && s == sizeof(Cushort))
 		result = :(Cushort)
-	elseif type.kind == CXType_UInt
+	elseif k == CXType_UInt || (k == CXType_Bool && s == sizeof(Cuint))
 		result = :(Cuint)
-	elseif type.kind == CXType_ULong
+	elseif k == CXType_ULong || (k == CXType_Bool && s == sizeof(Culong))
 		result = :(Culong)
-	elseif type.kind == CXType_ULongLong
+	elseif k == CXType_ULongLong || (k == CXType_Bool && s == sizeof(Culonglong))
 		result = :(Culonglong)
-	elseif type.kind == CXType_Float
+	elseif k == CXType_Float
 		result = :(Cfloat)
-	elseif type.kind == CXType_Double
+	elseif k == CXType_Double
 		result = :(Cdouble)
-	elseif type.kind == CXType_LongDouble
+	elseif k == CXType_LongDouble
 		result = :(Clongdouble)
+	else
+		# create correct size and alignment to mimic the type
+		(a in (1, 2, 4, 8, 16) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(n)`")
+		
+		t =
+			a == 1 ? :(Cmem8) :
+			a == 2 ? :(Cmem16) :
+			a == 4 ? :(Cmem32) :
+			a == 8 ? :(Cmem64) : :(Cmem128)
+		
+		if s÷a == 1
+			if startswith(n, "_Atomic(")
+				n = n[9:end-1]
+				t = getref(ctx, n)
+				isnothing(t) && error("Unhandled atomic type $(n)")
+				return :(Threads.Atomic{$(t)})
+			else
+				return t
+			end
+		end
+		return :(Carray{$(t), $(s÷a)})
+	end
+end
+
+
+
+function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
+	if type.kind in (
+		CXType_Void, CXType_Bool,
+		CXType_Char_S, CXType_Char_U,
+		CXType_SChar, CXType_UChar,
+		CXType_Short, CXType_UShort,
+		CXType_Int, CXType_UInt,
+		CXType_Long, CXType_ULong,
+		CXType_LongLong, CXType_ULongLong,
+		CXType_Float, CXType_Double, CXType_LongDouble,
+	)
+		result = getbuiltintype(ctx, type)
 	elseif @isdefined(CXType_Atomic) && type.kind == CXType_Atomic  # libclang 9 lacks atomic
 		atomictype = clang_Type_getValueType(type)
 		atomictype = gettype(ctx, atomictype; kwargs...)
 		result = :(Threads.Atomic{$(atomictype)})
 	elseif !@isdefined(CXType_Atomic) && type.kind == CXType_Unexposed && startswith(string(type), "_Atomic(")  # fallback for libclang 9 atomic, etc.
-		result = getbuiltintype(type)
+		result = getbuiltintype(ctx, type)
 	elseif type.kind in (
 		CXType_Typedef,
 		CXType_Record,
@@ -218,7 +246,7 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		isbuiltin = isnothing(getlocation(loc))
 		
 		if isbuiltin
-			result = getbuiltintype(type)
+			result = getbuiltintype(ctx, type)
 		else
 			t = clang_getCursorType(decl)
 			result = gettype(ctx, string(t); kwargs...)
@@ -299,7 +327,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 			append!(exprs, getexprs_macro(ctx, child))
 		end
 	elseif cursor.kind == CXCursor_TypedefDecl
-		push!(exprs, getexprs_typedef(ctx, cursor))
+		append!(exprs, getexprs_typedef(ctx, cursor))
 	elseif cursor.kind in (
 		CXCursor_StructDecl,
 		CXCursor_UnionDecl,
@@ -364,7 +392,7 @@ end
 
 
 function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
-	getblock(ctx).flags.notype && return quote end
+	getblock(ctx).flags.notype && return ()
 	
 	name  = gettype(ctx, string(cursor))
 	jlsym = getjl(ctx, string(cursor))
@@ -378,11 +406,30 @@ function getexprs_typedef(ctx::Context{:c}, cursor::CXCursor)
 		docs = jlsym == getjl(ctx, string(decl)) ? nothing : docs  # avoid "replacing docs" warnings when julia-ized names are the same if struct/union/enum was stripped
 	end
 	tname = gettype(ctx, type)
+	builtin = nothing
+	exports = ()
+	
+	decl = clang_getTypeDeclaration(type)
+	loc = clang_getCursorLocation(decl)
+	isbuiltin = isnothing(getlocation(loc))
+	if isbuiltin && type.kind in (
+		CXType_Typedef,
+		CXType_Elaborated,
+		CXType_Record,
+		CXType_Enum,
+	)
+		newname = gettype(ctx, string(type))
+		jlname = getjl(ctx, string(type))
+		builtin = :(const $(newname) = $(tname))
+		tname = newname
+		exports = ((tname, jlname, nothing),)
+	end
 	
 	# nested anonymous opaque type had this typedef's name propagated to it so no expr needed
-	return tname == name ? quote end : getexprs(ctx, ((name, jlsym, docs),), quote
-		const $(name) = $(tname)
-	end)
+	return tname == name ? () : getexprs(ctx, ((name, jlsym, docs), exports...),
+		builtin,
+		:(const $(name) = $(tname)),
+	)
 end
 
 
@@ -413,22 +460,22 @@ function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 	loc = getlocation(clang_getCursorLocation(def))
 	
 	if !isanon && (isnothing(loc) || getblock(ctx).flags.libc || (loc.file == header(ctx) || haskey(ctx.hdrs, loc.file)))
-		push!(exprs, getexprs(ctx, ((absname, jlabssym, nothing),), quote
-			abstract type $(absname) <: $(kind) end
-		end))
+		append!(exprs, getexprs(ctx, ((absname, jlabssym, nothing),),
+			:(abstract type $(absname) <: $(kind) end),
+		))
 	end
 	
 	if isdecl
 		docs = getdocs(ctx, cursor)
-		common = quote
-			CBinding.bitstype(::Type{$(name)}) = $(name)
-			$(!isanon ? :(CBinding.bitstype(::Type{$(absname)}) = $(name)) : :())
-		end
+		common = (
+			:(CBinding.bitstype(::Type{$(name)}) = $(name)),
+			!isanon ? :(CBinding.bitstype(::Type{$(absname)}) = $(name)) : nothing,
+		)
 		
 		if cursor.kind == CXCursor_EnumDecl
-			push!(exprs, getexprs_enum(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
+			append!(exprs, getexprs_enum(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
 		else
-			push!(exprs, getexprs_aggregate(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
+			append!(exprs, getexprs_aggregate(ctx, cursor, name, absname, jlsym, jlabssym, docs, common))
 		end
 	end
 	
@@ -461,18 +508,18 @@ function getexprs_enum(ctx::Context{:c}, cursor::CXCursor, name, absname, jlsym,
 		(!isnothing(jlabssym) ? ((absname, jlabssym, docs),) : ())...,
 		(name, jlsym, docs),
 		map(((j, v, d),) -> (esc(getname(ctx, j)), esc(j), d), values)...,
-	), quote
-		primitive type $(name) <: $(absname) $(size*8) end
-		(::$(Type){$(name)})($(esc(:val))::Integer = zero($(itype))) = Core.Intrinsics.bitcast($(name), convert($(itype), $(esc(:val))))
+	),
+		:(primitive type $(name) <: $(absname) $(size*8) end),
+		:((::$(Type){$(name)})($(esc(:val))::Integer = zero($(itype))) = Core.Intrinsics.bitcast($(name), convert($(itype), $(esc(:val))))),
 		
 		# values = Tuple{
 		# 	Tuple{:name, value},  # name and literal value
 		# }
-		CBinding.values(::Type{$(name)}) = Tuple{$(map(((j, v, d),) -> :(Tuple{$(QuoteNode(getname(ctx, j))), $(v)}), values)...)}
-		Base.Enums.basetype(::Type{$(name)}) = $(itype)
-	end, common, map(((j, v, d),) -> quote
-		const $(esc(getname(ctx, j))) = $(name)($(v))
-	end, values)...)
+		:(CBinding.values(::Type{$(name)}) = Tuple{$(map(((j, v, d),) -> :(Tuple{$(QuoteNode(getname(ctx, j))), $(v)}), values)...)}),
+		:(Base.Enums.basetype(::Type{$(name)}) = $(itype)),
+		common...,
+		map(((j, v, d),) -> :(const $(esc(getname(ctx, j))) = $(name)($(v))), values)...,
+	)
 end
 
 
@@ -548,19 +595,22 @@ function getexprs_aggregate(ctx::Context{:c}, cursor::CXCursor, name, absname, j
 	return getexprs(ctx, (
 		(!isnothing(jlabssym) ? ((absname, jlabssym, docs),) : ())...,
 		(name, jlsym, docs),
-	), quote
-		struct $(name) <: $(absname)
-			mem::NTuple{$(size), UInt8}
-			
-			$(name)(::UndefInitializer, $(esc(:mem))::NTuple{$(size), UInt8}) = new($(esc(:mem)))
-		end
+	),
+		:(
+			struct $(name) <: $(absname)
+				mem::NTuple{$(size), UInt8}
+				
+				$(name)(::UndefInitializer, $(esc(:mem))::NTuple{$(size), UInt8}) = new($(esc(:mem)))
+			end
+		),
 		
 		# fields = Tuple{
 		# 	# a field's name, type, type with const/volatile/restrict removed, integral equivalent, bytes+bits offset, and bitfield size (-1 for non-bitfield)
 		# 	Tuple{:name, Tuple{FieldType, UnqualifiedFieldType, IntegerType, bytes, bits, size}},
 		# }
-		CBinding.fields(::Type{$(name)}) = Tuple{$(fields...)}
-	end, common)
+		:(CBinding.fields(::Type{$(name)}) = Tuple{$(fields...)}),
+		common...,
+	)
 end
 
 
@@ -589,6 +639,11 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		)
 	)
 		name = string(cursor)
+		binding = Symbol(:Cbinding_, name)
+		binding in ctx.bindings && return exprs
+		push!(ctx.bindings, binding)
+		binding = esc(binding)
+		
 		lib = getlib(ctx, name)
 		jlsym = getjl(ctx, name)
 		sym = gettype(ctx, name)
@@ -596,10 +651,10 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		
 		type = clang_getCursorType(cursor)
 		if cursor.kind == CXCursor_VarDecl
-			cb = :(Cbinding{$(gettype(ctx, type)), $(QuoteNode(Symbol(lib))), $(QuoteNode(Symbol(name)))})
-			push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
-				const $(sym) = $(cb)()
-			end))
+			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
+				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{$(gettype(ctx, type)), $(QuoteNode(Symbol(lib))), $(QuoteNode(Symbol(name)))} end),
+				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
+			))
 		else
 			if isinlined
 				if !getblock(ctx).flags.wrap
@@ -618,9 +673,9 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				
 				name = unname
 				lib  = getlib(ctx)
-				push!(exprs, quote
-					include_dependency($(String(lib.value)))
-				end)
+				push!(exprs,
+					:(include_dependency($(String(lib.value)))),
+				)
 			end
 			
 			rettype = clang_getResultType(type)
@@ -645,11 +700,11 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 			end
 			
 			func = getjl(ctx, :func)
-			cb = :(Cbinding{Cfunction{$(gettype(ctx, rettype)), Tuple{$(map(last, args)...)}, $(QuoteNode(conv))}, $(lib), $(QuoteNode(Symbol(name)))})
-			push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
-				const $(sym) = $(cb)()
-				($(func)::typeof($(sym)))($(map(first, args)...),) = funccall($(func), $(map(first, args)...),)
-			end))
+			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
+				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{Cfunction{$(gettype(ctx, rettype)), Tuple{$(map(last, args)...)}, $(QuoteNode(conv))}, $(lib), $(QuoteNode(Symbol(name)))} end),
+				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
+				:(($(func)::$(binding))($(map(first, args)...),) = funccall($(func), $(map(first, args)...),)),
+			))
 		end
 	end
 	
@@ -733,11 +788,7 @@ function getexprs_macro(ctx::Context{:c}, cursor::CXCursor)
 		jlsym = esc(Symbol("@", string(cursor)))
 		docs = getdocs(ctx, cursor)
 		
-		push!(exprs, getexprs(ctx, ((sym, jlsym, docs),), quote
-			macro $(esc(name))()
-				return $(esc(expr))
-			end
-		end))
+		append!(exprs, getexprs(ctx, ((sym, jlsym, docs),), :(macro $(esc(name))() ; return $(esc(expr)) ; end)))
 	end
 	
 	return exprs

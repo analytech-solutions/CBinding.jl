@@ -11,13 +11,19 @@ module CBinding
 	export @cc_cmd
 	export @c_cmd, @c_str
 	# export @cxx_cmd, @cxx_str
-	export Cbool, Ccomplex, Clongdouble, Cptr, Cstruct, Cunion, Cenum, Carray
+	export Cbool, Ccomplex, Cmem8, Cmem16, Cmem32, Cmem64, Cmem128, Clongdouble
+	export Cptr, Cstruct, Cunion, Cenum, Carray
 	export Cfunction, Cbinding, Cconst, Crestrict, Cvolatile
 	export isqualifiedwith, unqualifiedtype, bitstype
 	
 	
 	const Cbool    = Cuchar
 	const Ccomplex = Complex
+	primitive type Cmem8 <: Unsigned 8 end
+	primitive type Cmem16 <: Unsigned 16 end
+	primitive type Cmem32 <: Unsigned 32 end
+	primitive type Cmem64 <: Unsigned 64 end
+	primitive type Cmem128 <: Unsigned 128 end
 	primitive type Clongdouble <: AbstractFloat 2*sizeof(Cdouble)*8 end
 	
 	primitive type Cptr{T} <: Ref{T} sizeof(Ptr)*8 end
@@ -41,8 +47,7 @@ module CBinding
 		let constructor = false end
 	end
 	
-	struct Cbinding{T, sym, lib}
-	end
+	abstract type Cbinding{T, lib, name} end
 	Base.eltype(::Type{CB}) where {T, CB<:Cbinding{T}} = T
 	
 	struct Cvariadic
@@ -129,11 +134,12 @@ module CBinding
 		libs::Vector{Pair}
 		hdrs::Dict{String, String}
 		macros::Dict{String, CXCursor}
+		bindings::Vector{Symbol}
 		blocks::Vector{CodeBlock}
 		src::IOBuffer
 		
 		function Context{lang}(mod::Module, args...) where {lang}
-			ctx = new{lang}(mod, map(String, collect(args)), nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), Dict{String, CXCursor}(), CodeBlock[], IOBuffer())
+			ctx = new{lang}(mod, map(String, collect(args)), nothing, Ref(CXTranslationUnit(C_NULL)), 0, Pair[], Dict{String, String}(), Dict{String, CXCursor}(), Symbol[], CodeBlock[], IOBuffer())
 			finalizer(ctx) do x
 				x.tu[] == C_NULL || clang_disposeTranslationUnit(x.tu[])
 				isnothing(x.ind) || x.ind == C_NULL || clang_disposeIndex(x.ind)
