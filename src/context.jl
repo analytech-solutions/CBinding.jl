@@ -16,9 +16,9 @@ getcontext(mod::Module) = get(CONTEXT_CACHE, mod, nothing)
 Base.close(ctx::Context) = delete!(CONTEXT_CACHE, ctx.mod)
 
 
-getjl(ctx::Context, args...; kwargs...) = getjl(typeof(ctx), args...; kwargs...)
+getjl(ctx::Context, args...; kwargs...) = getjl(typeof(ctx), args...; annotate = getblock(ctx).flags.annot, kwargs...)
 getjl(::Type{C}, str::String; kwargs...) where {C<:Context} = getjl(C, Symbol(str); kwargs...)
-getjl(::Type{C}, sym::Symbol) where {C<:Context} = esc(Symbol(replace(String(sym), r"^(struct|union|enum)\s+" => "")))
+getjl(::Type{C}, sym::Symbol; annotate::Bool = false) where {C<:Context} = esc(Symbol(replace(String(sym), r"^(struct|union|enum)\s+" => (annotate ? s"\1_" : ""))))
 
 getname(ctx::Context, args...; kwargs...) = getname(typeof(ctx), args...; kwargs...)
 getname(::Type{C}, str::String; kwargs...) where {C<:Context} = getname(C, Symbol(str); kwargs...)
@@ -447,7 +447,8 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 		defer   = 'd' in opts,
 		nofunc  = 'f' in opts,
 		implic  = 'i' in opts,
-		jlsyms  = 'j' in opts,
+		jlsyms  = 'J' in opts || 'j' in opts,
+		annot   = 'J' in opts,
 		nomacro = 'm' in opts,
 		notify  = 'n' in opts,
 		priv    = 'p' in opts,
