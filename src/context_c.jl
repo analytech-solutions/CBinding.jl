@@ -667,7 +667,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				code = replace(code, r"(^|\s)inline\s" => s"\1")
 				code = replace(code, r"(^|\s)static\s" => s"\1")
 				code = replace(code, r"(^|\s)extern\s" => s"\1")
-				code = replace(code, " $(name)(" => " $(unname)(")
+				code = replace(code, r"(\W)"*name*"(" => SubstitutionString("\\1$(unname)("))
 				code = "$(lstrip(code)) __attribute__((alias($(repr(name)))));"
 				push!(getblock(ctx).inlines, code)
 				
