@@ -38,7 +38,6 @@ end
 
 Base.string(cursor::CXType) = _string(clang_getTypeSpelling, cursor)
 Base.string(cursor::CXCursor) = _string(clang_getCursorSpelling, cursor)
-Base.string(diag::CXDiagnostic) = _string(clang_formatDiagnostic, diag, clang_defaultDiagnosticDisplayOptions())
 Base.string(tu::CXTranslationUnit, token::CXToken) = _string(clang_getTokenSpelling, tu, token)
 
 

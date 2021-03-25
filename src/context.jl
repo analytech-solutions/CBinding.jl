@@ -52,8 +52,10 @@ end
 
 function getcode(ctx::Context, cursor::CXCursor)
 	policy = clang_getCursorPrintingPolicy(cursor)
-	code = _string(clang_getCursorPrettyPrinted, cursor, policy)
-	isempty(code) || return code
+	if policy != C_NULL
+		code = _string(clang_getCursorPrettyPrinted, cursor, policy)
+		isempty(code) || return code
+	end
 	
 	# if easy way didn't produce anything, we need to do it the messy way
 	ismacro = cursor.kind == CXCursor_MacroDefinition
@@ -349,7 +351,7 @@ function parse!(ctx::Context)
 			blk = getblock(ctx, loc)
 			isquiet = !isnothing(blk) && blk.flags.quiet
 			if !isquiet
-				msg = string(diag)
+				msg = _string(clang_formatDiagnostic, diag, clang_defaultDiagnosticDisplayOptions())
 				msg = replace(msg, (header(ctx)*r"(?:\:\d+)*") => (!isnothing(blk) ? "$(blk.loc.file):$(blk.loc.line)" : @__FILE__))
 				
 				if !isnothing(blk)

@@ -14,11 +14,14 @@ end
 
 Cptr{T}(ptr::Ptr = C_NULL) where {T} = Core.Intrinsics.bitcast(Cptr{T}, ptr)
 Cptr{T}(i::Integer) where {T} = sizeof(i) < sizeof(Cptr) ? Core.Intrinsics.zext_int(Cptr{T}, i) : Core.Intrinsics.bitcast(Cptr{T}, i)
+(::Type{T})(ptr::Cptr) where {T<:Union{Ptr, Unsigned}} = convert(T, ptr)
 
 Base.eltype(::Type{Cptr{T}}) where {T} = T
+Base.convert(::Type{T}, ptr::Cptrs) where {T<:Unsigned} = convert(T, Core.Intrinsics.bitcast(sizeof(ptr) == sizeof(UInt32) ? UInt32 : UInt64, ptr))
+Base.convert(::Type{Ptr{T}}, ptr::Cptrs) where {T} = Core.Intrinsics.bitcast(Ptr{T}, ptr)
 Base.convert(::Type{Cptr{T}}, ptr::Cptrs) where {T} = Core.Intrinsics.bitcast(Cptr{T}, ptr)
 Base.convert(::Type{Cptr{T}}, ptr::Ptr) where {T} = Core.Intrinsics.bitcast(Cptr{T}, ptr)
-Base.convert(::Type{Ptr{T}}, ptr::Cptrs) where {T} = Core.Intrinsics.bitcast(Ptr{T}, ptr)
+Base.convert(::Type{Cptr{T}}, ptr::Ref) where {T} = Core.Intrinsics.bitcast(Cptr{T}, Base.unsafe_convert(Ptr{eltype(ptr)}, ptr))
 Base.zero(::Type{Cptr{T}}) where {T} = Cptr{T}(C_NULL)
 Base.:+(ptr::Cptr{T}, offset::Integer) where {T} = Cptr{T}(Core.Intrinsics.bitcast(Ptr{UInt8}, ptr) + max(1, sizeof(T))*offset)
 Base.:-(ptr::Cptr{T}, offset::Integer) where {T} = Cptr{T}(Core.Intrinsics.bitcast(Ptr{UInt8}, ptr) - max(1, sizeof(T))*offset)
@@ -30,12 +33,11 @@ Base.:(==)(x::Cptr, y::Ptr) = convert(typeof(y), x) == y
 # TODO: make these all work better
 Base.cconvert(::Type{Cptr{T}}, x) where {T} = Base.cconvert(Ptr{T}, x)
 Base.cconvert(::Type{Cptr{Cconst{T}}}, x::Cptr{T}) where {T} = x
-Base.unsafe_convert(::Type{Ptr{T1}}, x::Ref{T2}) where {T1, T2<:T1} = Core.Intrinsics.bitcast(Ptr{T1}, Base.unsafe_convert(Ptr{T2}, x))
 Base.unsafe_convert(::Type{Ptr{T}}, x::Cptr) where {T} = Core.Intrinsics.bitcast(Ptr{T}, x)
 Base.unsafe_convert(::Type{Ptr{Cptr{T1}}}, x::Ref{Ptr{T2}}) where {T1, T2} = Core.Intrinsics.bitcast(Ptr{Cptr{T1}}, Base.unsafe_convert(Ptr{Ptr{T2}}, x))
 Base.unsafe_convert(::Type{Cptr{T}}, x::Ptr) where {T} = Core.Intrinsics.bitcast(Cptr{T}, x)
-Base.unsafe_convert(::Type{Cptr{T}}, x::Ref) where {T} = Core.Intrinsics.bitcast(Cptr{T}, Base.unsafe_convert(Ptr{T}, x))
-Base.unsafe_convert(::Type{Cptr{T}}, x::Vector) where {T} = Core.Intrinsics.bitcast(Cptr{T}, Base.unsafe_convert(Ptr{T}, x))
+Base.unsafe_convert(::Type{Cptr{T}}, x::Ref) where {T} = Core.Intrinsics.bitcast(Cptr{T}, Base.unsafe_convert(Ptr{eltype(x)}, x))
+Base.unsafe_convert(::Type{Cptr{T}}, x::Vector) where {T} = Core.Intrinsics.bitcast(Cptr{T}, Base.unsafe_convert(Ptr{eltype(x)}, x))
 Base.unsafe_convert(::Type{Cptr{T}}, x::Union{String, Cstring}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = Core.Intrinsics.bitcast(Cptr{T}, Base.unsafe_convert(Ptr{unqualifiedtype(T)}, x))
 
 Base.unsafe_pointer_to_objref(ptr::Cptr{T}) where {T} = unsafe_pointer_to_objref(Core.Intrinsics.bitcast(Ptr{T}, ptr))
