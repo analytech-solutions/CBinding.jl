@@ -51,6 +51,10 @@ end
 
 
 function getcode(ctx::Context, cursor::CXCursor)
+	# WARNING:  clang_getCursorPrettyPrinted has bugs:
+	# struct S22 {
+	# 	union { int i; float f; struct { int j; }; } (*(*f)(struct S22 x, int i))(int, float);
+	# };
 	policy = clang_getCursorPrintingPolicy(cursor)
 	if policy != C_NULL
 		code = _string(clang_getCursorPrettyPrinted, cursor, policy)
