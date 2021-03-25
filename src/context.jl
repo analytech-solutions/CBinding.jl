@@ -51,8 +51,12 @@ end
 
 
 function getcode(ctx::Context, cursor::CXCursor)
-	ismacro = cursor.kind == CXCursor_MacroDefinition
+	policy = clang_getCursorPrintingPolicy(cursor)
+	code = _string(clang_getCursorPrettyPrinted, cursor, policy)
+	isempty(code) || return code
 	
+	# if easy way didn't produce anything, we need to do it the messy way
+	ismacro = cursor.kind == CXCursor_MacroDefinition
 	tokens = tokenize(ctx.tu[], cursor)
 	tokens = ismacro ? tokens[2:end] : tokens
 	tokens = join(map(token -> clang_getTokenKind(token) == CXToken_Comment ? "" : string(ctx.tu[], token), tokens), ' ')

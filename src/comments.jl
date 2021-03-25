@@ -23,7 +23,7 @@ function Markdown.MD(ctx::Context, cursor::CXCursor)
 	
 	loc = getlocation(cursor)
 	if isnothing(loc)
-		loc = "Defined in the C Standard Library"
+		loc = "Defined by the parser/compiler"
 	else
 		loc = first(loc)
 		loc = loc.file == header(ctx) ? getblock(ctx, loc).loc : loc
@@ -40,7 +40,7 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 	hasParams  = false
 	hasReturns = false
 	
-	contents = Markdown.MD(ctx, cursor).content
+	contents = []
 	for ind in 1:clang_Comment_getNumChildren(comment)
 		child = clang_Comment_getChild(comment, ind-1)
 		kind = clang_Comment_getKind(child)
@@ -115,7 +115,7 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 		contents = contents[1:end-1]
 	end
 	
-	return Markdown.MD(contents)
+	return Markdown.MD([Markdown.MD(ctx, cursor).content..., contents...])
 end
 
 
