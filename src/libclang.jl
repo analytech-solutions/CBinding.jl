@@ -1,6 +1,6 @@
 
 
-# deps/jl needs these to be available
+# deps/libclang-*.jl needs these to be available
 libclang_path() = libclang.Clang_jll.libclang_path
 libclang_version() = libclang_version(libclang_path())
 function libclang_version(path::String)

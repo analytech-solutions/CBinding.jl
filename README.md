@@ -68,7 +68,7 @@ That's all that is needed to create a couple C types and a function binding in J
 
 C API's usually come with header files, so let's just use those to create the Julia bindings and save some effort.
 By default, bindings are generated from the code directly written in C string macros and header files explicitly included in them, but not headers included by those headers.
-[See the `i` string macro option](#options-for-c)) to allow parsing certain implicitly included headers as well.
+[See the `i` string macro option](#options-for-c) to allow parsing certain implicitly included headers as well.
 
 ```jl
 julia> c"""
@@ -203,7 +203,8 @@ These kinds of situations can be handled with combinations of the following stri
 - `d` - defer conversion of the C code block; successive blocks marked with `d` will keep deferring until a block without it (its options will be used for processing the deferred blocks)
 - `f` - don't create bindings for `extern` functions
 - `i` - also parse implicitly included headers that are related (in the same directory or subdirectories) to explicitly included headers
-- `j` - also define bindings with Julian names (name collisions likely)
+- `j` - provide additional bindings using Julian names (name collisions likely)
+- `J` - provide additional bindings using Julian names with annotated user-defined types (using `struct_`, `union_`, or `enum_` prefixes)
 - `m` - skip conversion of C macros
 - `n` - show warnings for macros or inline functions that are skipped
 - `p` - mark the C code as "private" content that will not be exported
@@ -222,7 +223,7 @@ julia> c"""
 
 julia> c"""
          struct File {  // do not include this type in module exports, and suppress compiler messages
-          FILE *f;
+           FILE *f;
          };
        """pq;
 ```
@@ -320,7 +321,7 @@ User-defined aggregate types (`struct` and `union`) have several ways to be cons
 - `t = c"struct T"(i = 123)` - zero-ed immutable object with field `i` initialized to 123
 - `t = c"struct T"(t, i = 321)` - copy of `t` with field `i` initialized to 321
 
-These objects are immutable and changing fields will have no effect, so a copy must be constructed with the desired field overrides or ((pointers must be used)[#working-with-pointers]).
+These objects are immutable and changing fields will have no effect, so a copy must be constructed with the desired field overrides or [pointers must be used](#working-with-pointers).
 Nested field access is transparent, and performance should match that of accessing fields within standard Julia immutable structs.
 
 Statically-sized arrays (i.e. `c"typedef int IntArray[4];"`) can be constructed:
@@ -431,6 +432,69 @@ julia> function saferadd(a::Cint, b::Cint)::Cint  # a safer callback function mi
 
 julia> c"set_callback"(saferadd)
 ```
+
+
+## Getting help
+
+Unless explicitly disabled, the generated bindings include doc-strings.
+An attempt is made at converting any structured comments from the C blocks into somewhat equivalent doc-strings, as this example illustrates:
+
+```jl
+help?> libsdl2.SDL_CreateRGBSurface
+  extern SDL_Surface *SDL_CreateRGBSurface(Uint32 flags, int width, int height, int depth, Uint32 Rmask, Uint32 Gmask, Uint32 Bmask, Uint32 Amask)
+
+  Defined at SDL_surface.h:130 (file:///usr/include/SDL2/SDL_surface.h)
+
+   Allocate and free an RGB surface.
+
+  Details
+  =========
+
+   If the depth is 4 or 8 bits, an empty palette is allocated for the surface. If the depth is greater than 8 bits, the pixel format is set
+  using the flags '[RGB]mask'.
+
+   If the function runs out of memory, it will return NULL.
+
+  Parameters
+  ============
+
+    •    flags: The flags are obsolete and should be set to 0. 
+
+    •    width: The width in pixels of the surface to create. 
+
+    •    height: The height in pixels of the surface to create. 
+
+    •    depth: The depth in bits of the surface to create. 
+
+    •    Rmask: The red mask of the surface to create. 
+
+    •    Gmask: The green mask of the surface to create. 
+
+    •    Bmask: The blue mask of the surface to create. 
+
+    •    Amask: The alpha mask of the surface to create.
+
+```
+
+However, if such exquisite documentation cannot be generated, the doc-string simply conveys the item's original C definition:
+
+```jl
+help?> libclang.clang_visitChildren
+  unsigned int clang_visitChildren(CXCursor parent, CXCursorVisitor visitor, CXClientData client_data)
+
+  Defined at Index.h:4189 (file:///usr/include/clang-c/Index.h)
+
+help?> libclang.CXCursor
+  struct {
+      enum CXCursorKind kind;
+      int xdata;
+      const void *data[3];
+  }
+
+  Defined at Index.h:2664 (file:///usr/include/clang-c/Index.h)
+```
+
+Check for comments near the referenced definition location for C documentation that libclang failed to associate with the binding.
 
 
 # Any gotchas?
