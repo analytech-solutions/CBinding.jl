@@ -60,8 +60,14 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 			cmd = _string(clang_BlockCommandComment_getCommandName, child)
 			if cmd == "brief" || cmd == "par" || cmd == "paragraph"
 				push!(contents, para)
-			elseif cmd == "note" || cmd == "warning" || cmd == "deprecated"
-				para = Markdown.Paragraph(["$(uppercase(cmd)):", para.content...])
+			elseif cmd == "bug" || cmd == "note" || cmd == "warning" || cmd == "deprecated" || cmd == "attention"
+				category =
+					cmd == "bug" ? "danger" :
+					cmd == "note" ? "info" :
+					cmd == "warning" ? "warning" :
+					cmd == "deprecated" ? "warning" :
+					cmd == "attention" ? "danger" : "info"
+				para = Markdown.Admonition("danger", titlecase(cmd), [para])
 				push!(contents, para)
 			elseif cmd == "sa" || cmd == "see"
 				para = isempty(para.content) ? para : Markdown.Paragraph("See also: [`$(strip(first(para.content)))`](@ref)")
