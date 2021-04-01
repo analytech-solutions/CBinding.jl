@@ -649,13 +649,13 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		push!(ctx.bindings, binding)
 		binding = esc(binding)
 		
-		lib = getlib(ctx, name)
 		jlsym = getjl(ctx, name)
 		sym = gettype(ctx, name)
 		docs = getdocs(ctx, cursor)
 		
 		type = clang_getCursorType(cursor)
 		if cursor.kind == CXCursor_VarDecl
+			lib = getlib(ctx, name)
 			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
 				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{$(gettype(ctx, type)), $(QuoteNode(Symbol(lib))), $(QuoteNode(Symbol(name)))} end),
 				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
@@ -681,6 +681,8 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				push!(exprs,
 					:(include_dependency($(String(lib.value)))),
 				)
+			else
+				lib = getlib(ctx, name)
 			end
 			
 			rettype = clang_getResultType(type)
