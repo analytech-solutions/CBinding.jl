@@ -172,6 +172,8 @@ function getbuiltintype(ctx::Type{Context{:c}}, k::CXTypeKind, n::String, s::Int
 		result = :(Clong)
 	elseif k == CXType_LongLong
 		result = :(Clonglong)
+	elseif k == CXType_Bool && s == sizeof(Bool)
+		result = :(Bool)
 	elseif k in (
 		CXType_Char_U,
 		CXType_UChar,
@@ -191,6 +193,8 @@ function getbuiltintype(ctx::Type{Context{:c}}, k::CXTypeKind, n::String, s::Int
 		result = :(Cdouble)
 	elseif k == CXType_LongDouble
 		result = :(Clongdouble)
+	elseif k == CXType_WChar
+		result = :(Cwchar_t)
 	else
 		# create correct size and alignment to mimic the type
 		(a in (1, 2, 4, 8, 16) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(n)`")
@@ -227,6 +231,7 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		CXType_Long, CXType_ULong,
 		CXType_LongLong, CXType_ULongLong,
 		CXType_Float, CXType_Double, CXType_LongDouble,
+		CXType_WChar,
 	)
 		result = getbuiltintype(ctx, type)
 	elseif @isdefined(CXType_Atomic) && type.kind == CXType_Atomic  # libclang 9 lacks atomic
