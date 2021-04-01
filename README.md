@@ -206,9 +206,9 @@ These kinds of situations can be handled with combinations of the following stri
 - `j` - provide additional bindings using Julian names (name collisions likely)
 - `J` - provide additional bindings using Julian names with annotated user-defined types (using `struct_`, `union_`, or `enum_` prefixes)
 - `m` - skip conversion of C macros
-- `n` - show warnings for macros or inline functions that are skipped
+- `n` - show warnings for macros or inline functions that are skipped (and other conversion issues)
 - `p` - mark the C code as "private" content that will not be exported
-- `q` - quietly parse the block of C code, suppressing any compiler messages
+- `q` - quietly parse the block of C code, suppressing any compiler/linker messages
 - `r` - the C code is only a reference to something in C-land and bindings are not to be generated
 - `s` - skip processing of this block of C code
 - `t` - skip conversion of C types

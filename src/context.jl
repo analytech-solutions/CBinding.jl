@@ -42,9 +42,10 @@ end
 
 function getlib(ctx::Context, sym)
 	for (handle, lib) in ctx.libs
-		dlsym(handle, sym, throw_error = false) == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
+		hdl = dlsym(handle, sym, throw_error = false)
+		isnothing(hdl) || hdl == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
 	end
-	@warn "Failed to find `$(sym)` in any library: $(join(map(String, filter(x -> x isa Symbol, map(last, collect(ctx.libs)))), ", "))"
+	getblock(ctx).flags.quiet || @warn "Failed to find `$(sym)` in:\n"*join(map(((handle, lib),) -> "  $(lib isa Symbol ? lib : "or the Julia process")", collect(ctx.libs)), '\n')
 	return Nothing
 end
 
