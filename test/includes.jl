@@ -11,7 +11,7 @@
 	@test length(ctx.hdrs) == 1
 	@eval c"""
 	#include "test.h"
-	"""iu
+	"""iuq
 	@test length(ctx.hdrs) == 1
 	@eval c"""
 	#include <inttypes.h>
