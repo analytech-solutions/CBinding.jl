@@ -7,15 +7,15 @@
 	@test length(ctx.hdrs) == 0
 	@eval c"""
 	#include <stddef.h>
-	"""
+	"""u
 	@test length(ctx.hdrs) == 1
 	@eval c"""
 	#include "test.h"
-	"""i
+	"""iuq
 	@test length(ctx.hdrs) == 1
 	@eval c"""
 	#include <inttypes.h>
-	"""s
+	"""su
 	@test length(ctx.hdrs) == 0
 	
 	str = String(take!(ctx.src))

@@ -23,7 +23,7 @@ function Markdown.MD(ctx::Context, cursor::CXCursor)
 	
 	loc = getlocation(cursor)
 	if isnothing(loc)
-		loc = "Defined in the C Standard Library"
+		loc = "Defined by the parser/compiler"
 	else
 		loc = first(loc)
 		loc = loc.file == header(ctx) ? getblock(ctx, loc).loc : loc
@@ -40,7 +40,7 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 	hasParams  = false
 	hasReturns = false
 	
-	contents = Markdown.MD(ctx, cursor).content
+	contents = []
 	for ind in 1:clang_Comment_getNumChildren(comment)
 		child = clang_Comment_getChild(comment, ind-1)
 		kind = clang_Comment_getKind(child)
@@ -51,17 +51,23 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 		end
 		
 		if kind == CXComment_Paragraph
-			Bool(clang_Comment_isWhitespace(child)) || push!(contents, Markdown.Paragraph(child))
+			Bool(clang_Comment_isWhitespace(child)) || push!(contents, Markdown.Paragraph(ctx, child))
 		elseif kind == CXComment_BlockCommand
 			para = clang_BlockCommandComment_getParagraph(child)
-			para = Markdown.Paragraph(para)
+			para = Markdown.Paragraph(ctx, para)
 			
 			num = clang_BlockCommandComment_getNumArgs(child)
 			cmd = _string(clang_BlockCommandComment_getCommandName, child)
 			if cmd == "brief" || cmd == "par" || cmd == "paragraph"
 				push!(contents, para)
-			elseif cmd == "note" || cmd == "warning" || cmd == "deprecated"
-				para = Markdown.Paragraph(["$(uppercase(cmd)):", para.content...])
+			elseif cmd == "bug" || cmd == "note" || cmd == "warning" || cmd == "deprecated" || cmd == "attention"
+				category =
+					cmd == "bug" ? "danger" :
+					cmd == "note" ? "info" :
+					cmd == "warning" ? "warning" :
+					cmd == "deprecated" ? "warning" :
+					cmd == "attention" ? "danger" : "info"
+				para = Markdown.Admonition("danger", titlecase(cmd), [para])
 				push!(contents, para)
 			elseif cmd == "sa" || cmd == "see"
 				para = isempty(para.content) ? para : Markdown.Paragraph("See also: [`$(strip(first(para.content)))`](@ref)")
@@ -86,7 +92,7 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 					push!(contents, Markdown.List(para))
 				end
 			else
-				@warn "Unhandled comment block-command comment: $(cmd)"
+				getblock(ctx).flags.notify && @warn "Unhandled comment block-command: $(cmd)"
 			end
 		elseif kind == CXComment_ParamCommand
 			if !hasParams
@@ -100,14 +106,14 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 				end
 			end
 			
-			addParameter(contents, child)
+			addParameter(ctx, contents, child)
 		elseif kind == CXComment_VerbatimBlockCommand
-			push!(contents, Markdown.Code(child))
+			push!(contents, Markdown.Code(ctx, child))
 		elseif kind == CXComment_VerbatimLine
 			text = _string(clang_VerbatimLineComment_getText, child)
 			push!(contents, Markdown.Paragraph(text))
 		else
-			@warn "Unhandled comment document child: $(kind)"
+			getblock(ctx).flags.notify && @warn "Unhandled comment document child: $(kind)"
 		end
 	end
 	
@@ -115,11 +121,11 @@ function Markdown.MD(ctx::Context, cursor::CXCursor, comment::CXComment)
 		contents = contents[1:end-1]
 	end
 	
-	return Markdown.MD(contents)
+	return Markdown.MD([Markdown.MD(ctx, cursor).content..., contents...])
 end
 
 
-function Markdown.Paragraph(cxcomment::CXComment)
+function Markdown.Paragraph(ctx::Context, cxcomment::CXComment)
 	contents = []
 	
 	for ind in 1:clang_Comment_getNumChildren(cxcomment)
@@ -130,11 +136,11 @@ function Markdown.Paragraph(cxcomment::CXComment)
 			text = _string(clang_TextComment_getText, child)
 			push!(contents, text)
 		elseif kind == CXComment_InlineCommand
-			addInline(contents, child)
+			addInline(ctx, contents, child)
 		elseif kind == CXComment_HTMLStartTag || kind == CXComment_HTMLEndTag
 			# TODO: handle HTML stuff...
 		else
-			@warn "Unhandled comment paragraph child: $(kind)"
+			getblock(ctx).flags.notify && @warn "Unhandled comment paragraph child: $(kind)"
 		end
 	end
 	
@@ -142,7 +148,7 @@ function Markdown.Paragraph(cxcomment::CXComment)
 end
 
 
-function Markdown.Code(cxcomment::CXComment)
+function Markdown.Code(ctx::Context, cxcomment::CXComment)
 	lines = []
 	
 	for ind in 1:clang_Comment_getNumChildren(cxcomment)
@@ -155,7 +161,7 @@ function Markdown.Code(cxcomment::CXComment)
 			# a line with newlines is probably incorrectly parsed, so only keep before a newline
 			push!(lines, first(split(line, '\n', limit=2)))
 		else
-			@warn "Unhandled comment code-block child: $(kind)"
+			getblock(ctx).flags.notify && @warn "Unhandled comment code-block child: $(kind)"
 		end
 	end
 	
@@ -163,7 +169,7 @@ function Markdown.Code(cxcomment::CXComment)
 end
 
 
-function addInline(contents, cxcomment)
+function addInline(ctx::Context, contents, cxcomment)
 	num = clang_InlineCommandComment_getNumArgs(cxcomment)
 	cmd = _string(clang_InlineCommandComment_getCommandName, cxcomment)
 	
@@ -181,7 +187,7 @@ function addInline(contents, cxcomment)
 end
 
 
-function addParameter(contents, cxcomment)
+function addParameter(ctx::Context, contents, cxcomment)
 	num = clang_Comment_getNumChildren(cxcomment)
 	num == 1 || error("Incorrect number of parameter-command comment children")
 	
@@ -189,7 +195,7 @@ function addParameter(contents, cxcomment)
 	clang_Comment_getKind(para) == CXComment_Paragraph || error("Expected a parameter-command comment paragraph")
 	
 	param = _string(clang_ParamCommandComment_getParamName, cxcomment)
-	param = Markdown.Paragraph([Markdown.Code(param), ":", Markdown.Paragraph(para).content...,])
+	param = Markdown.Paragraph([Markdown.Code(param), ":", Markdown.Paragraph(ctx, para).content...,])
 	
 	if !isempty(contents) && contents[end] isa Markdown.List
 		push!(contents[end].items, param)

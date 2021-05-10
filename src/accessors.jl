@@ -60,7 +60,7 @@ function loadbytes(::Type{int}, isptr::Bool, bytes::Integer, bits::Integer, size
 			if isptr
 				push!(expr, :(load |= $(uint)(unsafe_load(Core.Intrinsics.bitcast(Cptr{UInt8}, ca), $(bytes+i)))))
 			else
-				push!(expr, :(load |= $(uint)(getfield(ca, :mem)[$(bytes+i)])))
+				push!(expr, :(load |= $(uint)(getfield(getfield(ca, :mem), $(bytes+i)))))
 			end
 		end
 	end
@@ -69,7 +69,7 @@ function loadbytes(::Type{int}, isptr::Bool, bytes::Integer, bits::Integer, size
 end
 
 
-function storebytes(::Type{int}, isptr::Bool, bytes::Integer, bits::Integer, size::Integer) where {int<:Integer}
+function storebytes(::Type{int}, casize::Integer, isptr::Bool, bytes::Integer, bits::Integer, size::Integer) where {int<:Integer}
 	expr = []
 	
 	uint = unsigned(int)
@@ -81,7 +81,10 @@ function storebytes(::Type{int}, isptr::Bool, bytes::Integer, bits::Integer, siz
 			if isptr
 				push!(expr, :(unsafe_store!(Core.Intrinsics.bitcast(Cptr{UInt8}, ca), store & 0xff, $(bytes+i))))
 			else
-				push!(expr, :(mem = (mem[1:$(bytes+i-1)]..., UInt8(store & 0xff), mem[$(bytes+i+1):end]...,)))
+				mem = Expr(:tuple,
+					(x == bytes+i ? :(UInt8(store & 0xff)::UInt8) : :(getfield(mem, $(x))) for x in 1:casize)...,
+				)
+				push!(expr, :(mem = $(mem)))
 			end
 		end
 		push!(expr, :(store = store >> 8))
@@ -93,11 +96,21 @@ end
 
 
 
-load(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}) where {CA<:Union{Caggregate, Carray, Cptr{<:Caggregates}}, t, u, i, o, b, s} = load(ca, Tuple{t, u, i, o, b, s}, Val(!(CA <: Cptr) || s >= 0))
+function load(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}) where {CA<:Union{Caggregate, Carray, Cptr{<:Caggregates}}, t, u, i, o, b, s}
+	return load(ca, Tuple{t, u, i, o, b, s}, Val(!(CA <: Cptr) || s >= 0))
+end
 
-function load(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}, ::Val) where {CA<:Union{Caggregate, Carray}, t, u, i<:Nothing, o, b, s}
+@generated function load(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}, ::Val) where {CA<:Union{Caggregate, Carray}, t, u, i<:Nothing, o, b, s}
 	u <: Union{Caggregate, Carray} || return error("Unexpected type $(t) in load function")
-	return u(undef, getfield(ca, :mem)[o+1:o+sizeof(u)])
+	
+	expr = quote end
+	
+	mem = Expr(:tuple,
+		(:(getfield(getfield(ca, :mem), $(x))) for x in o+1:o+sizeof(u))...,
+	)
+	push!(expr.args, :(return u(undef, $(mem))))
+	
+	return expr
 end
 
 function load(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}, ::Val{false}) where {CA<:Cptr{<:Caggregates}, t, u, i, o, b, s}
@@ -120,9 +133,18 @@ end
 
 store!(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}, val) where {CA<:Union{Caggregate, Carray, Cptr{<:Caggregates}}, t, u, i, o, b, s} = store!(ca, Tuple{t, u, i, o, b, s}, Val(!(CA <: Cptr) || s >= 0), val)
 
-function store!(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}, ::Val, val) where {CA<:Union{Caggregate, Carray}, t, u, i<:Nothing, o, b, s}
+@generated function store!(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}, ::Val, val) where {CA<:Union{Caggregate, Carray}, t, u, i<:Nothing, o, b, s}
 	u <: Union{Caggregate, Carray} || return error("Unexpected type $(t) in store! function")
-	return CA(undef, (getfield(ca, :mem)[1:o]..., getfield(convert(u, val), :mem)..., getfield(ca, :mem)[o+sizeof(u)+1:end]...,))
+	
+	expr = quote end
+	
+	push!(expr.args, :(v = convert(u, val)))
+	mem = Expr(:tuple,
+		(x-o in 1:sizeof(u) ? :(getfield(getfield(v, :mem), $(x-o))) : :(getfield(getfield(ca, :mem), $(x))) for x in 1:sizeof(CA))...,
+	)
+	push!(expr.args, :(return CA(undef, $(mem))))
+	
+	return expr
 end
 
 function store!(ca::CA, ::Type{Tuple{t, u, i, o, b, s}}, ::Val{false}, val) where {CA<:Cptr{<:Caggregates}, t, u, i, o, b, s}
@@ -137,7 +159,7 @@ end
 	uint = unsigned(i)
 	push!(expr.args, :(store = Core.Intrinsics.bitcast($(uint), convert($(u), val))))
 	s >= 0 && append!(expr.args, storemasked(i, CA <: Cptr, o, b, s))
-	append!(expr.args, storebytes(i, CA <: Cptr, o, b, s))
+	append!(expr.args, storebytes(i, sizeof(CA), CA <: Cptr, o, b, s))
 	push!(expr.args, CA <: Cptr ? :(return val) : :(return CA(undef, mem)))
 	
 	return expr

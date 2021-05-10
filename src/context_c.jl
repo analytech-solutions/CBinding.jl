@@ -172,6 +172,8 @@ function getbuiltintype(ctx::Type{Context{:c}}, k::CXTypeKind, n::String, s::Int
 		result = :(Clong)
 	elseif k == CXType_LongLong
 		result = :(Clonglong)
+	elseif k == CXType_Bool && s == sizeof(Bool)
+		result = :(Bool)
 	elseif k in (
 		CXType_Char_U,
 		CXType_UChar,
@@ -191,6 +193,8 @@ function getbuiltintype(ctx::Type{Context{:c}}, k::CXTypeKind, n::String, s::Int
 		result = :(Cdouble)
 	elseif k == CXType_LongDouble
 		result = :(Clongdouble)
+	elseif k == CXType_WChar
+		result = :(Cwchar_t)
 	else
 		# create correct size and alignment to mimic the type
 		(a in (1, 2, 4, 8, 16) && (s÷a)*a == s) || error("Unhandled sizeof ($(s)) or alignof ($(a)) for compiler built-in `$(n)`")
@@ -227,6 +231,7 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		CXType_Long, CXType_ULong,
 		CXType_LongLong, CXType_ULongLong,
 		CXType_Float, CXType_Double, CXType_LongDouble,
+		CXType_WChar,
 	)
 		result = getbuiltintype(ctx, type)
 	elseif @isdefined(CXType_Atomic) && type.kind == CXType_Atomic  # libclang 9 lacks atomic
@@ -644,13 +649,13 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		push!(ctx.bindings, binding)
 		binding = esc(binding)
 		
-		lib = getlib(ctx, name)
 		jlsym = getjl(ctx, name)
 		sym = gettype(ctx, name)
 		docs = getdocs(ctx, cursor)
 		
 		type = clang_getCursorType(cursor)
 		if cursor.kind == CXCursor_VarDecl
+			lib = getlib(ctx, name)
 			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
 				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{$(gettype(ctx, type)), $(QuoteNode(Symbol(lib))), $(QuoteNode(Symbol(name)))} end),
 				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
@@ -667,7 +672,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				code = replace(code, r"(^|\s)inline\s" => s"\1")
 				code = replace(code, r"(^|\s)static\s" => s"\1")
 				code = replace(code, r"(^|\s)extern\s" => s"\1")
-				code = replace(code, " $(name)(" => " $(unname)(")
+				code = replace(code, r"(\W)"*name*"(" => SubstitutionString("\\1$(unname)("))
 				code = "$(lstrip(code)) __attribute__((alias($(repr(name)))));"
 				push!(getblock(ctx).inlines, code)
 				
@@ -676,6 +681,8 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				push!(exprs,
 					:(include_dependency($(String(lib.value)))),
 				)
+			else
+				lib = getlib(ctx, name)
 			end
 			
 			rettype = clang_getResultType(type)

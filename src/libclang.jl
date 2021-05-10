@@ -1,6 +1,6 @@
 
 
-# deps/jl needs these to be available
+# deps/libclang-*.jl needs these to be available
 libclang_path() = libclang.Clang_jll.libclang_path
 libclang_version() = libclang_version(libclang_path())
 function libclang_version(path::String)
@@ -38,7 +38,6 @@ end
 
 Base.string(cursor::CXType) = _string(clang_getTypeSpelling, cursor)
 Base.string(cursor::CXCursor) = _string(clang_getCursorSpelling, cursor)
-Base.string(diag::CXDiagnostic) = _string(clang_formatDiagnostic, diag, clang_defaultDiagnosticDisplayOptions())
 Base.string(tu::CXTranslationUnit, token::CXToken) = _string(clang_getTokenSpelling, tu, token)
 
 

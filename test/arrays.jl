@@ -101,6 +101,16 @@
 	@test ula.str[5][] == 5
 	
 	Libc.free(ptr)
+	
+	# https://github.com/analytech-solutions/CBinding.jl/issues/66
+	@eval c"""
+	struct file_format {
+		unsigned char Header[2000];
+	};
+	"""
+	x = c"struct file_format"(Header = "test")
+	@test x.Header[2] == Int('e')
+	@test x.Header[2000] == 0
 end
 
 

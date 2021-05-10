@@ -31,7 +31,8 @@ Base.eltype(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = T
 Base.convert(::Type{CA}, t::Tuple) where {CA<:Carray} = CA(t...)
 
 Base.convert(::Type{CA}, str::String) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}, CA<:Carray{T}} = CA(str...)
-Base.String(ca::Carray{T}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = String(map(t -> reinterpret(UInt8, convert(unqualifiedtype(T), t)), collect(ca)))
+Base.convert(::Type{String}, ca::Carray{T}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = String(map(t -> reinterpret(UInt8, convert(unqualifiedtype(T), t)), collect(ca)))
+Base.String(ca::Carray{T}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = convert(String, ca)
 Base.show(io::IO, ca::Carray{T}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = show(io, String(ca))
 
 

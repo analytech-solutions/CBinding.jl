@@ -16,9 +16,9 @@ getcontext(mod::Module) = get(CONTEXT_CACHE, mod, nothing)
 Base.close(ctx::Context) = delete!(CONTEXT_CACHE, ctx.mod)
 
 
-getjl(ctx::Context, args...; kwargs...) = getjl(typeof(ctx), args...; kwargs...)
+getjl(ctx::Context, args...; kwargs...) = getjl(typeof(ctx), args...; annotate = getblock(ctx).flags.annot, kwargs...)
 getjl(::Type{C}, str::String; kwargs...) where {C<:Context} = getjl(C, Symbol(str); kwargs...)
-getjl(::Type{C}, sym::Symbol) where {C<:Context} = esc(Symbol(replace(String(sym), r"^(struct|union|enum)\s+" => "")))
+getjl(::Type{C}, sym::Symbol; annotate::Bool = false) where {C<:Context} = esc(Symbol(replace(String(sym), r"^(struct|union|enum)\s+" => (annotate ? s"\1_" : ""))))
 
 getname(ctx::Context, args...; kwargs...) = getname(typeof(ctx), args...; kwargs...)
 getname(::Type{C}, str::String; kwargs...) where {C<:Context} = getname(C, Symbol(str); kwargs...)
@@ -42,17 +42,28 @@ end
 
 function getlib(ctx::Context, sym)
 	for (handle, lib) in ctx.libs
-		dlsym(handle, sym, throw_error = false) == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
+		hdl = dlsym(handle, sym, throw_error = false)
+		isnothing(hdl) || hdl == C_NULL || return lib isa Symbol ? QuoteNode(lib) : lib
 	end
-	@warn "Failed to find `$(sym)` in any library: $(join(map(String, filter(x -> x isa Symbol, map(last, collect(ctx.libs)))), ", "))"
+	getblock(ctx).flags.quiet || @warn "Failed to find `$(sym)` in:\n"*join(map(((handle, lib),) -> "  $(lib isa Symbol ? lib : "or the Julia process")", collect(ctx.libs)), '\n')
 	return Nothing
 end
 
 
 
 function getcode(ctx::Context, cursor::CXCursor)
-	ismacro = cursor.kind == CXCursor_MacroDefinition
+	# WARNING:  clang_getCursorPrettyPrinted has bugs:
+	# struct S22 {
+	# 	union { int i; float f; struct { int j; }; } (*(*f)(struct S22 x, int i))(int, float);
+	# };
+	policy = clang_getCursorPrintingPolicy(cursor)
+	if policy != C_NULL
+		code = _string(clang_getCursorPrettyPrinted, cursor, policy)
+		isempty(code) || return code
+	end
 	
+	# if easy way didn't produce anything, we need to do it the messy way
+	ismacro = cursor.kind == CXCursor_MacroDefinition
 	tokens = tokenize(ctx.tu[], cursor)
 	tokens = ismacro ? tokens[2:end] : tokens
 	tokens = join(map(token -> clang_getTokenKind(token) == CXToken_Comment ? "" : string(ctx.tu[], token), tokens), ' ')
@@ -345,7 +356,7 @@ function parse!(ctx::Context)
 			blk = getblock(ctx, loc)
 			isquiet = !isnothing(blk) && blk.flags.quiet
 			if !isquiet
-				msg = string(diag)
+				msg = _string(clang_formatDiagnostic, diag, clang_defaultDiagnosticDisplayOptions())
 				msg = replace(msg, (header(ctx)*r"(?:\:\d+)*") => (!isnothing(blk) ? "$(blk.loc.file):$(blk.loc.line)" : @__FILE__))
 				
 				if !isnothing(blk)
@@ -443,7 +454,8 @@ function clang_str(mod::Module, loc::LineNumberNode, lang::Symbol, str::String, 
 		defer   = 'd' in opts,
 		nofunc  = 'f' in opts,
 		implic  = 'i' in opts,
-		jlsyms  = 'j' in opts,
+		jlsyms  = 'J' in opts || 'j' in opts,
+		annot   = 'J' in opts,
 		nomacro = 'm' in opts,
 		notify  = 'n' in opts,
 		priv    = 'p' in opts,

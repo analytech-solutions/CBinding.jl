@@ -65,7 +65,7 @@ end
 
 
 Base.cconvert(::Type{Cptr{CF}}, func::Function) where {retT, argTs, CF<:Cfunction{retT, argTs}} = Cptr{CF}(func)
-Base.cconvert(::Type{Cptr{CF}}, func::Base.CFunction) where {retT, argTs, CF<:Cfunction{retT, argTs}} = Cptr{CF}(Base.unsafe_convert(Ptr{Cvoid}(func)))
+Base.cconvert(::Type{Cptr{CF}}, func::Base.CFunction) where {retT, argTs, CF<:Cfunction{retT, argTs}} = Cptr{CF}(Base.unsafe_convert(Ptr{Cvoid}, func))
 
 
 Cptr{CF}(func::Function) where {CF<:Cfunction} = funccallback(CF, Val(func))
