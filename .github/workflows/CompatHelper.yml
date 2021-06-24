@@ -7,10 +7,53 @@ jobs:
   CompatHelper:
     runs-on: ubuntu-latest
     steps:
-      - name: Pkg.add("CompatHelper")
-        run: julia -e 'using Pkg; Pkg.add("CompatHelper")'
-      - name: CompatHelper.main()
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: 'nightly'
+      - name: "Install Clang_jll (for nightly)"
+        shell: julia --color=yes {0}
+        run: |
+          import Pkg
+          Pkg.add("Clang_jll")
+          
+          import Clang_jll
+          open(ENV["GITHUB_ENV"], "a") do io
+            println(io, "new_clang_jll=", Clang_jll.artifact_dir)
+            println(io, "new_llvm_lib=", Base.libllvm_path())
+          end
+      
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1.6'
+      - name: "Run CompatHelper"
+        shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}  # optional
-        run: julia -e 'using CompatHelper; CompatHelper.main()'
+          COMPATHELPER_PRIV: ${{ secrets.COMPATHELPER_PRIV }}
+        run: |
+          import Pkg
+          Pkg.add("Clang_jll")
+          Pkg.add("CompatHelper")
+          
+          import Clang_jll
+          import CompatHelper
+          
+          # hack in a hook for generating new libclang bindings
+          struct CIService <: CompatHelper.CIService
+            ci_cfg::CompatHelper.CIService
+          end
+          
+          CompatHelper.github_token(cis::CIService; kwargs...) = CompatHelper.github_token(cis.ci_cfg; kwargs...)
+          CompatHelper.github_repository(cis::CIService; kwargs...) = CompatHelper.github_repository(cis.ci_cfg; kwargs...)
+          CompatHelper.get_my_username(cis::CIService; kwargs...) = CompatHelper.get_my_username(cis.ci_cfg; kwargs...)
+          
+          function CompatHelper.set_git_identity(cis::CIService)
+            if Clang_jll.artifact_dir != "${{ env.new_clang_jll }}"
+              run(`$(Base.julia_cmd().exec[1]) --project -e "import Pkg ; Pkg.instantiate() ; Pkg.build()"`)
+              run(`$(Base.julia_cmd().exec[1]) --project deps/generate.jl $("${{ env.new_clang_jll }}/lib/libclang.so") $("${{ env.new_llvm_lib }}")`)
+            end
+            
+            return CompatHelper.set_git_identity(cis.ci_cfg)
+          end
+          
+          CompatHelper.main(ENV, CIService(CompatHelper.auto_detect_ci_service(; env = ENV)), include_jll = true)
