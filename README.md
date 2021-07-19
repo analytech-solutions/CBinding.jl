@@ -534,6 +534,10 @@ Therefore, attaching other methods to a bound C function is not possible.
 It is also sometimes necessary to use the `c"..."` mangled names directly in Julia (for instance in the REPL help mode).
 Until consistent, universal support for the string macro is available, the mangled names can be used directly as `var"c\"...\""`, like `help?> var"c\"struct Y\""`.
 
+When a C function has a statically-sized array as an argument in its signature, the semantics of C is to treat the argument as a pointer instead.
+Therefore, the statically-sized array in the binding signature will be lowered to a pointer for the underlying `ccall`.
+A user can then pass any argument (array, pointer, etc.) that is compatible with a pointer argument type (not the anticipated statically-sized array type).
+
 
 # Some helpful tips
 
