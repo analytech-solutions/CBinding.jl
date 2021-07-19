@@ -29,6 +29,7 @@ Base.size(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = (N,)
 Base.length(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = N
 Base.eltype(::Type{CA}) where {T, N, CA<:Carrays{T, N}} = T
 Base.convert(::Type{CA}, t::Tuple) where {CA<:Carray} = CA(t...)
+Base.convert(::Type{CA}, v::Vector) where {CA<:Carray} = CA(v...)
 
 Base.convert(::Type{CA}, str::String) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}, CA<:Carray{T}} = CA(str...)
 Base.convert(::Type{String}, ca::Carray{T}) where {T<:Union{Int8, UInt8, Cconst{Int8}, Cconst{UInt8}}} = String(map(t -> reinterpret(UInt8, convert(unqualifiedtype(T), t)), collect(ca)))
