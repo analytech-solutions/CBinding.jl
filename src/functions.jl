@@ -34,7 +34,11 @@ cconvert_default(::Type{T}) where {E, T<:AbstractArray{E}} = Cptr{E}
 		$(func <: Cptr ? :(Core.Intrinsics.bitcast(Ptr{Cvoid}, func)) : lib isa Symbol ? :(($(QuoteNode(name)), $(String(lib)))) : QuoteNode(name)),
 		$((conv isa Symbol ? (conv,) : ())...),
 		$(retT),
-		($(((argT <: Cvariadic ? :(Ptr{Cvoid}...) : argT) for argT in argTs)...),),
+		($(((
+			argT <: Cvariadic ? :(Ptr{Cvoid}...) :
+			argT <: Carray ? Cptr{eltype(argT)} :  # statically sized arrays (even when typedef-ed) are passed by pointer
+			argT
+		) for argT in argTs)...),),
 		$((:(args[$(i)]) for i in eachindex(args))...)
 	))
 end
