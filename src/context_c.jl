@@ -657,7 +657,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 		if cursor.kind == CXCursor_VarDecl
 			lib = getlib(ctx, name)
 			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
-				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{$(gettype(ctx, type)), $(QuoteNode(Symbol(lib))), $(QuoteNode(Symbol(name)))} end),
+				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{$(gettype(ctx, type)), $(lib), $(QuoteNode(Symbol(name)))} end),
 				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
 			))
 		else
