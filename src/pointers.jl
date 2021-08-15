@@ -53,7 +53,7 @@ Base.unsafe_string(ptr::Cptr{T}) where {C<:Union{Cchar, Cuchar}, T<:Cqualifiers{
 Base.unsafe_string(ptr::Cptr{T}, length::Integer) where {C<:Union{Cchar, Cuchar}, T<:Cqualifiers{C}} = unsafe_string(Core.Intrinsics.bitcast(Ptr{C}, ptr), length)
 
 Base.getindex(ptr::Cptr{T}) where {T} = unsafe_load(ptr)
-Base.getindex(ptr::Cptr{T}, i::Integer) where {T} = unsafe_load!(ptr, val, i)
+Base.getindex(ptr::Cptr{T}, i::Integer) where {T} = unsafe_load(ptr, i)
 Base.setindex!(ptr::Cptr{T}, val) where {T} = unsafe_store!(ptr, val)
 Base.setindex!(ptr::Cptr{T}, val, i::Integer) where {T} = unsafe_store!(ptr, val, i)
 
