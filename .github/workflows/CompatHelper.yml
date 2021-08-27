@@ -38,22 +38,19 @@ jobs:
           import Clang_jll
           import CompatHelper
           
-          # hack in a hook for generating new libclang bindings
-          struct CIService <: CompatHelper.CIService
-            ci_cfg::CompatHelper.CIService
-          end
-          
-          CompatHelper.github_token(cis::CIService; kwargs...) = CompatHelper.github_token(cis.ci_cfg; kwargs...)
-          CompatHelper.github_repository(cis::CIService; kwargs...) = CompatHelper.github_repository(cis.ci_cfg; kwargs...)
-          CompatHelper.get_my_username(cis::CIService; kwargs...) = CompatHelper.get_my_username(cis.ci_cfg; kwargs...)
-          
-          function CompatHelper.set_git_identity(cis::CIService)
+          # hack in a hook for generating new libclang bindings after Project.toml is updated
+          struct HACK end
+          function CompatHelper.modify_project_toml(
+            name::AbstractString,
+            repo_path::AbstractString,
+            brand_new_compat::AbstractString,
+            bump_version::HACK,
+          )
+            CompatHelper.modify_project_toml(name, repo_path, brand_new_compat, false)
             if Clang_jll.artifact_dir != "${{ env.new_clang_jll }}"
               run(`$(Base.julia_cmd().exec[1]) --project -e "import Pkg ; Pkg.instantiate() ; Pkg.build()"`)
               run(`$(Base.julia_cmd().exec[1]) --project deps/generate.jl $("${{ env.new_clang_jll }}/lib/libclang.so") $("${{ env.new_llvm_lib }}")`)
             end
-            
-            return CompatHelper.set_git_identity(cis.ci_cfg)
           end
           
-          CompatHelper.main(ENV, CIService(CompatHelper.auto_detect_ci_service(; env = ENV)), include_jll = true)
+          CompatHelper.main(ENV, CIService(CompatHelper.auto_detect_ci_service(; env = ENV)), include_jll = true, bump_version = HACK())
