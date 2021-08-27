@@ -53,4 +53,4 @@ jobs:
             end
           end
           
-          CompatHelper.main(ENV, CIService(CompatHelper.auto_detect_ci_service(; env = ENV)), include_jll = true, bump_version = HACK())
+          CompatHelper.main(include_jll = true, bump_version = HACK())
