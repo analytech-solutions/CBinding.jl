@@ -9,7 +9,6 @@ function checkJL(expr, val)
 		c`-std=c99`
 		c"""
 		#include <stdalign.h>
-		#include <inttypes.h>
 		"""s
 		const X = @c_str $(expr)
 	end
@@ -76,7 +75,6 @@ function checkC(expr, val)
 		#include <stdio.h>
 		#include <stdalign.h>
 		#include <string.h>
-		#include <inttypes.h>
 		
 		$(expr)
 		
