@@ -348,10 +348,11 @@ function parse!(ctx::Context)
 		try
 			diag = clang_getDiagnostic(ctx.tu[], ind-1)
 			
+			sev = clang_getDiagnosticSeverity(diag)
 			loc = clang_getDiagnosticLocation(diag)
 			loc = getlocation(loc)
 			isnothing(loc) && continue
-			(loc.file == header(ctx) && loc.line > ctx.line) || continue
+			(loc.file == header(ctx) && loc.line > ctx.line) || sev in (CXDiagnostic_Error, CXDiagnostic_Fatal) || continue
 			
 			blk = getblock(ctx, loc)
 			isquiet = !isnothing(blk) && blk.flags.quiet
@@ -371,7 +372,6 @@ function parse!(ctx::Context)
 				end
 			end
 			
-			sev = clang_getDiagnosticSeverity(diag)
 			if sev in (CXDiagnostic_Error, CXDiagnostic_Fatal)
 				isfatal = true
 				isquiet || @error msg  (_module = !isnothing(blk) ? ctx.mod : @__MODULE__)  (_file = !isnothing(blk) ? String(blk.loc.file) : @__FILE__)  (_line = !isnothing(blk) ? blk.loc.line : @__LINE__)

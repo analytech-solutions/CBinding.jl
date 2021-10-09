@@ -14,13 +14,13 @@
 	"""iuq
 	@test length(ctx.hdrs) == 1
 	@eval c"""
-	#include <inttypes.h>
+	#include <stdalign.h>
 	"""su
 	@test length(ctx.hdrs) == 0
 	
 	str = String(take!(ctx.src))
 	@test occursin("<stddef.h>", str)
 	@test occursin("\"test.h\"", str)
-	@test occursin("<inttypes.h>", str)
+	@test occursin("<stdalign.h>", str)
 end
 
