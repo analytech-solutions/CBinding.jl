@@ -745,7 +745,7 @@ function getexprs_macro(ctx::Context{:c}, cursor::CXCursor)
 				str = repr(parse(isUnsigned ? UInt128 : Int128, pre*val))
 			elseif !isnothing(float)
 				(val1, val2, exp, suf) = float.captures
-				val = val1*val2
+				val = isnothing(val1) ? val2 : val1*val2
 				val = val[end] == '.' ? val*"0" : val
 				val = val[1] == '.' ? "0"*val : val
 				
