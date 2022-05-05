@@ -57,5 +57,13 @@
 	@test eltype(Capply) <: eltype(c"int (*)(CB, int, int)")
 	@test typeof(Capply(Cadd, Cint(10), Cint(3))) === typeof(add(Cint(10), Cint(3)))
 	@test Capply(Cadd, Cint(10), Cint(3)) == add(Cint(10), Cint(3))
+	
+	
+	# https://github.com/analytech-solutions/CBinding.jl/issues/97
+	callback = @eval c"typedef void (*callback)(int, int[]);"
+	
+	@test eltype(callback) <: Cfunction{Cvoid, Tuple{Cint, Cptr{Cint}}}
+	@test eltype(c"void (*)(int, int[])") <: Cfunction{Cvoid, Tuple{Cint, Cptr{Cint}}}
+	@test eltype(callback) <: eltype(c"void (*)(int, int[])")
 end
 

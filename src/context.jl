@@ -22,7 +22,7 @@ getjl(::Type{C}, sym::Symbol; annotate::Bool = false) where {C<:Context} = esc(S
 
 getname(ctx::Context, args...; kwargs...) = getname(typeof(ctx), args...; kwargs...)
 getname(::Type{C}, str::String; kwargs...) where {C<:Context} = getname(C, Symbol(str); kwargs...)
-function getname(::Type{C}, sym::Symbol; isbitstype::Bool = false) where {C<:Context}
+function getname(::Type{C}, sym::Symbol; isbitstype::Bool = false, kwargs...) where {C<:Context}
 	sym = Symbol("$(language(C))\"$(sym)\"")
 	return isbitstype ? Symbol("($(sym))") : sym
 end

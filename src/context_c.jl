@@ -12,8 +12,8 @@ const C_PRIMS   = ("void", "bool", "char", "short", "int", "long", "float", "dou
 const C_PRIM    = Regex(raw"^\s*((?:"*join(C_PRIMS, '|')*raw")(?:\s+(?:"*join(C_PRIMS, '|')*raw"))*)\s*$")
 const C_USER    = r"^\s*(?:(const|restrict|volatile)\s+)?(?:(struct|union|enum)\s+)?(\w+)(?:\s+(const|restrict|volatile))?\s*$"
 const C_POINTER = r"^(.+)\s*\*(?:\s*(const|restrict|volatile))?\s*$"
-const C_ARRAY   = r"^(.+)\s*\[(\d+)\]\s*$"
-const C_TYPES   = raw"\w+(?:(?:[*\s]+)\w+)*(?:[*\s]+)?"
+const C_ARRAY   = r"^(.+)\s*\[(\d*)\]\s*$"
+const C_TYPES   = raw"\w+(?:(?:[*\s]+)\w+)*(?:(?:\[(?:\d*)\])|(?:[*\s]+))*"
 const C_MODULE  = r"\s*(\w+)\.(.*)$"
 const C_TYPEVAR = Regex(raw"^\s*("*C_TYPES*raw")\s*$")
 const C_FUNCPTR = Regex(raw"^\s*("*C_TYPES*raw")\s*\(\*\)\(([^)]*)\)(const)?(?:\s+__attribute__\(\(([^)]+)\)\))?\s*$")
@@ -34,7 +34,7 @@ function getref(ctx::Type{Context{:c}}, str::AbstractString, mod::Union{Symbol, 
 	function array(t, szs = [])
 		m = match(C_ARRAY, t)
 		if !isnothing(m)
-			push!(szs, parse(Int, m.captures[2]))
+			push!(szs, m.captures[2])
 			return array(m.captures[1], szs)
 		end
 		
@@ -44,7 +44,7 @@ function getref(ctx::Type{Context{:c}}, str::AbstractString, mod::Union{Symbol, 
 		isnothing(inner) && return nothing
 		
 		for sz in szs
-			inner = decorate(:(Carray{$(inner), $(sz)}), ())
+			inner = decorate(isempty(sz) ? :(Cptr{$(inner)}) : :(Carray{$(inner), $(parse(Int, sz))}), ())
 		end
 		return inner
 	end
@@ -264,6 +264,10 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 		ptrtype = clang_getPointeeType(type)
 		ptrtype = gettype(ctx, ptrtype; kwargs...)
 		result = :(Cptr{$(ptrtype)})
+	elseif type.kind == CXType_VariableArray
+		arrtype = clang_getElementType(type)
+		arrtype = gettype(ctx, arrtype; kwargs...)
+		result = :(Cptr{$(arrtype)})
 	elseif type.kind == CXType_ConstantArray
 		num = clang_getNumElements(type)
 		arrtype = clang_getElementType(type)
@@ -272,18 +276,18 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 	elseif type.kind == CXType_IncompleteArray
 		arrtype = clang_getElementType(type)
 		arrtype = gettype(ctx, arrtype; kwargs...)
-		result = :(Carray{$(arrtype), 0})
+		result = get(kwargs, :isfunc, false) ? :(Cptr{$(arrtype)}) : :(Carray{$(arrtype), 0})
 	elseif type.kind in (
 		CXType_FunctionProto,
 		CXType_FunctionNoProto,
 	)
 		rettype = clang_getResultType(type)
-		rettype = gettype(ctx, rettype; kwargs...)
+		rettype = gettype(ctx, rettype; kwargs..., isfunc = true)
 		
 		num = clang_getNumArgTypes(type)
 		argtypes = map(1:num) do ind
 			argtype = clang_getArgType(type, ind-1)
-			return gettype(ctx, argtype; kwargs...)
+			return gettype(ctx, argtype; kwargs..., isfunc = true)
 		end
 		argtypes = Bool(clang_isFunctionTypeVariadic(type)) ? [argtypes..., Cvariadic] : argtypes
 		
@@ -695,7 +699,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 				argname = isempty(argname) ? getjl(ctx, "arg$(ind)") : gettype(ctx, argname)
 				argtype = clang_getCursorType(arg)
 				
-				return argname => gettype(ctx, argtype)
+				return argname => gettype(ctx, argtype; isfunc = true)
 			end
 			args = Bool(clang_Cursor_isVariadic(cursor)) ? [args..., :($(getjl(ctx, :vararg))...) => :(Cvariadic)] : args
 			
@@ -708,7 +712,7 @@ function getexprs_binding(ctx::Context{:c}, cursor::CXCursor)
 			
 			func = getjl(ctx, :func)
 			append!(exprs, getexprs(ctx, ((sym, jlsym, docs),),
-				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{Cfunction{$(gettype(ctx, rettype)), Tuple{$(map(last, args)...)}, $(QuoteNode(conv))}, $(lib), $(QuoteNode(Symbol(name)))} end),
+				:(struct $(binding){$(getjl(ctx, :name))} <: Cbinding{Cfunction{$(gettype(ctx, rettype; isfunc = true)), Tuple{$(map(last, args)...)}, $(QuoteNode(conv))}, $(lib), $(QuoteNode(Symbol(name)))} end),
 				:(const $(sym) = $(binding){$(QuoteNode(Symbol(name)))}()),
 				:(($(func)::$(binding))($(map(first, args)...),) = funccall($(func), $(map(first, args)...),)),
 			))
