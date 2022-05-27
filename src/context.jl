@@ -269,21 +269,15 @@ function configure!(ctx::Context)
 		if ctx.args[ind] == "-L"
 			if ind < length(ctx.args)
 				push!(libpaths, ctx.args[ind+1])
-				ctx.args[ind] = ""
-				ctx.args[ind+1] = ""
 			end
 		elseif ctx.args[ind] == "-l"
 			if ind < length(ctx.args)
 				push!(libs, ctx.args[ind+1])
-				ctx.args[ind] = ""
-				ctx.args[ind+1] = ""
-		end
+			end
 		elseif startswith(ctx.args[ind], "-L")
 			push!(libpaths, ctx.args[ind][3:end])
-			ctx.args[ind] = ""
 		elseif startswith(ctx.args[ind], "-l")
 			push!(libs, ctx.args[ind][3:end])
-			ctx.args[ind] = ""
 		end
 	end
 	
