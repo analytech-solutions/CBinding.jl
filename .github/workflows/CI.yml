@@ -13,7 +13,8 @@ jobs:
           - '1.5'
           - '1.6'
           - '1.7'
-          - '1.8-nightly'
+          - '1.8'
+          - '1.9-nightly'
           - 'nightly'
         os:
           - ubuntu-latest
