@@ -1,6 +1,11 @@
+# USAGE:
+#   1. install a new version of Julia
+#   2. run the new version, install Clang_jll `] add Clang_jll`, and obtain paths `using Clang_jll ; @info String(Clang_jll.libclang_path), String(Base.libllvm_path())`
+#   3. using a prior version of Julia with CBinding in development, run `path/to/prior/bin/julia ~/.julia/dev/CBinding/deps/generate.jl path/to/libclang path/to/libllvm`
+
 using CBinding
-using Libdl
-using Clang_jll
+using CBinding.libclang: Clang_jll
+using CBinding.Libdl
 
 const LIBCLANG_PATH = get(ARGS, 1, Clang_jll.libclang_path)
 const LIBLLVM_PATH = get(ARGS, 2, joinpath(dirname(Base.julia_cmd().exec[1]), Base.LIBDIR, "julia", "libLLVM.so"))
