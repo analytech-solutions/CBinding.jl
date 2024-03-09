@@ -248,7 +248,7 @@ function configure!(ctx::Context)
 	# find packaged include
 	includedir = joinpath(dirname(dirname(libclang_path())), "lib", "clang")
 	for entry in readdir(includedir)
-		m = match(r"^(\d+\.\d+\.\d+)$", entry)
+		m = match(r"^(\d+(\..+)?)$", entry)
 		if !isnothing(m)
 			includedir = joinpath(includedir, m.captures[1], "include")
 			break
