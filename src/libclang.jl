@@ -6,7 +6,7 @@ libclang_version() = libclang_version(libclang_path())
 function libclang_version(path::String)
 	dir = joinpath(dirname(dirname(path)), "lib", "clang")
 	for entry in readdir(dir)
-		m = match(r"^(\d+)\.\d+\.\d+$", entry)
+		m = match(r"^(\d+)(\..+)?$", entry)
 		!isnothing(m) && return m.captures[1]
 	end
 	error("Failed to determine the version of libclang")

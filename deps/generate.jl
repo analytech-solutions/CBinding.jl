@@ -11,7 +11,9 @@ const LIBCLANG_PATH = get(ARGS, 1, Clang_jll.libclang_path)
 const LIBLLVM_PATH = get(ARGS, 2, joinpath(dirname(Base.julia_cmd().exec[1]), Base.LIBDIR, "julia", "libLLVM.so"))
 
 withenv("LD_LIBRARY_PATH" => get(ENV, "LD_LIBRARY_PATH", "")*":"*normpath(dirname(LIBLLVM_PATH))) do
-	dlopen(LIBLLVM_PATH) do lib  # needed to hijack the libLLVM that clank will be linked to
+	dlopen(LIBLLVM_PATH) do lib  # needed to hijack the libLLVM that libclang will be linked to
+		version = CBinding.libclang_version(LIBCLANG_PATH)
+		
 		@eval c`-std=c99 -I$(dirname(dirname(LIBCLANG_PATH)))/include -L$(dirname(LIBCLANG_PATH)) -lclang`
 		@eval c"""
 			#include <time.h>
@@ -55,7 +57,7 @@ withenv("LD_LIBRARY_PATH" => get(ENV, "LD_LIBRARY_PATH", "")*":"*normpath(dirnam
 		
 		
 		libclang = sanitize(string(libclang))  # NOTE: do this _before_ we truncate the file!
-		open(joinpath(@__DIR__, "libclang-$(CBinding.libclang_version(LIBCLANG_PATH)).jl"), "w+") do io
+		open(joinpath(@__DIR__, "libclang-$(version).jl"), "w+") do io
 			println(io, libclang)
 		end
 	end
