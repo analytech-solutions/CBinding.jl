@@ -477,8 +477,8 @@ function getexprs_opaque(ctx::Context{:c}, cursor::CXCursor)
 	if isdecl
 		docs = getdocs(ctx, cursor)
 		common = (
-			:(CBinding.bitstype(::Type{$(name)}) = $(name)),
-			!isanon ? :(CBinding.bitstype(::Type{$(absname)}) = $(name)) : nothing,
+			:(CBinding.bitstype(::Type{$(name)}; kwargs...) = $(name)),
+			!isanon ? :(CBinding.bitstype(::Type{$(absname)}; kwargs...) = $(name)) : nothing,
 		)
 		
 		if cursor.kind == CXCursor_EnumDecl
