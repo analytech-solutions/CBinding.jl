@@ -92,11 +92,11 @@ module CBinding
 	
 	bitstype(::Type{T}; raise::Bool = true) where {T} = isbitstype(T) ? T : raise ? error("Failure to obtain a bits-type") : nothing
 	bitstype(::Type{CQ}; kwargs...) where {CQ<:Cqualifier} = bitstype(unqualifiedtype(CQ); kwargs...)
-	bitstype(::Type{CA}; kwargs...) where {T, N, CA<:Carray{T, N}} = bitstype(T; kwargs...) === nothing ? nothing : Carray{bitstype(T), N, sizeof(bitstype(T))*N}
+	bitstype(::Type{CA}; kwargs...) where {T, N, CA<:Carray{T, N}} = Carray{bitstype(T), N, sizeof(bitstype(T))*N}
 	
-	values(::Type{CE}) where {CE<:Cenum} = bitstype(CE; raise = false) === nothing ? () : values(bitstype(CE))
+	values(::Type{CE}) where {CE<:Cenum} = values(bitstype(CE))
 	
-	fields(::Type{CA}) where {CA<:Caggregate} = bitstype(CA; raise = false) === nothing ? () : fields(bitstype(CA))
+	fields(::Type{CA}) where {CA<:Caggregate} = isnothing(bitstype(CA; raise = false)) ? () : fields(bitstype(CA))
 	
 	
 	include("longdouble.jl")

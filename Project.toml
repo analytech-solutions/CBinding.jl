@@ -1,7 +1,7 @@
 name = "CBinding"
 uuid = "d43a6710-96b8-4a2d-833c-c424785e5374"
 authors = ["Keith Rutkowski <keith@analytech-solutions.com>"]
-version = "1.0.12"
+version = "1.1.0"
 
 [deps]
 Clang_jll = "0ee61d77-7f21-5576-8119-9fcc46b10100"
@@ -12,4 +12,4 @@ Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 [compat]
 Clang_jll = "^9, ^11, ^12, ^13, ^14, ^15, ^16, ^18"
 Scratch = "^1"
-julia = "^1.5"
+julia = "^1.6"
