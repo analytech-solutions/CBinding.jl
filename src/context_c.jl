@@ -322,15 +322,15 @@ function gettype(ctx::Type{Context{:c}}, type::CXType; kwargs...)
 end
 
 
-
-function getexprs(ctx::Context{:c}, cursor::CXCursor)
+function getexprs(ctx::Context{:c}, cursor::CXCursor; path::Vector{CXCursor})
+	next = push!(copy(path), cursor)
 	exprs = []
 	
 	getblock(ctx).flags.skip && return exprs
 	getblock(ctx).flags.defer && return exprs
 	
 	if cursor.kind == CXCursor_TranslationUnit
-		append!(exprs, getexprs_tu(ctx, cursor))
+		append!(exprs, getexprs_tu(ctx, cursor; path = next))
 		
 		for (_, child) in ctx.macros
 			append!(exprs, getexprs_macro(ctx, child))
@@ -342,31 +342,39 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 		CXCursor_UnionDecl,
 		CXCursor_EnumDecl,
 	)
+		# anonymous opaque-type function parameters appear as type definitions twice it seems, so skip if it's the 2nd occurrence
+		isanon = Bool(clang_Cursor_isAnonymous(cursor))
+		if !(isanon && length(path) >= 1 && path[end].kind == CXCursor_ParmDecl)
+			for child in children(cursor)
+				if child.kind in (
+					CXCursor_StructDecl,
+					CXCursor_UnionDecl,
+					CXCursor_EnumDecl,
+					CXCursor_TypedefDecl,
+				)
+					append!(exprs, getexprs(ctx, child; path = next))
+				end
+			end
+			
+			append!(exprs, getexprs_opaque(ctx, cursor))
+		end
+	elseif cursor.kind == CXCursor_VarDecl
 		for child in children(cursor)
 			if child.kind in (
-				CXCursor_StructDecl,
-				CXCursor_UnionDecl,
-				CXCursor_EnumDecl,
 				CXCursor_TypedefDecl,
 			)
-				append!(exprs, getexprs(ctx, child))
+				append!(exprs, getexprs(ctx, child; path = next))
 			end
 		end
 		
-		append!(exprs, getexprs_opaque(ctx, cursor))
-	elseif cursor.kind in (
-		CXCursor_VarDecl,
-		CXCursor_FunctionDecl,
-	)
+		append!(exprs, getexprs_binding(ctx, cursor))
+	elseif cursor.kind == CXCursor_FunctionDecl
 		for child in children(cursor)
 			if child.kind in (
-				CXCursor_StructDecl,
-				CXCursor_UnionDecl,
-				CXCursor_EnumDecl,
 				CXCursor_TypedefDecl,
 				CXCursor_ParmDecl,
 			)
-				append!(exprs, getexprs(ctx, child))
+				append!(exprs, getexprs(ctx, child; path = next))
 			end
 		end
 		
@@ -379,7 +387,7 @@ function getexprs(ctx::Context{:c}, cursor::CXCursor)
 				CXCursor_EnumDecl,
 				CXCursor_TypedefDecl,
 			)
-				append!(exprs, getexprs(ctx, child))
+				append!(exprs, getexprs(ctx, child; path = next))
 			end
 		end
 	elseif cursor.kind == CXCursor_InclusionDirective

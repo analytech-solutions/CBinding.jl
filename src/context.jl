@@ -124,7 +124,7 @@ end
 
 
 
-getexprs(ctx::Context) = getexprs(ctx, clang_getTranslationUnitCursor(ctx.tu[]))
+getexprs(ctx::Context) = getexprs(ctx, clang_getTranslationUnitCursor(ctx.tu[]); path = CXCursor[])
 
 function getexprs(ctx::Context, syms, blocks...)
 	expr = filter(!isnothing, collect(blocks))
@@ -156,7 +156,7 @@ end
 
 
 
-function getexprs_tu(ctx::Context, cursor::CXCursor)
+function getexprs_tu(ctx::Context, cursor::CXCursor; path::Vector{CXCursor})
 	exprs = []
 	
 	for child in children(cursor)
@@ -168,7 +168,7 @@ function getexprs_tu(ctx::Context, cursor::CXCursor)
 			first(range).file != header(ctx) || first(range).line > ctx.line || continue
 		end
 		
-		append!(exprs, filter(!isnothing, getexprs(ctx, child)))
+		append!(exprs, filter(!isnothing, getexprs(ctx, child; path = path)))
 	end
 	
 	return exprs
@@ -400,7 +400,8 @@ function wrap!(ctx::Context)
 		end
 		close(file)
 		
-		libclang.Clang_jll.clang() do bin
+		withenv() do
+			bin = libclang.Clang_jll.clang()
 			run(`$(bin) $(ctx.args[5:7]) -w -O2 -fPIC -shared -o $(getlib(ctx).value) $(path) $(ctx.args[8:end])`)  # TODO: add -rpath for all ctx.libs?
 		end
 	end
