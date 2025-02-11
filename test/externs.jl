@@ -1,11 +1,20 @@
 
 
 @testset "c\"extern ...\"" begin
-	@eval c``
+	@eval module CBinding_externs
+		using CBinding
+		c``
+		
+		c"""
+		extern int asprintf(char const **str, char *fmt, ...);
+		"""
+	end
 	
-	asprintf = @eval c"extern int asprintf(char const **str, char *fmt, ...);"
+	mod = @eval CBinding_externs
+	
+	asprintf = @eval mod c"asprintf"
 	f(x) = asprintf(x, "%s i%c %d great test of CBinding.jl v%3.1f%c\n", "This", 's', 0x01, 0.1, '!')
-	str = Ref(c"char const *"(C_NULL))
+	str = Ref((@eval mod c"char const *")(C_NULL))
 	expect = "This is 1 great test of CBinding.jl v0.1!\n"
 	bytes = 0
 	for i in 1:100

@@ -1,89 +1,94 @@
 
 
 @testset "c\"... x[N];\"" begin
-	c``
+	@eval module CBinding_arrays
+		using CBinding
+		c``
+		
+		c"""
+		typedef char CcharArray[2];
+		
+		typedef struct {
+			int i;
+		} CstructArray[10];
+		
+		struct CStruct {
+			char c;
+			int i;
+		} __attribute__((packed));
+		typedef struct CStruct CStructArray[2];
+		
+		struct Opaque;
+		typedef struct Opaque *PtrArray[3];
+		
+		typedef int CarrayArray[4][2];
+		
+		struct UnknownLengthArray {
+			int len;
+			char str[];
+		};
+		
+		struct file_format {
+			unsigned char Header[2000];
+		};
+		"""
+	end
 	
-	@eval c"""
-	typedef char CcharArray[2];
-	"""
-	@test sizeof(c"CcharArray") == sizeof(Cchar)*2
+	mod = @eval CBinding_arrays
 	
-	@eval c"""
-	typedef struct {
-		int i;
-	} CstructArray[10];
-	"""
-	@test sizeof(c"CstructArray") == sizeof(Cint)*10
+	@test sizeof(@eval mod c"CcharArray") == sizeof(Cchar)*2
 	
-	@eval c"""
-	struct CStruct {
-		char c;
-		int i;
-	} __attribute__((packed));
-	typedef struct CStruct CStructArray[2];
-	"""
-	@test sizeof(c"CStructArray") == (sizeof(Cchar)+sizeof(Cint))*2
+	@test sizeof(@eval mod c"CstructArray") == sizeof(Cint)*10
 	
-	@eval c"""
-	struct Opaque;
-	typedef struct Opaque *PtrArray[3];
-	"""
-	@test sizeof(c"PtrArray") == sizeof(Cptr)*3
+	@test sizeof(@eval mod c"CStructArray") == (sizeof(Cchar)+sizeof(Cint))*2
 	
-	pa = c"PtrArray"()
+	@test sizeof(@eval mod c"PtrArray") == sizeof(Cptr)*3
+	
+	pa = (@eval mod c"PtrArray")()
 	@test sizeof(pa) == sizeof(Cptr)*3
 	@test length(pa) == 3
-	@test eltype(pa) <: c"struct Opaque *"
-	@test pa[1] isa c"struct Opaque *"
+	@test eltype(pa) <: (@eval mod c"struct Opaque *")
+	@test pa[1] isa (@eval mod c"struct Opaque *")
 	
 	for i in eachindex(pa)
-		pa = c"PtrArray"(pa, i => C_NULL)
+		pa = (@eval mod c"PtrArray")(pa, i => C_NULL)
 		@test pa[i] == C_NULL
-		pa = c"PtrArray"(pa, i => c"struct Opaque *"(1234))
+		pa = (@eval mod c"PtrArray")(pa, i => (@eval mod c"struct Opaque *")(1234))
 		@test pa[i] != C_NULL
 	end
 	
-	pa = c"PtrArray"()
+	pa = (@eval mod c"PtrArray")()
 	for ptr in pa
 		@test ptr == C_NULL
 	end
 	
-	ca = c"CStructArray"()
+	ca = (@eval mod c"CStructArray")()
 	@test length(ca) == 2
-	@test eltype(ca) <: c"struct CStruct"
-	@test ca[2] isa c"struct CStruct"
+	@test eltype(ca) <: (@eval mod c"struct CStruct")
+	@test ca[2] isa (@eval mod c"struct CStruct")
 	
-	@eval c"""
-	typedef int CarrayArray[4][2];
-	"""
-	@test sizeof(c"CarrayArray") == sizeof(Cint)*4*2
-	@test eltype(c"CarrayArray") <: c"int[2]"
-	@test eltype(eltype(c"CarrayArray")) <: Cint
+	@test sizeof(@eval mod c"CarrayArray") == sizeof(Cint)*4*2
+	@test eltype(@eval mod c"CarrayArray") <: (@eval mod c"int[2]")
+	@test eltype(eltype(@eval mod c"CarrayArray")) <: Cint
 	
-	ca = c"CarrayArray"()
+	ca = (@eval mod c"CarrayArray")()
 	@test length(ca) == 4
 	@test length(ca[1]) == 2
 	for i in eachindex(ca), j in eachindex(ca[i])
 		@test ca[i][j] == 0
 	end
 	
-	@eval c"""
-	struct UnknownLengthArray {
-		int len;
-		char str[];
-	};
-	"""
-	@test sizeof(c"struct UnknownLengthArray") == sizeof(Cint)
+	@test sizeof(@eval mod c"struct UnknownLengthArray") == sizeof(Cint)
 	
-	ula = c"struct UnknownLengthArray"()
+	ula = (@eval mod c"struct UnknownLengthArray")()
 	@test ula.len == 0
 	@test ula.str isa Carray{Cchar}
 	@test length(ula.str) == 0
 	
 	len = 10
-	ptr = Libc.malloc(sizeof(c"struct UnknownLengthArray") + len*sizeof(Cchar))
+	ptr = Libc.malloc(sizeof(@eval mod c"struct UnknownLengthArray") + len*sizeof(Cchar))
 	
-	ula = Cptr{c"struct UnknownLengthArray"}(ptr)
+	ula = Cptr{@eval mod c"struct UnknownLengthArray"}(ptr)
 	@test ula.len isa Cptr{Cint}
 	@test ula.len == ptr
 	
@@ -103,12 +108,7 @@
 	Libc.free(ptr)
 	
 	# https://github.com/analytech-solutions/CBinding.jl/issues/66
-	@eval c"""
-	struct file_format {
-		unsigned char Header[2000];
-	};
-	"""
-	x = c"struct file_format"(Header = "test")
+	x = (@eval mod c"struct file_format")(Header = "test")
 	@test x.Header[2] == Int('e')
 	@test x.Header[2000] == 0
 end
