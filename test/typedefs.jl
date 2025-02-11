@@ -1,49 +1,50 @@
 
 
 @testset "c\"typedef ...\"" begin
-	@eval c``
+	@eval module CBinding_typedefs
+		using CBinding
+		c``
+		
+		c"""
+		typedef struct {
+		} __attribute__((packed)) EmptyStructTypedef;
+		
+		typedef struct {
+			char c;
+		} __attribute__((packed)) CcharStructTypedef;
+		
+		typedef union {
+			int i;
+		} __attribute__((packed)) CintUnionTypedef;
+		
+		typedef enum {
+			CENUM_TYPEDEF_1,
+			CENUM_TYPEDEF_2 = 1 << 8,
+			CENUM_TYPEDEF_3 = CENUM_TYPEDEF_2,
+		} __attribute__((packed)) CenumTypedef;
+		
+		typedef unsigned int CuintArrayTypedef[32];
+		
+		typedef int CintTypedef;
+		"""
+	end
 	
-	@eval c"""
-	typedef struct {
-	} __attribute__((packed)) EmptyStructTypedef;
-	"""
-	@test sizeof(c"EmptyStructTypedef") == 0
+	mod = @eval CBinding_typedefs
 	
-	@eval c"""
-	typedef struct {
-		char c;
-	} __attribute__((packed)) CcharStructTypedef;
-	"""
-	@test sizeof(c"CcharStructTypedef") == sizeof(Cchar)
-	@test :c in fieldnames(c"CcharStructTypedef")
+	@test sizeof(@eval mod c"EmptyStructTypedef") == 0
 	
-	@eval c"""
-	typedef union {
-		int i;
-	} __attribute__((packed)) CintUnionTypedef;
-	"""
-	@test sizeof(c"CintUnionTypedef") == sizeof(Cint)
-	@test :i in fieldnames(c"CintUnionTypedef")
+	@test sizeof(@eval mod c"CcharStructTypedef") == sizeof(Cchar)
+	@test :c in fieldnames(@eval mod c"CcharStructTypedef")
 	
-	@eval c"""
-	typedef enum {
-		CENUM_TYPEDEF_1,
-		CENUM_TYPEDEF_2 = 1 << 8,
-		CENUM_TYPEDEF_3 = CENUM_TYPEDEF_2,
-	} __attribute__((packed)) CenumTypedef;
-	"""
-	@test sizeof(c"CenumTypedef") == 2
-	@test c"CENUM_TYPEDEF_3" != c"CENUM_TYPEDEF_1"
-	@test c"CENUM_TYPEDEF_3" == c"CENUM_TYPEDEF_2"
+	@test sizeof(@eval mod c"CintUnionTypedef") == sizeof(Cint)
+	@test :i in fieldnames(@eval mod c"CintUnionTypedef")
 	
-	@eval c"""
-	typedef unsigned int CuintArrayTypedef[32];
-	"""
-	@test sizeof(c"CuintArrayTypedef") == sizeof(Cuint)*32
+	@test sizeof(@eval mod c"CenumTypedef") == 2
+	@test (@eval mod c"CENUM_TYPEDEF_3") != (@eval mod c"CENUM_TYPEDEF_1")
+	@test (@eval mod c"CENUM_TYPEDEF_3") == (@eval mod c"CENUM_TYPEDEF_2")
 	
-	@eval c"""
-	typedef int CintTypedef;
-	"""
-	@test sizeof(c"CintTypedef") == sizeof(Cint)
+	@test sizeof(@eval mod c"CuintArrayTypedef") == sizeof(Cuint)*32
+	
+	@test sizeof(@eval mod c"CintTypedef") == sizeof(Cint)
 end
 

@@ -1,58 +1,68 @@
 
 
 @testset "type qualifiers" begin
-	c``
-	
-	@eval c"""
-	struct CconstStruct {
-		int i;
-		int const ci;
+	@eval module CBinding_qualifiers
+		using CBinding
+		c``
 		
-		struct {
+		c"""
+		struct CconstStruct {
 			int i;
 			int const ci;
-		} s;
-		
-		struct {
-			int i;
-			int const ci;
-		} const cs;
-		
-		union {
-			int i;
-			int const ci;
-		} u;
-		
-		union {
-			int i;
-			int const ci;
-		} const cu;
-		
-		
-		struct {
-			int i;
-			int const ci;
-		} as[1];
-		
-		struct {
-			int i;
-			int const ci;
-		} const acs[1];
-		
-		struct {
-			int si;
-			int const sci;
+			
+			struct {
+				int i;
+				int const ci;
+			} s;
+			
+			struct {
+				int i;
+				int const ci;
+			} const cs;
+			
+			union {
+				int i;
+				int const ci;
+			} u;
+			
+			union {
+				int i;
+				int const ci;
+			} const cu;
+			
+			
+			struct {
+				int i;
+				int const ci;
+			} as[1];
+			
+			struct {
+				int i;
+				int const ci;
+			} const acs[1];
+			
+			struct {
+				int si;
+				int const sci;
+			};
+			
+			union {
+				int ui;
+				int const uci;
+			};
 		};
 		
-		union {
-			int ui;
-			int const uci;
+		struct SelfRef {
+			struct SelfRef *ptr;
 		};
-	};
-	"""
-	@test sizeof(c"struct CconstStruct") == sizeof(Cint)*(2*6+3)
+		"""
+	end
 	
-	x = c"struct CconstStruct"()
+	mod = @eval CBinding_qualifiers
+	
+	@test sizeof(@eval mod c"struct CconstStruct") == sizeof(Cint)*(2*6+3)
+	
+	x = (@eval mod c"struct CconstStruct")()
 	@test x.i isa Cint
 	@test x.ci isa Cint
 	@test x.s isa Cstruct
@@ -278,12 +288,7 @@
 	@test f(cptr) == 0
 	@test @allocated(f(cptr)) == 0
 	
-	@eval c"""
-	struct SelfRef {
-		struct SelfRef *ptr;
-	};
-	"""
-	@test sizeof(c"struct SelfRef") == sizeof(Cptr)
+	@test sizeof(@eval mod c"struct SelfRef") == sizeof(Cptr)
 	
 	Libc.free(ptr)
 end

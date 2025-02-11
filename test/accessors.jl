@@ -1,39 +1,42 @@
 
 
 @testset "type accessors" begin
-	@eval c``
-	
-	@eval c"""
-	struct AccessorInner {
-		int i;
-		int j:12;
-	};
-	"""
-	
-	@eval c"""
-	struct AccessorOuter {
-		int i;
-		int j:12;
-		struct AccessorInner inner;
-		struct AccessorInner *ptr;
-		struct {
-			struct AccessorInner innerer;
+	@eval module CBinding_accessors
+		using CBinding
+		c``
+		
+		c"""
+		struct AccessorInner {
+			int i;
+			int j:12;
 		};
-	};
-	"""
+		
+		struct AccessorOuter {
+			int i;
+			int j:12;
+			struct AccessorInner inner;
+			struct AccessorInner *ptr;
+			struct {
+				struct AccessorInner innerer;
+			};
+		};
+		"""
+	end
 	
-	ptr = Libc.malloc(c"struct AccessorOuter")
+	mod = @eval CBinding_accessors
+	
+	ptr = Libc.malloc(@eval mod c"struct AccessorOuter")
 	@test ptr != C_NULL
 	
 	x = reinterpret(Cptr{UInt8}, ptr)
 	@test ptr.i == x
 	@test ptr.inner == x+sizeof(Cint)*2
 	@test ptr.inner.i == x+sizeof(Cint)*2
-	@test ptr.ptr == x+sizeof(Cint)*2+sizeof(c"struct AccessorInner")
-	@test ptr.innerer == x+sizeof(Cint)*2+sizeof(c"struct AccessorInner")+sizeof(c"struct AccessorInner *")
-	@test ptr.innerer.i == x+sizeof(Cint)*2+sizeof(c"struct AccessorInner")+sizeof(c"struct AccessorInner *")
+	@test ptr.ptr == x+sizeof(Cint)*2+sizeof(@eval mod c"struct AccessorInner")
+	@test ptr.innerer == x+sizeof(Cint)*2+sizeof(@eval mod c"struct AccessorInner")+sizeof(@eval mod c"struct AccessorInner *")
+	@test ptr.innerer.i == x+sizeof(Cint)*2+sizeof(@eval mod c"struct AccessorInner")+sizeof(@eval mod c"struct AccessorInner *")
 	
-	obj = c"struct AccessorOuter"()
+	obj = (@eval mod c"struct AccessorOuter")()
 	@test obj.i == 0
 	@test obj.j == 0
 	@test obj.inner.i == 0
