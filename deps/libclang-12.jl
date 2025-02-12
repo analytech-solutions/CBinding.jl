@@ -32,10 +32,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXErrorCode\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXErrorCode\")"}; var"#8#kwargs"...) = begin
                 var"(c\"enum CXErrorCode\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXErrorCode\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXErrorCode\""}; var"#10#kwargs"...) = begin
                 var"(c\"enum CXErrorCode\")"
             end
         const var"c\"CXError_Success\"" = var"(c\"enum CXErrorCode\")"(0x0000000000000000)
@@ -66,10 +66,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXString\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:data, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}), 0, 0, -1}}, CBinding.Tuple{:private_flags, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXString\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXString\")"}; var"#14#kwargs"...) = begin
                 var"(c\"CXString\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXString\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXString\""}; var"#16#kwargs"...) = begin
                 var"(c\"CXString\")"
             end
         const CXString = var"c\"CXString\""
@@ -90,10 +90,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXStringSet\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:Strings, CBinding.Tuple{CBinding.Cptr{var"c\"CXString\""}, CBinding.bitstype(CBinding.Cptr{var"c\"CXString\""}), CBinding.integraltype(CBinding.Cptr{var"c\"CXString\""}), 0, 0, -1}}, CBinding.Tuple{:Count, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXStringSet\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXStringSet\")"}; var"#20#kwargs"...) = begin
                 var"(c\"CXStringSet\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXStringSet\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXStringSet\""}; var"#22#kwargs"...) = begin
                 var"(c\"CXStringSet\")"
             end
         const CXStringSet = var"c\"CXStringSet\""
@@ -314,10 +314,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"struct CXUnsavedFile\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:Filename, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), 0, 0, -1}}, CBinding.Tuple{:Contents, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), 8, 0, -1}}, CBinding.Tuple{:Length, CBinding.Tuple{CBinding.Culong, CBinding.bitstype(CBinding.Culong), CBinding.integraltype(CBinding.Culong), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXUnsavedFile\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXUnsavedFile\")"}; var"#26#kwargs"...) = begin
                 var"(c\"struct CXUnsavedFile\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXUnsavedFile\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXUnsavedFile\""}; var"#28#kwargs"...) = begin
                 var"(c\"struct CXUnsavedFile\")"
             end
         const CXUnsavedFile = var"c\"struct CXUnsavedFile\""
@@ -339,10 +339,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXAvailabilityKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXAvailabilityKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXAvailabilityKind\")"}; var"#32#kwargs"...) = begin
                 var"(c\"enum CXAvailabilityKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXAvailabilityKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXAvailabilityKind\""}; var"#34#kwargs"...) = begin
                 var"(c\"enum CXAvailabilityKind\")"
             end
         const var"c\"CXAvailability_Available\"" = var"(c\"enum CXAvailabilityKind\")"(0x0000000000000000)
@@ -371,10 +371,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"struct CXVersion\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:Major, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 0, 0, -1}}, CBinding.Tuple{:Minor, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 4, 0, -1}}, CBinding.Tuple{:Subminor, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXVersion\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXVersion\")"}; var"#38#kwargs"...) = begin
                 var"(c\"struct CXVersion\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXVersion\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXVersion\""}; var"#40#kwargs"...) = begin
                 var"(c\"struct CXVersion\")"
             end
         const CXVersion = var"c\"struct CXVersion\""
@@ -401,10 +401,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCursor_ExceptionSpecificationKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCursor_ExceptionSpecificationKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCursor_ExceptionSpecificationKind\")"}; var"#44#kwargs"...) = begin
                 var"(c\"enum CXCursor_ExceptionSpecificationKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCursor_ExceptionSpecificationKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCursor_ExceptionSpecificationKind\""}; var"#46#kwargs"...) = begin
                 var"(c\"enum CXCursor_ExceptionSpecificationKind\")"
             end
         const var"c\"CXCursor_ExceptionSpecificationKind_None\"" = var"(c\"enum CXCursor_ExceptionSpecificationKind\")"(0x0000000000000000)
@@ -466,10 +466,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXGlobalOptFlags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXGlobalOptFlags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXGlobalOptFlags\")"}; var"#50#kwargs"...) = begin
                 var"(c\"CXGlobalOptFlags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXGlobalOptFlags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXGlobalOptFlags\""}; var"#52#kwargs"...) = begin
                 var"(c\"CXGlobalOptFlags\")"
             end
         const var"c\"CXGlobalOpt_None\"" = var"(c\"CXGlobalOptFlags\")"(0x0000000000000000)
@@ -553,10 +553,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXFileUniqueID\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:data, CBinding.Tuple{CBinding.Carray{CBinding.Culonglong, 3}, CBinding.bitstype(CBinding.Carray{CBinding.Culonglong, 3}), CBinding.integraltype(CBinding.Carray{CBinding.Culonglong, 3}), 0, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXFileUniqueID\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXFileUniqueID\")"}; var"#56#kwargs"...) = begin
                 var"(c\"CXFileUniqueID\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXFileUniqueID\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXFileUniqueID\""}; var"#58#kwargs"...) = begin
                 var"(c\"CXFileUniqueID\")"
             end
         const CXFileUniqueID = var"c\"CXFileUniqueID\""
@@ -637,10 +637,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXSourceLocation\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:ptr_data, CBinding.Tuple{CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 2}, CBinding.bitstype(CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 2}), CBinding.integraltype(CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 2}), 0, 0, -1}}, CBinding.Tuple{:int_data, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSourceLocation\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSourceLocation\")"}; var"#62#kwargs"...) = begin
                 var"(c\"CXSourceLocation\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSourceLocation\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSourceLocation\""}; var"#64#kwargs"...) = begin
                 var"(c\"CXSourceLocation\")"
             end
         const CXSourceLocation = var"c\"CXSourceLocation\""
@@ -661,10 +661,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXSourceRange\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:ptr_data, CBinding.Tuple{CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 2}, CBinding.bitstype(CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 2}), CBinding.integraltype(CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 2}), 0, 0, -1}}, CBinding.Tuple{:begin_int_data, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 16, 0, -1}}, CBinding.Tuple{:end_int_data, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 20, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSourceRange\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSourceRange\")"}; var"#68#kwargs"...) = begin
                 var"(c\"CXSourceRange\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSourceRange\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSourceRange\""}; var"#70#kwargs"...) = begin
                 var"(c\"CXSourceRange\")"
             end
         const CXSourceRange = var"c\"CXSourceRange\""
@@ -855,10 +855,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXSourceRangeList\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:count, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 0, 0, -1}}, CBinding.Tuple{:ranges, CBinding.Tuple{CBinding.Cptr{var"c\"CXSourceRange\""}, CBinding.bitstype(CBinding.Cptr{var"c\"CXSourceRange\""}), CBinding.integraltype(CBinding.Cptr{var"c\"CXSourceRange\""}), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSourceRangeList\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSourceRangeList\")"}; var"#74#kwargs"...) = begin
                 var"(c\"CXSourceRangeList\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSourceRangeList\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSourceRangeList\""}; var"#76#kwargs"...) = begin
                 var"(c\"CXSourceRangeList\")"
             end
         const CXSourceRangeList = var"c\"CXSourceRangeList\""
@@ -910,10 +910,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXDiagnosticSeverity\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXDiagnosticSeverity\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXDiagnosticSeverity\")"}; var"#80#kwargs"...) = begin
                 var"(c\"enum CXDiagnosticSeverity\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXDiagnosticSeverity\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXDiagnosticSeverity\""}; var"#82#kwargs"...) = begin
                 var"(c\"enum CXDiagnosticSeverity\")"
             end
         const var"c\"CXDiagnostic_Ignored\"" = var"(c\"enum CXDiagnosticSeverity\")"(0x0000000000000000)
@@ -975,10 +975,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXLoadDiag_Error\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXLoadDiag_Error\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXLoadDiag_Error\")"}; var"#86#kwargs"...) = begin
                 var"(c\"enum CXLoadDiag_Error\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXLoadDiag_Error\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXLoadDiag_Error\""}; var"#88#kwargs"...) = begin
                 var"(c\"enum CXLoadDiag_Error\")"
             end
         const var"c\"CXLoadDiag_None\"" = var"(c\"enum CXLoadDiag_Error\")"(0x0000000000000000)
@@ -1078,10 +1078,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXDiagnosticDisplayOptions\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXDiagnosticDisplayOptions\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXDiagnosticDisplayOptions\")"}; var"#92#kwargs"...) = begin
                 var"(c\"enum CXDiagnosticDisplayOptions\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXDiagnosticDisplayOptions\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXDiagnosticDisplayOptions\""}; var"#94#kwargs"...) = begin
                 var"(c\"enum CXDiagnosticDisplayOptions\")"
             end
         const var"c\"CXDiagnostic_DisplaySourceLocation\"" = var"(c\"enum CXDiagnosticDisplayOptions\")"(0x0000000000000001)
@@ -1285,10 +1285,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTranslationUnit_Flags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTranslationUnit_Flags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTranslationUnit_Flags\")"}; var"#98#kwargs"...) = begin
                 var"(c\"enum CXTranslationUnit_Flags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTranslationUnit_Flags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTranslationUnit_Flags\""}; var"#100#kwargs"...) = begin
                 var"(c\"enum CXTranslationUnit_Flags\")"
             end
         const var"c\"CXTranslationUnit_None\"" = var"(c\"enum CXTranslationUnit_Flags\")"(0x0000000000000000)
@@ -1384,10 +1384,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXSaveTranslationUnit_Flags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXSaveTranslationUnit_Flags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXSaveTranslationUnit_Flags\")"}; var"#104#kwargs"...) = begin
                 var"(c\"enum CXSaveTranslationUnit_Flags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXSaveTranslationUnit_Flags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXSaveTranslationUnit_Flags\""}; var"#106#kwargs"...) = begin
                 var"(c\"enum CXSaveTranslationUnit_Flags\")"
             end
         const var"c\"CXSaveTranslationUnit_None\"" = var"(c\"enum CXSaveTranslationUnit_Flags\")"(0x0000000000000000)
@@ -1421,10 +1421,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXSaveError\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXSaveError\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXSaveError\")"}; var"#110#kwargs"...) = begin
                 var"(c\"enum CXSaveError\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXSaveError\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXSaveError\""}; var"#112#kwargs"...) = begin
                 var"(c\"enum CXSaveError\")"
             end
         const var"c\"CXSaveError_None\"" = var"(c\"enum CXSaveError\")"(0x0000000000000000)
@@ -1484,10 +1484,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXReparse_Flags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXReparse_Flags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXReparse_Flags\")"}; var"#116#kwargs"...) = begin
                 var"(c\"enum CXReparse_Flags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXReparse_Flags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXReparse_Flags\""}; var"#118#kwargs"...) = begin
                 var"(c\"enum CXReparse_Flags\")"
             end
         const var"c\"CXReparse_None\"" = var"(c\"enum CXReparse_Flags\")"(0x0000000000000000)
@@ -1531,10 +1531,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTUResourceUsageKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTUResourceUsageKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTUResourceUsageKind\")"}; var"#122#kwargs"...) = begin
                 var"(c\"enum CXTUResourceUsageKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTUResourceUsageKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTUResourceUsageKind\""}; var"#124#kwargs"...) = begin
                 var"(c\"enum CXTUResourceUsageKind\")"
             end
         const var"c\"CXTUResourceUsage_AST\"" = var"(c\"enum CXTUResourceUsageKind\")"(0x0000000000000001)
@@ -1601,10 +1601,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"struct CXTUResourceUsageEntry\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:kind, CBinding.Tuple{var"c\"enum CXTUResourceUsageKind\"", CBinding.bitstype(var"c\"enum CXTUResourceUsageKind\""), CBinding.integraltype(var"c\"enum CXTUResourceUsageKind\""), 0, 0, -1}}, CBinding.Tuple{:amount, CBinding.Tuple{CBinding.Culong, CBinding.bitstype(CBinding.Culong), CBinding.integraltype(CBinding.Culong), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXTUResourceUsageEntry\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXTUResourceUsageEntry\")"}; var"#128#kwargs"...) = begin
                 var"(c\"struct CXTUResourceUsageEntry\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXTUResourceUsageEntry\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXTUResourceUsageEntry\""}; var"#130#kwargs"...) = begin
                 var"(c\"struct CXTUResourceUsageEntry\")"
             end
         const CXTUResourceUsageEntry = var"c\"struct CXTUResourceUsageEntry\""
@@ -1630,10 +1630,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"struct CXTUResourceUsage\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:data, CBinding.Tuple{CBinding.Cptr{CBinding.Cvoid}, CBinding.bitstype(CBinding.Cptr{CBinding.Cvoid}), CBinding.integraltype(CBinding.Cptr{CBinding.Cvoid}), 0, 0, -1}}, CBinding.Tuple{:numEntries, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 8, 0, -1}}, CBinding.Tuple{:entries, CBinding.Tuple{CBinding.Cptr{var"c\"CXTUResourceUsageEntry\""}, CBinding.bitstype(CBinding.Cptr{var"c\"CXTUResourceUsageEntry\""}), CBinding.integraltype(CBinding.Cptr{var"c\"CXTUResourceUsageEntry\""}), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXTUResourceUsage\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXTUResourceUsage\")"}; var"#134#kwargs"...) = begin
                 var"(c\"struct CXTUResourceUsage\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXTUResourceUsage\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXTUResourceUsage\""}; var"#136#kwargs"...) = begin
                 var"(c\"struct CXTUResourceUsage\")"
             end
         const CXTUResourceUsage = var"c\"struct CXTUResourceUsage\""
@@ -1720,10 +1720,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCursorKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCursorKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCursorKind\")"}; var"#140#kwargs"...) = begin
                 var"(c\"enum CXCursorKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCursorKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCursorKind\""}; var"#142#kwargs"...) = begin
                 var"(c\"enum CXCursorKind\")"
             end
         const var"c\"CXCursor_UnexposedDecl\"" = var"(c\"enum CXCursorKind\")"(0x0000000000000001)
@@ -2274,10 +2274,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXCursor\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:kind, CBinding.Tuple{var"c\"enum CXCursorKind\"", CBinding.bitstype(var"c\"enum CXCursorKind\""), CBinding.integraltype(var"c\"enum CXCursorKind\""), 0, 0, -1}}, CBinding.Tuple{:xdata, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 4, 0, -1}}, CBinding.Tuple{:data, CBinding.Tuple{CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 3}, CBinding.bitstype(CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 3}), CBinding.integraltype(CBinding.Carray{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, 3}), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXCursor\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXCursor\")"}; var"#146#kwargs"...) = begin
                 var"(c\"CXCursor\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXCursor\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXCursor\""}; var"#148#kwargs"...) = begin
                 var"(c\"CXCursor\")"
             end
         const CXCursor = var"c\"CXCursor\""
@@ -2469,10 +2469,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXLinkageKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXLinkageKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXLinkageKind\")"}; var"#152#kwargs"...) = begin
                 var"(c\"enum CXLinkageKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXLinkageKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXLinkageKind\""}; var"#154#kwargs"...) = begin
                 var"(c\"enum CXLinkageKind\")"
             end
         const var"c\"CXLinkage_Invalid\"" = var"(c\"enum CXLinkageKind\")"(0x0000000000000000)
@@ -2514,10 +2514,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXVisibilityKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXVisibilityKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXVisibilityKind\")"}; var"#158#kwargs"...) = begin
                 var"(c\"enum CXVisibilityKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXVisibilityKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXVisibilityKind\""}; var"#160#kwargs"...) = begin
                 var"(c\"enum CXVisibilityKind\")"
             end
         const var"c\"CXVisibility_Invalid\"" = var"(c\"enum CXVisibilityKind\")"(0x0000000000000000)
@@ -2566,10 +2566,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"struct CXPlatformAvailability\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:Platform, CBinding.Tuple{var"c\"CXString\"", CBinding.bitstype(var"c\"CXString\""), CBinding.integraltype(var"c\"CXString\""), 0, 0, -1}}, CBinding.Tuple{:Introduced, CBinding.Tuple{var"c\"CXVersion\"", CBinding.bitstype(var"c\"CXVersion\""), CBinding.integraltype(var"c\"CXVersion\""), 16, 0, -1}}, CBinding.Tuple{:Deprecated, CBinding.Tuple{var"c\"CXVersion\"", CBinding.bitstype(var"c\"CXVersion\""), CBinding.integraltype(var"c\"CXVersion\""), 28, 0, -1}}, CBinding.Tuple{:Obsoleted, CBinding.Tuple{var"c\"CXVersion\"", CBinding.bitstype(var"c\"CXVersion\""), CBinding.integraltype(var"c\"CXVersion\""), 40, 0, -1}}, CBinding.Tuple{:Unavailable, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 52, 0, -1}}, CBinding.Tuple{:Message, CBinding.Tuple{var"c\"CXString\"", CBinding.bitstype(var"c\"CXString\""), CBinding.integraltype(var"c\"CXString\""), 56, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXPlatformAvailability\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXPlatformAvailability\")"}; var"#164#kwargs"...) = begin
                 var"(c\"struct CXPlatformAvailability\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXPlatformAvailability\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXPlatformAvailability\""}; var"#166#kwargs"...) = begin
                 var"(c\"struct CXPlatformAvailability\")"
             end
         const CXPlatformAvailability = var"c\"struct CXPlatformAvailability\""
@@ -2646,10 +2646,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXLanguageKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXLanguageKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXLanguageKind\")"}; var"#170#kwargs"...) = begin
                 var"(c\"enum CXLanguageKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXLanguageKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXLanguageKind\""}; var"#172#kwargs"...) = begin
                 var"(c\"enum CXLanguageKind\")"
             end
         const var"c\"CXLanguage_Invalid\"" = var"(c\"enum CXLanguageKind\")"(0x0000000000000000)
@@ -2689,10 +2689,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTLSKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTLSKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTLSKind\")"}; var"#176#kwargs"...) = begin
                 var"(c\"enum CXTLSKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTLSKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTLSKind\""}; var"#178#kwargs"...) = begin
                 var"(c\"enum CXTLSKind\")"
             end
         const var"c\"CXTLS_None\"" = var"(c\"enum CXTLSKind\")"(0x0000000000000000)
@@ -2870,10 +2870,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTypeKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTypeKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTypeKind\")"}; var"#182#kwargs"...) = begin
                 var"(c\"enum CXTypeKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTypeKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTypeKind\""}; var"#184#kwargs"...) = begin
                 var"(c\"enum CXTypeKind\")"
             end
         const var"c\"CXType_Invalid\"" = var"(c\"enum CXTypeKind\")"(0x0000000000000000)
@@ -3135,10 +3135,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCallingConv\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCallingConv\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCallingConv\")"}; var"#188#kwargs"...) = begin
                 var"(c\"enum CXCallingConv\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCallingConv\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCallingConv\""}; var"#190#kwargs"...) = begin
                 var"(c\"enum CXCallingConv\")"
             end
         const var"c\"CXCallingConv_Default\"" = var"(c\"enum CXCallingConv\")"(0x0000000000000000)
@@ -3199,10 +3199,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXType\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:kind, CBinding.Tuple{var"c\"enum CXTypeKind\"", CBinding.bitstype(var"c\"enum CXTypeKind\""), CBinding.integraltype(var"c\"enum CXTypeKind\""), 0, 0, -1}}, CBinding.Tuple{:data, CBinding.Tuple{CBinding.Carray{CBinding.Cptr{CBinding.Cvoid}, 2}, CBinding.bitstype(CBinding.Carray{CBinding.Cptr{CBinding.Cvoid}, 2}), CBinding.integraltype(CBinding.Carray{CBinding.Cptr{CBinding.Cvoid}, 2}), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXType\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXType\")"}; var"#194#kwargs"...) = begin
                 var"(c\"CXType\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXType\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXType\""}; var"#196#kwargs"...) = begin
                 var"(c\"CXType\")"
             end
         const CXType = var"c\"CXType\""
@@ -3314,10 +3314,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTemplateArgumentKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTemplateArgumentKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTemplateArgumentKind\")"}; var"#200#kwargs"...) = begin
                 var"(c\"enum CXTemplateArgumentKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTemplateArgumentKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTemplateArgumentKind\""}; var"#202#kwargs"...) = begin
                 var"(c\"enum CXTemplateArgumentKind\")"
             end
         const var"c\"CXTemplateArgumentKind_Null\"" = var"(c\"enum CXTemplateArgumentKind\")"(0x0000000000000000)
@@ -3759,10 +3759,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTypeNullabilityKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTypeNullabilityKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTypeNullabilityKind\")"}; var"#206#kwargs"...) = begin
                 var"(c\"enum CXTypeNullabilityKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTypeNullabilityKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTypeNullabilityKind\""}; var"#208#kwargs"...) = begin
                 var"(c\"enum CXTypeNullabilityKind\")"
             end
         const var"c\"CXTypeNullability_NonNull\"" = var"(c\"enum CXTypeNullabilityKind\")"(0x0000000000000000)
@@ -3804,10 +3804,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTypeLayoutError\")"}) = begin
                 CBinding.Cint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTypeLayoutError\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTypeLayoutError\")"}; var"#212#kwargs"...) = begin
                 var"(c\"enum CXTypeLayoutError\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTypeLayoutError\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTypeLayoutError\""}; var"#214#kwargs"...) = begin
                 var"(c\"enum CXTypeLayoutError\")"
             end
         const var"c\"CXTypeLayoutError_Invalid\"" = var"(c\"enum CXTypeLayoutError\")"(-1)
@@ -3941,10 +3941,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXRefQualifierKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXRefQualifierKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXRefQualifierKind\")"}; var"#218#kwargs"...) = begin
                 var"(c\"enum CXRefQualifierKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXRefQualifierKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXRefQualifierKind\""}; var"#220#kwargs"...) = begin
                 var"(c\"enum CXRefQualifierKind\")"
             end
         const var"c\"CXRefQualifier_None\"" = var"(c\"enum CXRefQualifierKind\")"(0x0000000000000000)
@@ -4022,10 +4022,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CX_CXXAccessSpecifier\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CX_CXXAccessSpecifier\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CX_CXXAccessSpecifier\")"}; var"#224#kwargs"...) = begin
                 var"(c\"enum CX_CXXAccessSpecifier\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CX_CXXAccessSpecifier\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CX_CXXAccessSpecifier\""}; var"#226#kwargs"...) = begin
                 var"(c\"enum CX_CXXAccessSpecifier\")"
             end
         const var"c\"CX_CXXInvalidAccessSpecifier\"" = var"(c\"enum CX_CXXAccessSpecifier\")"(0x0000000000000000)
@@ -4065,10 +4065,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CX_StorageClass\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CX_StorageClass\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CX_StorageClass\")"}; var"#230#kwargs"...) = begin
                 var"(c\"enum CX_StorageClass\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CX_StorageClass\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CX_StorageClass\""}; var"#232#kwargs"...) = begin
                 var"(c\"enum CX_StorageClass\")"
             end
         const var"c\"CX_SC_Invalid\"" = var"(c\"enum CX_StorageClass\")"(0x0000000000000000)
@@ -4146,10 +4146,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXChildVisitResult\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXChildVisitResult\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXChildVisitResult\")"}; var"#236#kwargs"...) = begin
                 var"(c\"enum CXChildVisitResult\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXChildVisitResult\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXChildVisitResult\""}; var"#238#kwargs"...) = begin
                 var"(c\"enum CXChildVisitResult\")"
             end
         const var"c\"CXChildVisit_Break\"" = var"(c\"enum CXChildVisitResult\")"(0x0000000000000000)
@@ -4287,10 +4287,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXPrintingPolicyProperty\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXPrintingPolicyProperty\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXPrintingPolicyProperty\")"}; var"#242#kwargs"...) = begin
                 var"(c\"enum CXPrintingPolicyProperty\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXPrintingPolicyProperty\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXPrintingPolicyProperty\""}; var"#244#kwargs"...) = begin
                 var"(c\"enum CXPrintingPolicyProperty\")"
             end
         const var"c\"CXPrintingPolicy_Indentation\"" = var"(c\"enum CXPrintingPolicyProperty\")"(0x0000000000000000)
@@ -4496,10 +4496,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXObjCPropertyAttrKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXObjCPropertyAttrKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXObjCPropertyAttrKind\")"}; var"#248#kwargs"...) = begin
                 var"(c\"CXObjCPropertyAttrKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXObjCPropertyAttrKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXObjCPropertyAttrKind\""}; var"#250#kwargs"...) = begin
                 var"(c\"CXObjCPropertyAttrKind\")"
             end
         const var"c\"CXObjCPropertyAttr_noattr\"" = var"(c\"CXObjCPropertyAttrKind\")"(0x0000000000000000)
@@ -4579,10 +4579,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXObjCDeclQualifierKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXObjCDeclQualifierKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXObjCDeclQualifierKind\")"}; var"#254#kwargs"...) = begin
                 var"(c\"CXObjCDeclQualifierKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXObjCDeclQualifierKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXObjCDeclQualifierKind\""}; var"#256#kwargs"...) = begin
                 var"(c\"CXObjCDeclQualifierKind\")"
             end
         const var"c\"CXObjCDeclQualifier_None\"" = var"(c\"CXObjCDeclQualifierKind\")"(0x0000000000000000)
@@ -4963,10 +4963,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXNameRefFlags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXNameRefFlags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXNameRefFlags\")"}; var"#260#kwargs"...) = begin
                 var"(c\"enum CXNameRefFlags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXNameRefFlags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXNameRefFlags\""}; var"#262#kwargs"...) = begin
                 var"(c\"enum CXNameRefFlags\")"
             end
         const var"c\"CXNameRange_WantQualifier\"" = var"(c\"enum CXNameRefFlags\")"(0x0000000000000001)
@@ -4994,10 +4994,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXTokenKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTokenKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXTokenKind\")"}; var"#266#kwargs"...) = begin
                 var"(c\"enum CXTokenKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTokenKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXTokenKind\""}; var"#268#kwargs"...) = begin
                 var"(c\"enum CXTokenKind\")"
             end
         const var"c\"CXToken_Punctuation\"" = var"(c\"enum CXTokenKind\")"(0x0000000000000000)
@@ -5033,10 +5033,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXToken\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:int_data, CBinding.Tuple{CBinding.Carray{CBinding.Cuint, 4}, CBinding.bitstype(CBinding.Carray{CBinding.Cuint, 4}), CBinding.integraltype(CBinding.Carray{CBinding.Cuint, 4}), 0, 0, -1}}, CBinding.Tuple{:ptr_data, CBinding.Tuple{CBinding.Cptr{CBinding.Cvoid}, CBinding.bitstype(CBinding.Cptr{CBinding.Cvoid}), CBinding.integraltype(CBinding.Cptr{CBinding.Cvoid}), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXToken\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXToken\")"}; var"#272#kwargs"...) = begin
                 var"(c\"CXToken\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXToken\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXToken\""}; var"#274#kwargs"...) = begin
                 var"(c\"CXToken\")"
             end
         const CXToken = var"c\"CXToken\""
@@ -5182,10 +5182,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXCompletionResult\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:CursorKind, CBinding.Tuple{var"c\"enum CXCursorKind\"", CBinding.bitstype(var"c\"enum CXCursorKind\""), CBinding.integraltype(var"c\"enum CXCursorKind\""), 0, 0, -1}}, CBinding.Tuple{:CompletionString, CBinding.Tuple{var"c\"CXCompletionString\"", CBinding.bitstype(var"c\"CXCompletionString\""), CBinding.integraltype(var"c\"CXCompletionString\""), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXCompletionResult\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXCompletionResult\")"}; var"#278#kwargs"...) = begin
                 var"(c\"CXCompletionResult\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXCompletionResult\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXCompletionResult\""}; var"#280#kwargs"...) = begin
                 var"(c\"CXCompletionResult\")"
             end
         const CXCompletionResult = var"c\"CXCompletionResult\""
@@ -5207,10 +5207,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCompletionChunkKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCompletionChunkKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCompletionChunkKind\")"}; var"#284#kwargs"...) = begin
                 var"(c\"enum CXCompletionChunkKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCompletionChunkKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCompletionChunkKind\""}; var"#286#kwargs"...) = begin
                 var"(c\"enum CXCompletionChunkKind\")"
             end
         const var"c\"CXCompletionChunk_Optional\"" = var"(c\"enum CXCompletionChunkKind\")"(0x0000000000000000)
@@ -5383,10 +5383,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXCodeCompleteResults\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:Results, CBinding.Tuple{CBinding.Cptr{var"c\"CXCompletionResult\""}, CBinding.bitstype(CBinding.Cptr{var"c\"CXCompletionResult\""}), CBinding.integraltype(CBinding.Cptr{var"c\"CXCompletionResult\""}), 0, 0, -1}}, CBinding.Tuple{:NumResults, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXCodeCompleteResults\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXCodeCompleteResults\")"}; var"#290#kwargs"...) = begin
                 var"(c\"CXCodeCompleteResults\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXCodeCompleteResults\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXCodeCompleteResults\""}; var"#292#kwargs"...) = begin
                 var"(c\"CXCodeCompleteResults\")"
             end
         const CXCodeCompleteResults = var"c\"CXCodeCompleteResults\""
@@ -5428,10 +5428,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCodeComplete_Flags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCodeComplete_Flags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCodeComplete_Flags\")"}; var"#296#kwargs"...) = begin
                 var"(c\"enum CXCodeComplete_Flags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCodeComplete_Flags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCodeComplete_Flags\""}; var"#298#kwargs"...) = begin
                 var"(c\"enum CXCodeComplete_Flags\")"
             end
         const var"c\"CXCodeComplete_IncludeMacros\"" = var"(c\"enum CXCodeComplete_Flags\")"(0x0000000000000001)
@@ -5463,10 +5463,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCompletionContext\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCompletionContext\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCompletionContext\")"}; var"#302#kwargs"...) = begin
                 var"(c\"enum CXCompletionContext\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCompletionContext\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCompletionContext\""}; var"#304#kwargs"...) = begin
                 var"(c\"enum CXCompletionContext\")"
             end
         const var"c\"CXCompletionContext_Unexposed\"" = var"(c\"enum CXCompletionContext\")"(0x0000000000000000)
@@ -5673,10 +5673,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXEvalResultKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXEvalResultKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXEvalResultKind\")"}; var"#308#kwargs"...) = begin
                 var"(c\"CXEvalResultKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXEvalResultKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXEvalResultKind\""}; var"#310#kwargs"...) = begin
                 var"(c\"CXEvalResultKind\")"
             end
         const var"c\"CXEval_Int\"" = var"(c\"CXEvalResultKind\")"(0x0000000000000001)
@@ -5862,10 +5862,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXVisitorResult\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXVisitorResult\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXVisitorResult\")"}; var"#314#kwargs"...) = begin
                 var"(c\"enum CXVisitorResult\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXVisitorResult\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXVisitorResult\""}; var"#316#kwargs"...) = begin
                 var"(c\"enum CXVisitorResult\")"
             end
         const var"c\"CXVisit_Break\"" = var"(c\"enum CXVisitorResult\")"(0x0000000000000000)
@@ -5890,10 +5890,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"struct CXCursorAndRangeVisitor\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:context, CBinding.Tuple{CBinding.Cptr{CBinding.Cvoid}, CBinding.bitstype(CBinding.Cptr{CBinding.Cvoid}), CBinding.integraltype(CBinding.Cptr{CBinding.Cvoid}), 0, 0, -1}}, CBinding.Tuple{:visit, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{var"c\"enum CXVisitorResult\"", CBinding.Tuple{CBinding.Cptr{CBinding.Cvoid}, var"c\"CXCursor\"", var"c\"CXSourceRange\""}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{var"c\"enum CXVisitorResult\"", CBinding.Tuple{CBinding.Cptr{CBinding.Cvoid}, var"c\"CXCursor\"", var"c\"CXSourceRange\""}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{var"c\"enum CXVisitorResult\"", CBinding.Tuple{CBinding.Cptr{CBinding.Cvoid}, var"c\"CXCursor\"", var"c\"CXSourceRange\""}, :cdecl}}), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXCursorAndRangeVisitor\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"struct CXCursorAndRangeVisitor\")"}; var"#320#kwargs"...) = begin
                 var"(c\"struct CXCursorAndRangeVisitor\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXCursorAndRangeVisitor\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"struct CXCursorAndRangeVisitor\""}; var"#322#kwargs"...) = begin
                 var"(c\"struct CXCursorAndRangeVisitor\")"
             end
         const CXCursorAndRangeVisitor = var"c\"struct CXCursorAndRangeVisitor\""
@@ -5920,10 +5920,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXResult\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXResult\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXResult\")"}; var"#326#kwargs"...) = begin
                 var"(c\"CXResult\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXResult\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXResult\""}; var"#328#kwargs"...) = begin
                 var"(c\"CXResult\")"
             end
         const var"c\"CXResult_Success\"" = var"(c\"CXResult\")"(0x0000000000000000)
@@ -5990,10 +5990,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxLoc\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:ptr_data, CBinding.Tuple{CBinding.Carray{CBinding.Cptr{CBinding.Cvoid}, 2}, CBinding.bitstype(CBinding.Carray{CBinding.Cptr{CBinding.Cvoid}, 2}), CBinding.integraltype(CBinding.Carray{CBinding.Cptr{CBinding.Cvoid}, 2}), 0, 0, -1}}, CBinding.Tuple{:int_data, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxLoc\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxLoc\")"}; var"#332#kwargs"...) = begin
                 var"(c\"CXIdxLoc\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxLoc\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxLoc\""}; var"#334#kwargs"...) = begin
                 var"(c\"CXIdxLoc\")"
             end
         const CXIdxLoc = var"c\"CXIdxLoc\""
@@ -6014,10 +6014,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxIncludedFileInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:hashLoc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 0, 0, -1}}, CBinding.Tuple{:filename, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), 24, 0, -1}}, CBinding.Tuple{:file, CBinding.Tuple{var"c\"CXFile\"", CBinding.bitstype(var"c\"CXFile\""), CBinding.integraltype(var"c\"CXFile\""), 32, 0, -1}}, CBinding.Tuple{:isImport, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 40, 0, -1}}, CBinding.Tuple{:isAngled, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 44, 0, -1}}, CBinding.Tuple{:isModuleImport, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 48, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxIncludedFileInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxIncludedFileInfo\")"}; var"#338#kwargs"...) = begin
                 var"(c\"CXIdxIncludedFileInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxIncludedFileInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxIncludedFileInfo\""}; var"#340#kwargs"...) = begin
                 var"(c\"CXIdxIncludedFileInfo\")"
             end
         const CXIdxIncludedFileInfo = var"c\"CXIdxIncludedFileInfo\""
@@ -6038,10 +6038,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxImportedASTFileInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:file, CBinding.Tuple{var"c\"CXFile\"", CBinding.bitstype(var"c\"CXFile\""), CBinding.integraltype(var"c\"CXFile\""), 0, 0, -1}}, CBinding.Tuple{:module, CBinding.Tuple{var"c\"CXModule\"", CBinding.bitstype(var"c\"CXModule\""), CBinding.integraltype(var"c\"CXModule\""), 8, 0, -1}}, CBinding.Tuple{:loc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 16, 0, -1}}, CBinding.Tuple{:isImplicit, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 40, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxImportedASTFileInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxImportedASTFileInfo\")"}; var"#344#kwargs"...) = begin
                 var"(c\"CXIdxImportedASTFileInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxImportedASTFileInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxImportedASTFileInfo\""}; var"#346#kwargs"...) = begin
                 var"(c\"CXIdxImportedASTFileInfo\")"
             end
         const CXIdxImportedASTFileInfo = var"c\"CXIdxImportedASTFileInfo\""
@@ -6063,10 +6063,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIdxEntityKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityKind\")"}; var"#350#kwargs"...) = begin
                 var"(c\"CXIdxEntityKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityKind\""}; var"#352#kwargs"...) = begin
                 var"(c\"CXIdxEntityKind\")"
             end
         const var"c\"CXIdxEntity_Unexposed\"" = var"(c\"CXIdxEntityKind\")"(0x0000000000000000)
@@ -6142,10 +6142,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIdxEntityLanguage\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityLanguage\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityLanguage\")"}; var"#356#kwargs"...) = begin
                 var"(c\"CXIdxEntityLanguage\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityLanguage\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityLanguage\""}; var"#358#kwargs"...) = begin
                 var"(c\"CXIdxEntityLanguage\")"
             end
         const var"c\"CXIdxEntityLang_None\"" = var"(c\"CXIdxEntityLanguage\")"(0x0000000000000000)
@@ -6177,10 +6177,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIdxEntityCXXTemplateKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityCXXTemplateKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityCXXTemplateKind\")"}; var"#362#kwargs"...) = begin
                 var"(c\"CXIdxEntityCXXTemplateKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityCXXTemplateKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityCXXTemplateKind\""}; var"#364#kwargs"...) = begin
                 var"(c\"CXIdxEntityCXXTemplateKind\")"
             end
         const var"c\"CXIdxEntity_NonTemplate\"" = var"(c\"CXIdxEntityCXXTemplateKind\")"(0x0000000000000000)
@@ -6210,10 +6210,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIdxAttrKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxAttrKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxAttrKind\")"}; var"#368#kwargs"...) = begin
                 var"(c\"CXIdxAttrKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxAttrKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxAttrKind\""}; var"#370#kwargs"...) = begin
                 var"(c\"CXIdxAttrKind\")"
             end
         const var"c\"CXIdxAttr_Unexposed\"" = var"(c\"CXIdxAttrKind\")"(0x0000000000000000)
@@ -6242,10 +6242,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxAttrInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:kind, CBinding.Tuple{var"c\"CXIdxAttrKind\"", CBinding.bitstype(var"c\"CXIdxAttrKind\""), CBinding.integraltype(var"c\"CXIdxAttrKind\""), 0, 0, -1}}, CBinding.Tuple{:cursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 8, 0, -1}}, CBinding.Tuple{:loc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 40, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxAttrInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxAttrInfo\")"}; var"#374#kwargs"...) = begin
                 var"(c\"CXIdxAttrInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxAttrInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxAttrInfo\""}; var"#376#kwargs"...) = begin
                 var"(c\"CXIdxAttrInfo\")"
             end
         const CXIdxAttrInfo = var"c\"CXIdxAttrInfo\""
@@ -6266,10 +6266,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxEntityInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:kind, CBinding.Tuple{var"c\"CXIdxEntityKind\"", CBinding.bitstype(var"c\"CXIdxEntityKind\""), CBinding.integraltype(var"c\"CXIdxEntityKind\""), 0, 0, -1}}, CBinding.Tuple{:templateKind, CBinding.Tuple{var"c\"CXIdxEntityCXXTemplateKind\"", CBinding.bitstype(var"c\"CXIdxEntityCXXTemplateKind\""), CBinding.integraltype(var"c\"CXIdxEntityCXXTemplateKind\""), 4, 0, -1}}, CBinding.Tuple{:lang, CBinding.Tuple{var"c\"CXIdxEntityLanguage\"", CBinding.bitstype(var"c\"CXIdxEntityLanguage\""), CBinding.integraltype(var"c\"CXIdxEntityLanguage\""), 8, 0, -1}}, CBinding.Tuple{:name, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), 16, 0, -1}}, CBinding.Tuple{:USR, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cchar}}), 24, 0, -1}}, CBinding.Tuple{:cursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 32, 0, -1}}, CBinding.Tuple{:attributes, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}}}), 64, 0, -1}}, CBinding.Tuple{:numAttributes, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 72, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityInfo\")"}; var"#380#kwargs"...) = begin
                 var"(c\"CXIdxEntityInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityInfo\""}; var"#382#kwargs"...) = begin
                 var"(c\"CXIdxEntityInfo\")"
             end
         const CXIdxEntityInfo = var"c\"CXIdxEntityInfo\""
@@ -6290,10 +6290,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxContainerInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:cursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 0, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxContainerInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxContainerInfo\")"}; var"#386#kwargs"...) = begin
                 var"(c\"CXIdxContainerInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxContainerInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxContainerInfo\""}; var"#388#kwargs"...) = begin
                 var"(c\"CXIdxContainerInfo\")"
             end
         const CXIdxContainerInfo = var"c\"CXIdxContainerInfo\""
@@ -6314,10 +6314,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxIBOutletCollectionAttrInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:attrInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:objcClass, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 8, 0, -1}}, CBinding.Tuple{:classCursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 16, 0, -1}}, CBinding.Tuple{:classLoc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 48, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxIBOutletCollectionAttrInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxIBOutletCollectionAttrInfo\")"}; var"#392#kwargs"...) = begin
                 var"(c\"CXIdxIBOutletCollectionAttrInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxIBOutletCollectionAttrInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxIBOutletCollectionAttrInfo\""}; var"#394#kwargs"...) = begin
                 var"(c\"CXIdxIBOutletCollectionAttrInfo\")"
             end
         const CXIdxIBOutletCollectionAttrInfo = var"c\"CXIdxIBOutletCollectionAttrInfo\""
@@ -6339,10 +6339,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIdxDeclInfoFlags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxDeclInfoFlags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxDeclInfoFlags\")"}; var"#398#kwargs"...) = begin
                 var"(c\"CXIdxDeclInfoFlags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxDeclInfoFlags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxDeclInfoFlags\""}; var"#400#kwargs"...) = begin
                 var"(c\"CXIdxDeclInfoFlags\")"
             end
         const var"c\"CXIdxDeclFlag_Skipped\"" = var"(c\"CXIdxDeclInfoFlags\")"(0x0000000000000001)
@@ -6365,10 +6365,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxDeclInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:entityInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:cursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 8, 0, -1}}, CBinding.Tuple{:loc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 40, 0, -1}}, CBinding.Tuple{:semanticContainer, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), 64, 0, -1}}, CBinding.Tuple{:lexicalContainer, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), 72, 0, -1}}, CBinding.Tuple{:isRedeclaration, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 80, 0, -1}}, CBinding.Tuple{:isDefinition, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 84, 0, -1}}, CBinding.Tuple{:isContainer, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 88, 0, -1}}, CBinding.Tuple{:declAsContainer, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), 96, 0, -1}}, CBinding.Tuple{:isImplicit, CBinding.Tuple{CBinding.Cint, CBinding.bitstype(CBinding.Cint), CBinding.integraltype(CBinding.Cint), 104, 0, -1}}, CBinding.Tuple{:attributes, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxAttrInfo\""}}}}), 112, 0, -1}}, CBinding.Tuple{:numAttributes, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 120, 0, -1}}, CBinding.Tuple{:flags, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 124, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxDeclInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxDeclInfo\")"}; var"#404#kwargs"...) = begin
                 var"(c\"CXIdxDeclInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxDeclInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxDeclInfo\""}; var"#406#kwargs"...) = begin
                 var"(c\"CXIdxDeclInfo\")"
             end
         const CXIdxDeclInfo = var"c\"CXIdxDeclInfo\""
@@ -6390,10 +6390,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIdxObjCContainerKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCContainerKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCContainerKind\")"}; var"#410#kwargs"...) = begin
                 var"(c\"CXIdxObjCContainerKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCContainerKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCContainerKind\""}; var"#412#kwargs"...) = begin
                 var"(c\"CXIdxObjCContainerKind\")"
             end
         const var"c\"CXIdxObjCContainer_ForwardRef\"" = var"(c\"CXIdxObjCContainerKind\")"(0x0000000000000000)
@@ -6420,10 +6420,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxObjCContainerDeclInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:declInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:kind, CBinding.Tuple{var"c\"CXIdxObjCContainerKind\"", CBinding.bitstype(var"c\"CXIdxObjCContainerKind\""), CBinding.integraltype(var"c\"CXIdxObjCContainerKind\""), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCContainerDeclInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCContainerDeclInfo\")"}; var"#416#kwargs"...) = begin
                 var"(c\"CXIdxObjCContainerDeclInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCContainerDeclInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCContainerDeclInfo\""}; var"#418#kwargs"...) = begin
                 var"(c\"CXIdxObjCContainerDeclInfo\")"
             end
         const CXIdxObjCContainerDeclInfo = var"c\"CXIdxObjCContainerDeclInfo\""
@@ -6444,10 +6444,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxBaseClassInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:base, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:cursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 8, 0, -1}}, CBinding.Tuple{:loc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 40, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxBaseClassInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxBaseClassInfo\")"}; var"#422#kwargs"...) = begin
                 var"(c\"CXIdxBaseClassInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxBaseClassInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxBaseClassInfo\""}; var"#424#kwargs"...) = begin
                 var"(c\"CXIdxBaseClassInfo\")"
             end
         const CXIdxBaseClassInfo = var"c\"CXIdxBaseClassInfo\""
@@ -6468,10 +6468,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxObjCProtocolRefInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:protocol, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:cursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 8, 0, -1}}, CBinding.Tuple{:loc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 40, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCProtocolRefInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCProtocolRefInfo\")"}; var"#428#kwargs"...) = begin
                 var"(c\"CXIdxObjCProtocolRefInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCProtocolRefInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCProtocolRefInfo\""}; var"#430#kwargs"...) = begin
                 var"(c\"CXIdxObjCProtocolRefInfo\")"
             end
         const CXIdxObjCProtocolRefInfo = var"c\"CXIdxObjCProtocolRefInfo\""
@@ -6492,10 +6492,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxObjCProtocolRefListInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:protocols, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefInfo\""}}}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefInfo\""}}}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefInfo\""}}}}), 0, 0, -1}}, CBinding.Tuple{:numProtocols, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCProtocolRefListInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCProtocolRefListInfo\")"}; var"#434#kwargs"...) = begin
                 var"(c\"CXIdxObjCProtocolRefListInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCProtocolRefListInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCProtocolRefListInfo\""}; var"#436#kwargs"...) = begin
                 var"(c\"CXIdxObjCProtocolRefListInfo\")"
             end
         const CXIdxObjCProtocolRefListInfo = var"c\"CXIdxObjCProtocolRefListInfo\""
@@ -6516,10 +6516,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxObjCInterfaceDeclInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:containerInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCContainerDeclInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCContainerDeclInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCContainerDeclInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:superInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxBaseClassInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxBaseClassInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxBaseClassInfo\""}}), 8, 0, -1}}, CBinding.Tuple{:protocols, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefListInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefListInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefListInfo\""}}), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCInterfaceDeclInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCInterfaceDeclInfo\")"}; var"#440#kwargs"...) = begin
                 var"(c\"CXIdxObjCInterfaceDeclInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCInterfaceDeclInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCInterfaceDeclInfo\""}; var"#442#kwargs"...) = begin
                 var"(c\"CXIdxObjCInterfaceDeclInfo\")"
             end
         const CXIdxObjCInterfaceDeclInfo = var"c\"CXIdxObjCInterfaceDeclInfo\""
@@ -6540,10 +6540,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxObjCCategoryDeclInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:containerInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCContainerDeclInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCContainerDeclInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCContainerDeclInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:objcClass, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 8, 0, -1}}, CBinding.Tuple{:classCursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 16, 0, -1}}, CBinding.Tuple{:classLoc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 48, 0, -1}}, CBinding.Tuple{:protocols, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefListInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefListInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxObjCProtocolRefListInfo\""}}), 72, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCCategoryDeclInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCCategoryDeclInfo\")"}; var"#446#kwargs"...) = begin
                 var"(c\"CXIdxObjCCategoryDeclInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCCategoryDeclInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCCategoryDeclInfo\""}; var"#448#kwargs"...) = begin
                 var"(c\"CXIdxObjCCategoryDeclInfo\")"
             end
         const CXIdxObjCCategoryDeclInfo = var"c\"CXIdxObjCCategoryDeclInfo\""
@@ -6564,10 +6564,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxObjCPropertyDeclInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:declInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:getter, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 8, 0, -1}}, CBinding.Tuple{:setter, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCPropertyDeclInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxObjCPropertyDeclInfo\")"}; var"#452#kwargs"...) = begin
                 var"(c\"CXIdxObjCPropertyDeclInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCPropertyDeclInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxObjCPropertyDeclInfo\""}; var"#454#kwargs"...) = begin
                 var"(c\"CXIdxObjCPropertyDeclInfo\")"
             end
         const CXIdxObjCPropertyDeclInfo = var"c\"CXIdxObjCPropertyDeclInfo\""
@@ -6588,10 +6588,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxCXXClassDeclInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:declInfo, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}), 0, 0, -1}}, CBinding.Tuple{:bases, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxBaseClassInfo\""}}}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxBaseClassInfo\""}}}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxBaseClassInfo\""}}}}), 8, 0, -1}}, CBinding.Tuple{:numBases, CBinding.Tuple{CBinding.Cuint, CBinding.bitstype(CBinding.Cuint), CBinding.integraltype(CBinding.Cuint), 16, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxCXXClassDeclInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxCXXClassDeclInfo\")"}; var"#458#kwargs"...) = begin
                 var"(c\"CXIdxCXXClassDeclInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxCXXClassDeclInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxCXXClassDeclInfo\""}; var"#460#kwargs"...) = begin
                 var"(c\"CXIdxCXXClassDeclInfo\")"
             end
         const CXIdxCXXClassDeclInfo = var"c\"CXIdxCXXClassDeclInfo\""
@@ -6613,10 +6613,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIdxEntityRefKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityRefKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityRefKind\")"}; var"#464#kwargs"...) = begin
                 var"(c\"CXIdxEntityRefKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityRefKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityRefKind\""}; var"#466#kwargs"...) = begin
                 var"(c\"CXIdxEntityRefKind\")"
             end
         const var"c\"CXIdxEntityRef_Direct\"" = var"(c\"CXIdxEntityRefKind\")"(0x0000000000000001)
@@ -6642,10 +6642,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXSymbolRole\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSymbolRole\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXSymbolRole\")"}; var"#470#kwargs"...) = begin
                 var"(c\"CXSymbolRole\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSymbolRole\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXSymbolRole\""}; var"#472#kwargs"...) = begin
                 var"(c\"CXSymbolRole\")"
             end
         const var"c\"CXSymbolRole_None\"" = var"(c\"CXSymbolRole\")"(0x0000000000000000)
@@ -6686,10 +6686,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXIdxEntityRefInfo\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:kind, CBinding.Tuple{var"c\"CXIdxEntityRefKind\"", CBinding.bitstype(var"c\"CXIdxEntityRefKind\""), CBinding.integraltype(var"c\"CXIdxEntityRefKind\""), 0, 0, -1}}, CBinding.Tuple{:cursor, CBinding.Tuple{var"c\"CXCursor\"", CBinding.bitstype(var"c\"CXCursor\""), CBinding.integraltype(var"c\"CXCursor\""), 8, 0, -1}}, CBinding.Tuple{:loc, CBinding.Tuple{var"c\"CXIdxLoc\"", CBinding.bitstype(var"c\"CXIdxLoc\""), CBinding.integraltype(var"c\"CXIdxLoc\""), 40, 0, -1}}, CBinding.Tuple{:referencedEntity, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 64, 0, -1}}, CBinding.Tuple{:parentEntity, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityInfo\""}}), 72, 0, -1}}, CBinding.Tuple{:container, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxContainerInfo\""}}), 80, 0, -1}}, CBinding.Tuple{:role, CBinding.Tuple{var"c\"CXSymbolRole\"", CBinding.bitstype(var"c\"CXSymbolRole\""), CBinding.integraltype(var"c\"CXSymbolRole\""), 88, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityRefInfo\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIdxEntityRefInfo\")"}; var"#476#kwargs"...) = begin
                 var"(c\"CXIdxEntityRefInfo\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityRefInfo\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIdxEntityRefInfo\""}; var"#478#kwargs"...) = begin
                 var"(c\"CXIdxEntityRefInfo\")"
             end
         const CXIdxEntityRefInfo = var"c\"CXIdxEntityRefInfo\""
@@ -6710,10 +6710,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"IndexerCallbacks\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:abortQuery, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{CBinding.Cint, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cint, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cint, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), 0, 0, -1}}, CBinding.Tuple{:diagnostic, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", var"c\"CXDiagnosticSet\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", var"c\"CXDiagnosticSet\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", var"c\"CXDiagnosticSet\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), 8, 0, -1}}, CBinding.Tuple{:enteredMainFile, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientFile\"", CBinding.Tuple{var"c\"CXClientData\"", var"c\"CXFile\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientFile\"", CBinding.Tuple{var"c\"CXClientData\"", var"c\"CXFile\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientFile\"", CBinding.Tuple{var"c\"CXClientData\"", var"c\"CXFile\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), 16, 0, -1}}, CBinding.Tuple{:ppIncludedFile, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientFile\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxIncludedFileInfo\""}}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientFile\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxIncludedFileInfo\""}}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientFile\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxIncludedFileInfo\""}}}, :cdecl}}), 24, 0, -1}}, CBinding.Tuple{:importedASTFile, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientASTFile\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxImportedASTFileInfo\""}}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientASTFile\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxImportedASTFileInfo\""}}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientASTFile\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxImportedASTFileInfo\""}}}, :cdecl}}), 32, 0, -1}}, CBinding.Tuple{:startedTranslationUnit, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientContainer\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientContainer\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{var"c\"CXIdxClientContainer\"", CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cvoid}}, :cdecl}}), 40, 0, -1}}, CBinding.Tuple{:indexDeclaration, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxDeclInfo\""}}}, :cdecl}}), 48, 0, -1}}, CBinding.Tuple{:indexEntityReference, CBinding.Tuple{CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityRefInfo\""}}}, :cdecl}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityRefInfo\""}}}, :cdecl}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cfunction{CBinding.Cvoid, CBinding.Tuple{var"c\"CXClientData\"", CBinding.Cptr{CBinding.Cconst{var"c\"CXIdxEntityRefInfo\""}}}, :cdecl}}), 56, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"IndexerCallbacks\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"IndexerCallbacks\")"}; var"#482#kwargs"...) = begin
                 var"(c\"IndexerCallbacks\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"IndexerCallbacks\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"IndexerCallbacks\""}; var"#484#kwargs"...) = begin
                 var"(c\"IndexerCallbacks\")"
             end
         const IndexerCallbacks = var"c\"IndexerCallbacks\""
@@ -6880,10 +6880,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"CXIndexOptFlags\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIndexOptFlags\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXIndexOptFlags\")"}; var"#488#kwargs"...) = begin
                 var"(c\"CXIndexOptFlags\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIndexOptFlags\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXIndexOptFlags\""}; var"#490#kwargs"...) = begin
                 var"(c\"CXIndexOptFlags\")"
             end
         const var"c\"CXIndexOpt_None\"" = var"(c\"CXIndexOptFlags\")"(0x0000000000000000)
@@ -6981,10 +6981,10 @@ end)"
         (CBinding.CBinding).fields(::CBinding.Type{var"(c\"CXComment\")"}) = begin
                 CBinding.Tuple{CBinding.Tuple{:ASTNode, CBinding.Tuple{CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}, CBinding.bitstype(CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}), CBinding.integraltype(CBinding.Cptr{CBinding.Cconst{CBinding.Cvoid}}), 0, 0, -1}}, CBinding.Tuple{:TranslationUnit, CBinding.Tuple{var"c\"CXTranslationUnit\"", CBinding.bitstype(var"c\"CXTranslationUnit\""), CBinding.integraltype(var"c\"CXTranslationUnit\""), 8, 0, -1}}}
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXComment\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"CXComment\")"}; var"#494#kwargs"...) = begin
                 var"(c\"CXComment\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXComment\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"CXComment\""}; var"#496#kwargs"...) = begin
                 var"(c\"CXComment\")"
             end
         const CXComment = var"c\"CXComment\""
@@ -7016,10 +7016,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCommentKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCommentKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCommentKind\")"}; var"#500#kwargs"...) = begin
                 var"(c\"enum CXCommentKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCommentKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCommentKind\""}; var"#502#kwargs"...) = begin
                 var"(c\"enum CXCommentKind\")"
             end
         const var"c\"CXComment_Null\"" = var"(c\"enum CXCommentKind\")"(0x0000000000000000)
@@ -7067,10 +7067,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCommentInlineCommandRenderKind\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCommentInlineCommandRenderKind\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCommentInlineCommandRenderKind\")"}; var"#506#kwargs"...) = begin
                 var"(c\"enum CXCommentInlineCommandRenderKind\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCommentInlineCommandRenderKind\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCommentInlineCommandRenderKind\""}; var"#508#kwargs"...) = begin
                 var"(c\"enum CXCommentInlineCommandRenderKind\")"
             end
         const var"c\"CXCommentInlineCommandRenderKind_Normal\"" = var"(c\"enum CXCommentInlineCommandRenderKind\")"(0x0000000000000000)
@@ -7102,10 +7102,10 @@ end)"
         (CBinding.Base).Enums.basetype(::CBinding.Type{var"(c\"enum CXCommentParamPassDirection\")"}) = begin
                 CBinding.Cuint
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCommentParamPassDirection\")"}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"(c\"enum CXCommentParamPassDirection\")"}; var"#512#kwargs"...) = begin
                 var"(c\"enum CXCommentParamPassDirection\")"
             end
-        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCommentParamPassDirection\""}) = begin
+        (CBinding.CBinding).bitstype(::CBinding.Type{var"c\"enum CXCommentParamPassDirection\""}; var"#514#kwargs"...) = begin
                 var"(c\"enum CXCommentParamPassDirection\")"
             end
         const var"c\"CXCommentParamPassDirection_In\"" = var"(c\"enum CXCommentParamPassDirection\")"(0x0000000000000000)
