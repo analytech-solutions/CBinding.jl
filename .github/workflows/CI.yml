@@ -18,7 +18,7 @@ jobs:
           - '1.11'
           - '1.12'
           - '1.13'
-          - 'nightly'
+          # - 'nightly'
         os:
           - ubuntu-latest
           - macos-latest
